@@ -58,10 +58,10 @@ export function PlayMenu({
         </button>
         <button
           id="track-audio-export"
-          className={`copy-toggle ${playMode === "autocanonizer" ? "is-hidden" : ""}`}
+          className="copy-toggle"
           type="button"
           onClick={onOpenExport}
-          disabled={!hasAnalysis || isExporting || playMode === "autocanonizer"}
+          disabled={!hasAnalysis || isExporting}
           title={t("listen.exportAudio")}
           aria-label={t("listen.exportAudio")}
         >

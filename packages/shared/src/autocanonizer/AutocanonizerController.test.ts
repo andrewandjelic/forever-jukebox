@@ -209,4 +209,24 @@ describe("AutocanonizerController", () => {
       otherSeconds: 10,
     });
   });
+
+  it("plans a render with the current finish-out setting and stream pans", () => {
+    const controller = new AutocanonizerController({} as HTMLElement);
+    expect(controller.planRender()).toBeNull();
+    const first = createBeat(0, 0);
+    const final = createBeat(1, 0.1);
+    first.next = final;
+    final.prev = first;
+    first.other = first;
+    final.other = first;
+    (controller as unknown as { beats: CanonizerBeat[] }).beats = [first, final];
+    controller.setStreamPans(-2, 0.5);
+
+    const looped = controller.planRender();
+    expect(looped?.durationSeconds).toBeCloseTo(0.2);
+    expect(looped?.voices.map((voice) => voice.pan)).toEqual([-1, 0.5]);
+
+    controller.setFinishOutSong(true);
+    expect(controller.planRender()?.durationSeconds).toBeCloseTo(0.3);
+  });
 });

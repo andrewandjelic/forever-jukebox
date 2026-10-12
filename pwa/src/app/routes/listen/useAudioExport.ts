@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import type { AnalysisOutput } from "@/shared/analysis-schema";
 import {
   exportJukeboxAudio,
+  exportCanonizerAudio,
   exportRenderedAudio,
   type JukeboxExportProgress,
 } from "@/shared/export";
@@ -22,6 +23,7 @@ import {
 } from "@forever-jukebox/shared/audio/instrumentalRenderer";
 import { isStoredCopy } from "@forever-jukebox/shared/audio/renderedTrackCache";
 import type { JukeboxEngine } from "@forever-jukebox/shared";
+import type { CanonizerRenderPlan } from "@forever-jukebox/shared/autocanonizer/canonizerRenderPlan";
 import type { WubMachineRender } from "@forever-jukebox/shared/wubmachine/wubMachineRender";
 import { createSessionSeed, waitForNextPaint } from "./browser";
 import type { PlayMode } from "./types";
@@ -44,6 +46,7 @@ export function useAudioExport({
   audioIntensity,
   getSourceIdentity,
   getRenderedTrackId,
+  getCanonizerRenderPlan,
   getWubMachineRender,
   renderWubMachine,
   t,
@@ -59,6 +62,8 @@ export function useAudioExport({
   getSourceIdentity: () => string | null;
   // Rendered copies are stored by analysis fingerprint, like cached analysis.
   getRenderedTrackId: () => string | null;
+  // The loaded track's canon as it would play from the top right now.
+  getCanonizerRenderPlan: () => CanonizerRenderPlan | null;
   // The loaded track's Wub Machine remix, if it has been rendered.
   getWubMachineRender: () => WubMachineRender | null;
   // Renders it, storing a copy under the track unless told not to.
@@ -123,12 +128,20 @@ export function useAudioExport({
     }
 
     const isWubMachine = playMode === "wubmachine";
+    const isCanonizer = playMode === "autocanonizer";
+    const canonizerPlan = isCanonizer ? getCanonizerRenderPlan() : null;
+    if (isCanonizer && !canonizerPlan) {
+      setExportError(t("export.bufferUnavailable"));
+      return;
+    }
+    // The Wub Machine and the canon export whole; only the jukebox takes a length.
+    const isWholeTrack = isWubMachine || isCanonizer;
     const durationSeconds = Number(exportForm.durationSeconds);
-    if (!isWubMachine && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) {
+    if (!isWholeTrack && (!Number.isFinite(durationSeconds) || durationSeconds <= 0)) {
       setExportError(t("export.positiveDuration"));
       return;
     }
-    if (!isWubMachine && durationSeconds > MAX_EXPORT_DURATION_SECONDS) {
+    if (!isWholeTrack && durationSeconds > MAX_EXPORT_DURATION_SECONDS) {
       setExportError(t("export.durationCap", {
         minutes: MAX_EXPORT_DURATION_SECONDS / 60,
       }));
@@ -136,7 +149,11 @@ export function useAudioExport({
     }
 
     const requestedExtension = exportForm.format;
-    const exportSuffix = isWubMachine ? "wub" : "forever";
+    const exportSuffix = isWubMachine
+      ? "wub"
+      : isCanonizer
+        ? "canon"
+        : "forever";
     const requestedFilename = buildAudioExportName(
       file.name,
       requestedExtension,
@@ -203,6 +220,16 @@ export function useAudioExport({
         }
         result = await exportRenderedAudio({
           buffer: remix,
+          format: exportForm.format,
+          bitrateKbps:
+            exportForm.format === "mp3" ? exportForm.bitrateKbps : undefined,
+          gain: player.getVolume(),
+          onProgress: (progress) => setExportProgress(progress),
+        });
+      } else if (canonizerPlan) {
+        result = await exportCanonizerAudio({
+          sourceBuffer,
+          plan: canonizerPlan,
           format: exportForm.format,
           bitrateKbps:
             exportForm.format === "mp3" ? exportForm.bitrateKbps : undefined,

@@ -15,6 +15,7 @@ import {
 
 const exportMocks = vi.hoisted(() => ({
   exportJukeboxAudio: vi.fn(),
+  exportCanonizerAudio: vi.fn(),
   exportRenderedAudio: vi.fn(),
   pickBinaryExportFile: vi.fn(),
   saveExportBinary: vi.fn(),
@@ -32,6 +33,7 @@ const mockAppState = {
 
 type MockAutocanonizerInstance = {
   setFinishOutSong: ReturnType<typeof vi.fn>;
+  planRender: ReturnType<typeof vi.fn>;
   setStreamPans: ReturnType<typeof vi.fn>;
   setVolume: ReturnType<typeof vi.fn>;
   startAtIndex: ReturnType<typeof vi.fn>;
@@ -267,6 +269,7 @@ vi.mock("@forever-jukebox/shared/audio/instrumentalRenderer", () => ({
 
 vi.mock("@/shared/export", () => ({
   exportJukeboxAudio: exportMocks.exportJukeboxAudio,
+  exportCanonizerAudio: exportMocks.exportCanonizerAudio,
   exportRenderedAudio: exportMocks.exportRenderedAudio,
 }));
 
@@ -447,6 +450,7 @@ vi.mock("@forever-jukebox/shared/autocanonizer/AutocanonizerController", () => (
       | null = null;
     private onSelect: ((index: number) => void) | null = null;
     setFinishOutSong = vi.fn((_enabled: boolean) => undefined);
+    planRender = vi.fn(() => ({ durationSeconds: 95, voices: [] }));
     constructor(_layer: HTMLElement) {
       autocanonizerInstances.push(this);
     }
@@ -661,6 +665,13 @@ describe("Listen route behavior", () => {
     wubMachineMocks.renderWubMachineBuffer.mockResolvedValue({
       buffer: { duration: 30 } as AudioBuffer,
       parts: [],
+    });
+    exportMocks.exportCanonizerAudio.mockReset();
+    exportMocks.exportCanonizerAudio.mockResolvedValue({
+      bytes: new Uint8Array([7, 8, 9]),
+      extension: "mp3",
+      mimeType: "audio/mpeg",
+      renderedDurationSeconds: 95,
     });
     exportMocks.exportRenderedAudio.mockReset();
     exportMocks.exportRenderedAudio.mockResolvedValue({
@@ -965,6 +976,43 @@ describe("Listen route behavior", () => {
     expect(exportMocks.exportRenderedAudio).toHaveBeenLastCalledWith(
       expect.objectContaining({ format: "wav" }),
     );
+    rendered.unmount();
+  });
+
+  it("exports the whole canon in autocanonizer mode", async () => {
+    const rendered = renderListen();
+    await settleEffects();
+    await changeSelect(
+      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
+      "autocanonizer",
+    );
+    await settleEffects();
+    const plan = { durationSeconds: 95, voices: [] };
+    autocanonizerInstances[0].planRender.mockReturnValue(plan);
+
+    const exportButton = getRequired<HTMLButtonElement>(
+      rendered.container,
+      "#track-audio-export",
+    );
+    expect(exportButton.disabled).toBe(false);
+    expect(exportButton.classList.contains("is-hidden")).toBe(false);
+    await click(exportButton);
+    expect(rendered.container.textContent).toContain("00:01:35");
+    expect(rendered.container.querySelector('input[type="number"]')).toBeNull();
+    await click(
+      getRequired<HTMLButtonElement>(
+        rendered.container,
+        ".modal-footer .tab-btn:last-child",
+      ),
+    );
+    await settleEffects();
+
+    expect(exportMocks.exportCanonizerAudio).toHaveBeenLastCalledWith(
+      expect.objectContaining({ plan, format: "mp3", gain: 1 }),
+    );
+    expect(exportMocks.exportJukeboxAudio).not.toHaveBeenCalled();
+    expect(exportMocks.exportRenderedAudio).not.toHaveBeenCalled();
+    expect(exportMocks.saveExportBinary.mock.calls.at(-1)?.[0]).toBe("song_canon.mp3");
     rendered.unmount();
   });
 

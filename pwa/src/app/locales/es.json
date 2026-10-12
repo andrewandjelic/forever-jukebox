@@ -241,6 +241,7 @@
     "failed": "No se pudo exportar el audio.",
     "wavTooLarge": "El archivo exportado en WAV es demasiado grande para la memoria de tu navegador con esta duración. Prefiere exportar en MP3 para estos casos.",
     "wubMachineNote": "Exporta el remix completo de Wub Machine con el volumen actual.",
+    "autocanonizerNote": "Exporta una pasada completa del canon con el volumen, el balance y el ajuste «Finalizar la canción» actuales.",
     "remixLength": "Duración del remix:",
     "preparingWubMachine": "Creando el remix de Wub Machine"
   },

@@ -5,6 +5,12 @@ import {
   backgroundClearTimeout,
   backgroundSetTimeout,
 } from "../background/backgroundTimer";
+import {
+  CANONIZER_MASTER_BLEND,
+  CANONIZER_MAX_SKEW_DELTA,
+  planCanonizerRender,
+  type CanonizerRenderPlan,
+} from "./canonizerRenderPlan";
 
 type BeatWithSim = CanonizerBeat & {
   sim?: CanonizerBeat;
@@ -43,9 +49,13 @@ class AutocanonizerPlayer {
   private deltaTime = 0;
   private otherDeltaTime = 0;
   private skewDelta = 0;
-  private readonly maxSkewDelta = 0.05;
+  private readonly maxSkewDelta = CANONIZER_MAX_SKEW_DELTA;
 
-  constructor(context: AudioContext, buffer: AudioBuffer, masterBlend = 0.55) {
+  constructor(
+    context: AudioContext,
+    buffer: AudioBuffer,
+    masterBlend = CANONIZER_MASTER_BLEND,
+  ) {
     this.context = context;
     this.buffer = buffer;
     this.masterBlend = masterBlend;
@@ -383,6 +393,16 @@ export class AutocanonizerController {
 
   isReady() {
     return Boolean(this.player && this.beats.length);
+  }
+
+  // The canon as a timed plan for offline rendering, with the current
+  // finish-out setting and stream pans. Null until an analysis is set.
+  planRender(): CanonizerRenderPlan | null {
+    return planCanonizerRender(this.beats, {
+      finishOutSong: this.finishOutSong,
+      mainPan: this.mainStreamPan,
+      otherPan: this.otherStreamPan,
+    });
   }
 
   start() {

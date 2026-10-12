@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { exportRenderedAudio, type JukeboxExportProgress } from "../exporter";
+import {
+  exportCanonizerAudio,
+  exportRenderedAudio,
+  type JukeboxExportProgress,
+} from "../exporter";
+import { renderCanonizerAudio } from "../canonizer";
 import {
   concatMp3ChunksWithFfmpeg,
   encodeAudioBufferWithFfmpeg,
 } from "@/core/infrastructure/audio/ffmpegAudio";
 
 vi.mock("../plan", () => ({ planJukeboxPath: vi.fn() }));
+vi.mock("../canonizer", () => ({ renderCanonizerAudio: vi.fn() }));
 vi.mock("@/core/infrastructure/audio/ffmpegAudio", () => ({
   encodeAudioBufferWithFfmpeg: vi.fn(),
   concatMp3ChunksWithFfmpeg: vi.fn(),
@@ -108,5 +114,72 @@ describe("exportRenderedAudio", () => {
     await expect(
       exportRenderedAudio({ buffer: makeBuffer(0), format: "wav" }),
     ).rejects.toThrow("empty");
+  });
+});
+
+describe("exportCanonizerAudio", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubGlobal("AudioBuffer", FakeAudioBuffer);
+    vi.mocked(encodeAudioBufferWithFfmpeg).mockImplementation(
+      async (_buffer, options) => ({
+        bytes: new Uint8Array([1]),
+        extension: options.format,
+        mimeType: "audio/wav",
+      }),
+    );
+  });
+
+  it("mixes the plan at the gain and encodes the result untouched", async () => {
+    const source = makeBuffer(4);
+    const canon = makeBuffer(6);
+    const plan = { durationSeconds: 6, voices: [] };
+    vi.mocked(renderCanonizerAudio).mockImplementation(
+      async (_source, _plan, options) => {
+        options?.onProgress?.(0.5);
+        return canon;
+      },
+    );
+    const events: JukeboxExportProgress[] = [];
+
+    const result = await exportCanonizerAudio({
+      sourceBuffer: source,
+      plan,
+      format: "wav",
+      gain: 0.4,
+      onProgress: (event) => events.push(event),
+    });
+
+    expect(vi.mocked(renderCanonizerAudio).mock.calls[0]).toMatchObject([
+      source,
+      plan,
+      { gain: 0.4 },
+    ]);
+    expect(vi.mocked(encodeAudioBufferWithFfmpeg).mock.calls[0]?.[0]).toBe(canon);
+    expect(result.extension).toBe("wav");
+    const percents = events.map((event) => event.percent);
+    expect(percents).toEqual([...percents].sort((a, b) => a - b));
+    expect(events[0]?.message.kind).toBe("renderingAudio");
+  });
+
+  it("rejects an oversized WAV before mixing", async () => {
+    const options = {
+      sourceBuffer: makeBuffer(1, 48000),
+      plan: { durationSeconds: 60 * 60, voices: [] },
+    };
+
+    await expect(
+      exportCanonizerAudio({ ...options, format: "wav" }),
+    ).rejects.toThrow("WAV export is too large");
+    expect(renderCanonizerAudio).not.toHaveBeenCalled();
+
+    vi.mocked(renderCanonizerAudio).mockResolvedValue(makeBuffer(1));
+    vi.mocked(concatMp3ChunksWithFfmpeg).mockResolvedValue({
+      bytes: new Uint8Array(1),
+      extension: "mp3",
+      mimeType: "audio/mpeg",
+    });
+    await exportCanonizerAudio({ ...options, format: "mp3" });
+    expect(renderCanonizerAudio).toHaveBeenCalledTimes(1);
   });
 });

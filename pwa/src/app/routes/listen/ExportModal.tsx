@@ -33,8 +33,9 @@ export function ExportModal({
   remixDurationSeconds: number;
 }) {
   const { t } = useTranslation();
-  // The Wub Machine exports its whole remix; the duration is not a choice.
+  // The Wub Machine and the canon export whole; the duration is not a choice.
   const isWubMachine = playMode === "wubmachine";
+  const isCanonizer = playMode === "autocanonizer";
   return (
     <div className="modal open">
       <button
@@ -60,11 +61,19 @@ export function ExportModal({
         </div>
         <div className="modal-body export-body">
           <p className="export-note">
-            {t(isWubMachine ? "export.wubMachineNote" : "export.note")}
+            {t(
+              isWubMachine
+                ? "export.wubMachineNote"
+                : isCanonizer
+                  ? "export.autocanonizerNote"
+                  : "export.note",
+            )}
           </p>
-          {isWubMachine ? (
+          {isWubMachine || isCanonizer ? (
             <div className="label-line">
-              <span>{t("export.remixLength")}</span>
+              <span>
+                {t(isWubMachine ? "export.remixLength" : "export.duration")}
+              </span>
               <span>{formatDuration(remixDurationSeconds)}</span>
             </div>
           ) : (

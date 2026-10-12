@@ -293,6 +293,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     audioIntensity,
     getSourceIdentity: getCurrentSourceIdentity,
     getRenderedTrackId: () => fingerprintRef.current,
+    getCanonizerRenderPlan: () => autocanonizerRef.current?.planRender() ?? null,
     getWubMachineRender: () => wubMachineRenderRef.current,
     renderWubMachine: renderWubMachineForExport,
     t,
@@ -1943,7 +1944,11 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
           onClose={closeExport}
           onExport={handleExportJukeboxAudio}
           playMode={playMode}
-          remixDurationSeconds={wubMachineDurationSeconds}
+          remixDurationSeconds={
+            playMode === "autocanonizer"
+              ? (autocanonizerRef.current?.planRender()?.durationSeconds ?? 0)
+              : wubMachineDurationSeconds
+          }
         />
       ) : null}
 

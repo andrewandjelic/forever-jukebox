@@ -9,6 +9,8 @@ import {
   type JukeboxAudioMode,
 } from "@forever-jukebox/shared/audio/audioModes";
 import type { JukeboxConfig, RandomMode } from "@forever-jukebox/shared";
+import type { CanonizerRenderPlan } from "@forever-jukebox/shared/autocanonizer/canonizerRenderPlan";
+import { renderCanonizerAudio } from "./canonizer";
 import {
   planJukeboxPath,
   type EdgeRef,
@@ -69,6 +71,8 @@ export interface ExportJukeboxAudioResult {
 
 const MP3_RENDER_CHUNK_SECONDS = 120;
 const MAX_WAV_FLOAT32_RENDER_BYTES = 1_200_000_000;
+const WAV_TOO_LARGE_MESSAGE =
+  "WAV export is too large for browser memory at this duration. Use MP3 for long exports.";
 
 function report(
   onProgress: ExportJukeboxAudioOptions["onProgress"],
@@ -220,9 +224,7 @@ export async function exportJukeboxAudio(
       sourceBuffer.numberOfChannels *
       4;
     if (estimatedBytes > MAX_WAV_FLOAT32_RENDER_BYTES) {
-      throw new Error(
-        "WAV export is too large for browser memory at this duration. Use MP3 for long exports.",
-      );
+      throw new Error(WAV_TOO_LARGE_MESSAGE);
     }
 
     report(options.onProgress, "rendering", { kind: "renderingAudio" }, 8);
@@ -369,9 +371,7 @@ export async function exportRenderedAudio(
     const estimatedBytes =
       buffer.length * buffer.numberOfChannels * 4 * (gain === 1 ? 1 : 2);
     if (estimatedBytes > MAX_WAV_FLOAT32_RENDER_BYTES) {
-      throw new Error(
-        "WAV export is too large for browser memory at this duration. Use MP3 for long exports.",
-      );
+      throw new Error(WAV_TOO_LARGE_MESSAGE);
     }
     const message = {
       kind: "encodingFormat" as const,
@@ -392,6 +392,43 @@ export async function exportRenderedAudio(
 
   report(options.onProgress, "encoding", { kind: "finalizing" }, 100);
   return { ...encoded, renderedDurationSeconds };
+}
+
+export interface ExportCanonizerAudioOptions {
+  sourceBuffer: AudioBuffer;
+  plan: CanonizerRenderPlan;
+  format: EncodedAudioFormat;
+  bitrateKbps?: number;
+  gain?: number;
+  onProgress?: (progress: JukeboxExportProgress) => void;
+}
+
+// Mixes the planned canon at the given gain and encodes it whole.
+export async function exportCanonizerAudio(
+  options: ExportCanonizerAudioOptions,
+): Promise<ExportRenderedAudioResult> {
+  const { sourceBuffer, plan } = options;
+  if (
+    options.format !== "mp3" &&
+    plan.durationSeconds * sourceBuffer.sampleRate * 2 * 4 >
+      MAX_WAV_FLOAT32_RENDER_BYTES
+  ) {
+    throw new Error(WAV_TOO_LARGE_MESSAGE);
+  }
+  const message = { kind: "renderingAudio" as const };
+  report(options.onProgress, "rendering", message, 2);
+  const buffer = await renderCanonizerAudio(sourceBuffer, plan, {
+    gain: options.gain,
+    onProgress: (progress) => {
+      report(options.onProgress, "rendering", message, 2 + progress * 6);
+    },
+  });
+  return exportRenderedAudio({
+    buffer,
+    format: options.format,
+    bitrateKbps: options.bitrateKbps,
+    onProgress: options.onProgress,
+  });
 }
 
 function projectSegmentsIntoWindow(

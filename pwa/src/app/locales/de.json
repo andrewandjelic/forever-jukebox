@@ -241,6 +241,7 @@
     "failed": "Audio-Export fehlgeschlagen.",
     "wavTooLarge": "WAV-Export ist für den Browser-Speicher bei dieser Dauer zu groß. Verwende MP3 für lange Exporte.",
     "wubMachineNote": "Exportiert den gesamten Wub-Machine-Remix mit der aktuellen Lautstärke.",
+    "autocanonizerNote": "Exportiert einen vollständigen Durchlauf des Kanons mit aktueller Lautstärke, Balance und der Einstellung „Song zu Ende spielen“.",
     "remixLength": "Remix-Länge:",
     "preparingWubMachine": "Wub-Machine-Remix wird erstellt"
   },

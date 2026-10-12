@@ -58,6 +58,8 @@ madmom WASM: [madmom-beats-port](https://github.com/creightonlinza/madmom-beats-
 
 - Export playable jukebox output directly from the Listen screen.
 - Export uses current tuning + deleted branches and a fresh seeded random run.
+- Autocanonizer mode exports one full pass of the canon; "Finish out the track" adds the
+  trailing voice's ending.
 - Formats:
   - MP3 (compressed)
   - WAV (lossless)
