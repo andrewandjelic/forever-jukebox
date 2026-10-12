@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { trackEvent } from "../analytics";
 import { pathForFaqSubtab, type FaqSubtabId } from "../tabs";
@@ -6,6 +7,26 @@ import { HeroSocials } from "./Hero";
 
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.foreverjukebox.app.play";
 const ANDROID_RELEASES_URL = "https://github.com/creightonlinza/forever-jukebox-android/releases";
+
+// Sharing a name makes the browser keep one FAQ section open at a time.
+function FaqItem({
+  title,
+  open,
+  children,
+}: {
+  title: string;
+  open?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details name="faq" open={open}>
+      <summary>
+        <h4>{title}</h4>
+      </summary>
+      {children}
+    </details>
+  );
+}
 
 export function FaqPanel() {
   const { t } = useTranslation();
@@ -54,83 +75,92 @@ export function FaqPanel() {
         id="faq-panel"
       >
         <HeroSocials className="faq-socials" />
-        <h4>{t("faq.whatTitle")}</h4>
-        <p>
-          <Trans
-            i18nKey="faq.whatBody"
-            components={{
-              infinite: <a href="https://musicmachinery.com/2012/11/12/the-infinite-jukebox/" target="_blank" rel="noreferrer">Infinite Jukebox</a>,
-              canon: <a href="https://musicmachinery.com/2014/03/18/how-the-autocanonizer-works/" target="_blank" rel="noreferrer">Autocanonizer</a>,
-              author: <a href="https://creighton.dev" target="_blank" rel="noreferrer">Creighton Linza</a>,
-            }}
-          />
-        </p>
-
-        <h4>{t("faq.howTitle")}</h4>
-        <p>{t("faq.howBody")}</p>
-        <p>
-          <Trans
-            i18nKey="faq.sourceBody"
-            components={{
-              repo: <a href="https://github.com/creightonlinza/forever-jukebox/" target="_blank" rel="noreferrer">forever-jukebox</a>,
-            }}
-          />
-        </p>
-
-        <h4>{t("faq.tuneTitle")}</h4>
-        <ul>
-          <li>{t("faq.tuneOpen")}</li>
-          <li>{t("faq.tuneThreshold")}</li>
-          <li>{t("faq.tuneProbability")}</li>
-          <li>{t("faq.tuneTypes")}</li>
-          <li>{t("faq.tuneDelete")}</li>
-        </ul>
-
-        <h4>{t("faq.modesTitle")}</h4>
-        <p>
-          <Trans
-            i18nKey="faq.modesBody"
-            components={{
-              remix: <a href="https://github.com/echonest/remix" target="_blank" rel="noreferrer">Echo Nest Remix</a>,
-            }}
-          />
-        </p>
-
-        <h4>{t("faq.favoritesTitle")}</h4>
-        <ul>
-          <li>{t("faq.favoritesSave")}</li>
-          <li>{t("faq.favoritesTuning")}</li>
-          <li>{t("faq.favoritesReset")}</li>
-        </ul>
-
-        <h4>{t("faq.playlistsTitle")}</h4>
-        <ul>
-          <li>{t("faq.playlistsBuild")}</li>
-          <li>{t("faq.playlistsUse")}</li>
-          <li>{t("faq.playlistsNavigate")}</li>
-          <li>{t("faq.playlistsLocal")}</li>
-        </ul>
-
-        <h4>{t("faq.offlineTitle")}</h4>
-        <p>
-          <Trans
-            i18nKey="faq.offlineBody"
-            components={{
-              offline: <a href="/offline/" target="_blank" onClick={() => trackEvent("open_pwa", { ui_source: "faq" })}>Forever Jukebox Offline app</a>,
-              play: <a href={PLAY_STORE_URL} target="_blank" rel="noreferrer">Google Play</a>,
-            }}
-          />
-        </p>
-        <p>
-          <Trans
-            i18nKey="faq.offlineAndroid"
-            values={{ server: window.location.origin }}
-            components={{
-              releases: <a href={ANDROID_RELEASES_URL} target="_blank" rel="noreferrer">GitHub Releases</a>,
-              server: <code className="faq-server-url" />,
-            }}
-          />
-        </p>
+        <FaqItem title={t("faq.whatTitle")} open>
+          <p>
+            <Trans
+              i18nKey="faq.whatBody"
+              components={{
+                infinite: <a href="https://musicmachinery.com/2012/11/12/the-infinite-jukebox/" target="_blank" rel="noreferrer">Infinite Jukebox</a>,
+                canon: <a href="https://musicmachinery.com/2014/03/18/how-the-autocanonizer-works/" target="_blank" rel="noreferrer">Autocanonizer</a>,
+                author: <a href="https://creighton.dev" target="_blank" rel="noreferrer">Creighton Linza</a>,
+              }}
+            />
+          </p>
+          <p>
+            <Trans
+              i18nKey="faq.playModesBody"
+              components={{
+                wub: <a href="https://github.com/psobot/wub-machine" target="_blank" rel="noreferrer">Wub Machine</a>,
+              }}
+            />
+          </p>
+        </FaqItem>
+        <FaqItem title={t("faq.howTitle")}>
+          <p>{t("faq.howBody")}</p>
+          <p>
+            <Trans
+              i18nKey="faq.sourceBody"
+              components={{
+                repo: <a href="https://github.com/creightonlinza/forever-jukebox/" target="_blank" rel="noreferrer">forever-jukebox</a>,
+              }}
+            />
+          </p>
+        </FaqItem>
+        <FaqItem title={t("faq.tuneTitle")}>
+          <ul>
+            <li>{t("faq.tuneOpen")}</li>
+            <li>{t("faq.tuneThreshold")}</li>
+            <li>{t("faq.tuneProbability")}</li>
+            <li>{t("faq.tuneTypes")}</li>
+            <li>{t("faq.tuneDelete")}</li>
+          </ul>
+        </FaqItem>
+        <FaqItem title={t("faq.modesTitle")}>
+          <p>
+            <Trans
+              i18nKey="faq.modesBody"
+              components={{
+                remix: <a href="https://github.com/echonest/remix" target="_blank" rel="noreferrer">Echo Nest Remix</a>,
+              }}
+            />
+          </p>
+        </FaqItem>
+        <FaqItem title={t("faq.favoritesTitle")}>
+          <ul>
+            <li>{t("faq.favoritesSave")}</li>
+            <li>{t("faq.favoritesTuning")}</li>
+            <li>{t("faq.favoritesReset")}</li>
+          </ul>
+        </FaqItem>
+        <FaqItem title={t("faq.playlistsTitle")}>
+          <ul>
+            <li>{t("faq.playlistsBuild")}</li>
+            <li>{t("faq.playlistsUse")}</li>
+            <li>{t("faq.playlistsNavigate")}</li>
+            <li>{t("faq.playlistsLocal")}</li>
+          </ul>
+        </FaqItem>
+        <FaqItem title={t("faq.offlineTitle")}>
+          <p>
+            <Trans
+              i18nKey="faq.offlineBody"
+              components={{
+                offline: <a href="/offline/" target="_blank" onClick={() => trackEvent("open_pwa", { ui_source: "faq" })}>Forever Jukebox Offline app</a>,
+                play: <a href={PLAY_STORE_URL} target="_blank" rel="noreferrer">Google Play</a>,
+              }}
+            />
+          </p>
+          <p>
+            <Trans
+              i18nKey="faq.offlineAndroid"
+              values={{ server: window.location.origin }}
+              components={{
+                releases: <a href={ANDROID_RELEASES_URL} target="_blank" rel="noreferrer">GitHub Releases</a>,
+                server: <code className="faq-server-url" />,
+              }}
+            />
+          </p>
+        </FaqItem>
       </div>
       <div
         className={subtab === "whats-new" ? "faq faq-updates" : "faq faq-updates hidden"}
@@ -143,7 +173,7 @@ export function FaqPanel() {
         <h4>October 2026</h4>
         <ul>
           <li>
-            New <strong>Wub Machine</strong> play mode — a dubstep remix of any track, built right in your browser, based on Peter Sobot's <a href="https://github.com/psobot/wub-machine" target="_blank" rel="noreferrer">Wub Machine</a>.
+            New <strong>Wub Machine</strong> play mode — a dubstep remix of any track, built right in your browser.
           </li>
           <li>
             New <strong>Instrumental</strong> remix toy in Extras — removes vocals right in your browser. Desktop browsers with WebGPU only; first use downloads a 67 MB model.
