@@ -134,7 +134,7 @@ export function handleNormalTrackSelected(track: PlaylistTrack) {
     }
     updatePlaylist(result.playlist);
     trackEvent("playlist_add", {
-      source,
+      ui_source: source,
       track_id: track.id,
       size: result.playlist.tracks.length,
     });

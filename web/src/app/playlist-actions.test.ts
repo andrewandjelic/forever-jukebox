@@ -495,7 +495,7 @@ describe("playlist handlers", () => {
     addToPlaylist(track("next"), "favorites");
 
     expect(trackEvent).toHaveBeenCalledWith("playlist_add", {
-      source: "favorites",
+      ui_source: "favorites",
       track_id: "next",
       size: 2,
     });
