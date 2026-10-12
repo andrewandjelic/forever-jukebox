@@ -18,7 +18,8 @@ let lastPageViewPath: string | null =
 let lastPlayKey: string | null = null;
 
 // Numeric values are sent as-is so they can be registered as GA custom metrics
-// (averaged) rather than dimensions (bucketed into rows).
+// (averaged) rather than dimensions (bucketed into rows). GA4 reads params named
+// source/medium/campaign as traffic attribution, so events must not use them.
 type EventParams = Record<string, string | number>;
 
 function gtagEvent(name: string, params: EventParams): void {

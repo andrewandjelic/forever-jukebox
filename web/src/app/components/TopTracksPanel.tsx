@@ -217,7 +217,7 @@ function SongList({
               onClick={(event) => {
                 event.preventDefault();
                 trackEvent("select_track", {
-                  source: tabId,
+                  ui_source: tabId,
                   track_id: listenId,
                   track_title: title,
                 });
@@ -346,7 +346,7 @@ function ReportedList({
               onClick={(event) => {
                 event.preventDefault();
                 trackEvent("select_track", {
-                  source: "reported",
+                  ui_source: "reported",
                   track_id: item.id,
                   track_title: title,
                 });
@@ -395,7 +395,7 @@ function FavoritesList({ query }: { query: string }) {
 
   const select = (item: FavoriteTrack) => {
     trackEvent("select_track", {
-      source: "favorites",
+      ui_source: "favorites",
       track_id: item.uniqueSongId,
       track_title: item.title,
     });

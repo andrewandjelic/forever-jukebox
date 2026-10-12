@@ -116,7 +116,7 @@ export function FaqPanel() {
           <Trans
             i18nKey="faq.offlineBody"
             components={{
-              offline: <a href="/offline/" target="_blank" onClick={() => trackEvent("open_pwa", { source: "faq" })}>Forever Jukebox Offline app</a>,
+              offline: <a href="/offline/" target="_blank" onClick={() => trackEvent("open_pwa", { ui_source: "faq" })}>Forever Jukebox Offline app</a>,
               play: <a href={PLAY_STORE_URL} target="_blank" rel="noreferrer">Google Play</a>,
             }}
           />

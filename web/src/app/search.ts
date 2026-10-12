@@ -351,7 +351,7 @@ export function selectYoutubeMatch(
     return;
   }
   trackEvent("select_track", {
-    source: "search",
+    ui_source: "search",
     track_id: youtubeId,
     track_title: artist ? `${name} — ${artist}` : name,
   });
@@ -381,7 +381,7 @@ export function selectSpotifyMatch(
   tryLoadExistingTrackByName(context, deps, name, artist).then((loaded) => {
     if (loaded) {
       trackEvent("select_track", {
-        source: "search",
+        ui_source: "search",
         track_title: artist ? `${name} — ${artist}` : name,
       });
       return;

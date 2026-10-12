@@ -67,7 +67,7 @@ export function TabBar() {
         href="/offline/"
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => trackEvent("open_pwa", { source: "tab_bar" })}
+        onClick={() => trackEvent("open_pwa", { ui_source: "tab_bar" })}
       >
         <span className="material-symbols-outlined tab-link-icon" aria-hidden="true">
           download
