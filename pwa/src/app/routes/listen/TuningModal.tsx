@@ -19,6 +19,7 @@ export function TuningModal({
   extrasForm,
   setExtrasForm,
   onClose,
+  showReset,
   onReset,
   onApply,
 }: {
@@ -30,6 +31,7 @@ export function TuningModal({
   extrasForm: ExtrasFormState;
   setExtrasForm: React.Dispatch<React.SetStateAction<ExtrasFormState>>;
   onClose: () => void;
+  showReset: boolean;
   onReset: () => void;
   onApply: () => void;
 }) {
@@ -281,7 +283,9 @@ export function TuningModal({
           </div>
         </div>
         <div className="modal-footer tuning-footer">
-          <button className="tab-btn" type="button" onClick={onReset}>{t("common.reset")}</button>
+          {showReset ? (
+            <button className="tab-btn" type="button" onClick={onReset}>{t("common.reset")}</button>
+          ) : null}
           <button className="tab-btn" type="button" onClick={onApply}>{t("common.apply")}</button>
         </div>
       </div>

@@ -30,3 +30,16 @@ export function formatMinJumpDistance(percent: number, t: TFunction) {
     ? t("tuning.anyDistance")
     : t("tuning.percentOfTrack", { percent });
 }
+
+// Volume and anchor highlight are sticky preferences, not resettable tuning.
+export function tuneFormChanged(previous: TuneFormState, next: TuneFormState): boolean {
+  return (
+    previous.threshold !== next.threshold ||
+    previous.minProb !== next.minProb ||
+    previous.maxProb !== next.maxProb ||
+    previous.ramp !== next.ramp ||
+    previous.justBackwards !== next.justBackwards ||
+    previous.minLongBranchPercent !== next.minLongBranchPercent ||
+    previous.removeSequentialBranches !== next.removeSequentialBranches
+  );
+}

@@ -6,6 +6,7 @@ import {
   applyAnalysisResult,
   getExtrasFormValues,
   getTuningFormValues,
+  hasNonDefaultTuning,
   resetExtrasDefaults,
   resetTuningDefaults,
   applyTuningChanges,
@@ -814,18 +815,47 @@ describe("playback tuning", () => {
     useAppStore.setState({ jukeboxAudioMode: "nightcore" });
     useAppStore.setState({ audioIntensity: 130 });
 
-    const result = resetExtrasDefaults(context);
+    resetExtrasDefaults(context);
 
-    expect(result).toEqual({ branchStatsChanged: true, audioModeChanged: true });
     expect(useAppStore.getState().audioIntensity).toBe(100);
     expect(context.player.setJukeboxAudioMode).toHaveBeenCalledWith("off", 100);
-    expect(useAppStore.getState().branchStatsEnabled).toBe(false);
-    expect(localStorage.getItem("fj-branch-stats-enabled")).toBe("0");
+    expect(useAppStore.getState().branchStatsEnabled).toBe(true);
+    expect(localStorage.getItem("fj-branch-stats-enabled")).toBeNull();
     expect(useAppStore.getState().bringItHomeMode).toBe(false);
     expect(context.engine.setBringItHomeMode).toHaveBeenCalledWith(false);
     expect(useAppStore.getState().jukeboxAudioMode).toBe("off");
     expect(context.cowbellOverlay.disable).toHaveBeenCalledTimes(1);
-    expect(useAppStore.getState().branchStats).toBeNull();
+  });
+
+  it("reports non-default tuning against the context defaults", () => {
+    const context = createContext();
+    useAppStore.setState({ jukeboxAudioMode: "daycore", audioIntensity: 130 });
+    expect(hasNonDefaultTuning(context)).toBe(false);
+
+    vi.mocked(context.engine.getConfig).mockReturnValueOnce({
+      ...context.defaultConfig,
+      justBackwards: true,
+    });
+    expect(hasNonDefaultTuning(context)).toBe(true);
+
+    vi.mocked(context.engine.getConfig).mockReturnValueOnce({
+      ...context.defaultConfig,
+      currentThreshold: 50,
+    });
+    expect(hasNonDefaultTuning(context)).toBe(true);
+
+    vi.mocked(context.engine.getGraphState).mockReturnValueOnce({
+      currentThreshold: 45,
+      computedThreshold: 30,
+      allEdges: [{ id: 2, deleted: true }],
+      totalBeats: 0,
+    } as unknown as ReturnType<AppContext["engine"]["getGraphState"]>);
+    expect(hasNonDefaultTuning(context)).toBe(true);
+
+    vi.mocked(context.engine.getVisualizationData).mockReturnValueOnce({
+      userAnchorEdgeId: 7,
+    } as unknown as ReturnType<AppContext["engine"]["getVisualizationData"]>);
+    expect(hasNonDefaultTuning(context)).toBe(true);
   });
 
   it("preserves audio mode URL param when tuning reset clears other tuning params", () => {

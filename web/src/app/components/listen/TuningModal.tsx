@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
+import { hasNonDefaultExtras } from "@forever-jukebox/shared";
 import type { JukeboxAudioMode } from "@forever-jukebox/shared/audio/BufferedAudioPlayer";
 import {
   DEFAULT_AUDIO_MODE_INTENSITY,
@@ -8,8 +9,10 @@ import {
 } from "@forever-jukebox/shared/audio/audioModes";
 import {
   applyTuningChanges,
+  changedTuningControls,
   getExtrasFormValues,
   getTuningFormValues,
+  hasNonDefaultTuning,
   resetExtrasDefaults,
   resetTuningDefaults,
   type ExtrasFormValues,
@@ -127,12 +130,21 @@ export function TuningModal() {
   const [extrasSnapshot, setExtrasSnapshot] = useState<ExtrasFormValues | null>(
     null,
   );
+  const [tuningSnapshot, setTuningSnapshot] = useState<TuningFormValues | null>(
+    null,
+  );
+  const [tuningNonDefault, setTuningNonDefault] = useState(false);
 
   // Snapshot engine config + extras state when the modal opens (the read
-  // half of the old syncTuningUI/syncExtrasUI).
-  useEffect(() => {
+  // half of the old syncTuningUI/syncExtrasUI). Layout effect so the open
+  // frame never paints the previous session's snapshot.
+  useLayoutEffect(() => {
     if (open) {
-      setForm(getTuningFormValues(getAppContext()));
+      const context = getAppContext();
+      const tuningValues = getTuningFormValues(context);
+      setForm(tuningValues);
+      setTuningSnapshot(tuningValues);
+      setTuningNonDefault(hasNonDefaultTuning(context));
       const extrasValues = getExtrasFormValues();
       setExtras(extrasValues);
       setExtrasSnapshot(extrasValues);
@@ -171,6 +183,17 @@ export function TuningModal() {
     resetTuningDefaults(getAppContext());
     close();
   };
+
+  // Anchor highlight is a sticky preference, so it never counts as a change to reset.
+  const showReset = tuningActive
+    ? tuningNonDefault ||
+      (tuningSnapshot !== null &&
+        form !== null &&
+        changedTuningControls(tuningSnapshot, form).some(
+          (control) => control !== "anchor_highlight",
+        ))
+    : (extrasSnapshot !== null && hasNonDefaultExtras(extrasSnapshot)) ||
+      (extras !== null && hasNonDefaultExtras(extras));
 
   const setFormField = <K extends keyof TuningFormValues>(
     key: K,
@@ -472,9 +495,11 @@ export function TuningModal() {
           </div>
         </div>
         <div className="modal-footer tuning-footer">
-          <button type="button" id="tuning-reset" onClick={handleReset}>
-            {t("common.reset")}
-          </button>
+          {showReset ? (
+            <button type="button" id="tuning-reset" onClick={handleReset}>
+              {t("common.reset")}
+            </button>
+          ) : null}
           <button type="button" id="tuning-apply" onClick={handleApply}>
             {t("common.apply")}
           </button>

@@ -35,6 +35,8 @@ import {
   DEFAULT_MIN_LONG_BRANCH_PERCENT,
   Edge,
   findBackwardTwin,
+  hasNonDefaultExtras,
+  hasNonDefaultTuning,
   JukeboxEngine,
 } from "@forever-jukebox/shared";
 import {
@@ -85,6 +87,7 @@ import {
 } from "./listen/labels";
 import {
   RANDOM_BRANCH_DELTA_PERCENT_SCALE,
+  tuneFormChanged,
   type ExtrasFormState,
   type TuneFormState,
 } from "./listen/tuning";
@@ -183,6 +186,9 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
   const [preparingProgress, setPreparingProgress] = React.useState(0);
   const [tuningActiveTab, setTuningActiveTab] =
     React.useState<TuningModalTab>("tuning");
+  const [tuneFormBaseline, setTuneFormBaseline] =
+    React.useState<TuneFormState | null>(null);
+  const [tuningNonDefault, setTuningNonDefault] = React.useState(false);
   const [activeVizIndex, setActiveVizIndex] = React.useState(() =>
     resolveStoredVisualizationIndex(),
   );
@@ -835,11 +841,13 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     syncTuneFormFromEngine();
   };
 
-  const syncTuneFormFromEngine = (nextHighlightAnchorBranch = highlightAnchorBranch) => {
+  const syncTuneFormFromEngine = (
+    nextHighlightAnchorBranch = highlightAnchorBranch,
+  ): TuneFormState | null => {
     const engine = engineRef.current;
     const player = playerRef.current;
     if (!engine || !player) {
-      return;
+      return null;
     }
     const config = engine.getConfig();
     const graph = engine.getGraphState();
@@ -847,7 +855,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     const currentThreshold = config.currentThreshold === 0
       ? Math.round(graph?.currentThreshold ?? computedThreshold)
       : config.currentThreshold;
-    setTuneForm({
+    const nextForm: TuneFormState = {
       threshold: currentThreshold,
       computedThreshold,
       minProb: Math.round(config.minRandomBranchChance * 100),
@@ -865,7 +873,9 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
         ? (config.minLongBranchPercent ?? DEFAULT_MIN_LONG_BRANCH_PERCENT)
         : 0,
       removeSequentialBranches: config.removeSequentialBranches,
-    });
+    };
+    setTuneForm(nextForm);
+    return nextForm;
   };
 
   const persistCurrentTuning = () => {
@@ -1231,7 +1241,9 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     if (playModeRef.current !== "jukebox") {
       return;
     }
-    syncTuneFormFromEngine();
+    setTuneFormBaseline(syncTuneFormFromEngine());
+    const engine = engineRef.current;
+    setTuningNonDefault(engine !== null && hasNonDefaultTuning(engine));
     syncExtrasFormFromState();
     setTuningActiveTab(tab);
     setIsTuningOpen(true);
@@ -1627,13 +1639,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     bringItHomeModeRef.current = false;
     setBringItHomeMode(false);
     engineRef.current?.setBringItHomeMode(false);
-    setExtrasForm((prev) => ({
-      ...prev,
-      branchStatsEnabled: false,
-      bringItHomeMode: false,
-    }));
-    setBranchStatsEnabled(false);
-    storeBranchStatsEnabled(false);
+    setExtrasForm((prev) => ({ ...prev, bringItHomeMode: false }));
     resetAudioModeToOff(player);
     if (
       previousAudioMode !== "off" &&
@@ -1652,6 +1658,13 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     }
     onApplyTuning();
   };
+
+  const showTuningReset =
+    tuningActiveTab === "extras"
+      ? hasNonDefaultExtras({ audioMode: jukeboxAudioMode, bringItHomeMode }) ||
+        hasNonDefaultExtras(extrasForm)
+      : tuningNonDefault ||
+        (tuneFormBaseline !== null && tuneFormChanged(tuneFormBaseline, tuneForm));
 
   const onResetTuningModal = () => {
     if (tuningActiveTab === "extras") {
@@ -1962,6 +1975,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
           extrasForm={extrasForm}
           setExtrasForm={setExtrasForm}
           onClose={() => setIsTuningOpen(false)}
+          showReset={showTuningReset}
           onReset={onResetTuningModal}
           onApply={onApplyTuningModal}
         />

@@ -1486,6 +1486,10 @@ label.label-line {
   justify-content: space-between;
 }
 
+.tuning-footer > :last-child {
+  margin-left: auto;
+}
+
 .settings-panel {
   width: min(460px, 90vw);
 }

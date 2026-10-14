@@ -942,6 +942,10 @@ button.is-loading::after {
   justify-content: space-between;
 }
 
+.tuning-footer > :last-child {
+  margin-left: auto;
+}
+
 .delete-confirm-panel {
   width: min(360px, 90vw);
 }

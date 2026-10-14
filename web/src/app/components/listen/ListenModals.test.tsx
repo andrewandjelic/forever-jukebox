@@ -6,6 +6,7 @@ import {
   applyTuningChanges,
   getExtrasFormValues,
   getTuningFormValues,
+  hasNonDefaultTuning,
   resetTuningDefaults,
   type ExtrasFormValues,
   type TuningFormValues,
@@ -25,6 +26,7 @@ vi.mock("../../playback", async (importOriginal) => {
   return {
     ...actual,
     getTuningFormValues: vi.fn(),
+    hasNonDefaultTuning: vi.fn(),
     applyTuningChanges: vi.fn(),
     getExtrasFormValues: vi.fn(),
     applyExtrasChanges: vi.fn(),
@@ -63,6 +65,7 @@ const EXTRAS_FORM: ExtrasFormValues = {
 beforeEach(() => {
   (getTuningFormValues as Mock).mockReturnValue({ ...TUNING_FORM });
   (getExtrasFormValues as Mock).mockReturnValue({ ...EXTRAS_FORM });
+  (hasNonDefaultTuning as Mock).mockReturnValue(false);
   (applyTuningChanges as Mock).mockImplementation((_ctx, form) => ({
     ...form,
     computedThreshold: 47,
@@ -259,6 +262,7 @@ describe("TuningModal", () => {
   });
 
   it("resets tuning and closes", async () => {
+    (hasNonDefaultTuning as Mock).mockReturnValue(true);
     render(<TuningModal />);
     act(() => {
       useAppStore.setState({ tuningModalOpen: true });
@@ -266,6 +270,63 @@ describe("TuningModal", () => {
     await userEvent.click(document.getElementById("tuning-reset")!);
     expect(resetTuningDefaults).toHaveBeenCalled();
     expect(useAppStore.getState().tuningModalOpen).toBe(false);
+  });
+
+  it("hides reset on both tabs when nothing differs from defaults", async () => {
+    render(<TuningModal />);
+    act(() => {
+      useAppStore.setState({ tuningModalOpen: true });
+    });
+    expect(document.getElementById("tuning-reset")).toBeNull();
+    await userEvent.click(document.getElementById("tuning-tab-toggle")!);
+    expect(document.getElementById("tuning-reset")).toBeNull();
+  });
+
+  it("shows tuning reset while the form differs from what was applied", () => {
+    render(<TuningModal />);
+    act(() => {
+      useAppStore.setState({ tuningModalOpen: true });
+    });
+    const slider = document.getElementById("threshold") as HTMLInputElement;
+    fireEvent.change(slider, { target: { value: "60" } });
+    expect(document.getElementById("tuning-reset")).not.toBeNull();
+    fireEvent.change(slider, { target: { value: "45" } });
+    expect(document.getElementById("tuning-reset")).toBeNull();
+  });
+
+  it("does not show tuning reset for the sticky anchor highlight", async () => {
+    render(<TuningModal />);
+    act(() => {
+      useAppStore.setState({ tuningModalOpen: true });
+    });
+    await userEvent.click(document.getElementById("highlight-anchor-branch")!);
+    expect(document.getElementById("tuning-reset")).toBeNull();
+  });
+
+  it("shows extras reset for applied or selected extras but not branch stats", async () => {
+    render(<TuningModal />);
+    act(() => {
+      useAppStore.setState({ tuningModalOpen: true, tuningModalTab: "extras" });
+    });
+    await userEvent.click(document.getElementById("extras-enabled")!);
+    expect(document.getElementById("tuning-reset")).toBeNull();
+    await userEvent.click(document.getElementById("bring-home-enabled")!);
+    expect(document.getElementById("tuning-reset")).not.toBeNull();
+    await userEvent.click(document.getElementById("bring-home-enabled")!);
+    await userEvent.click(screen.getByLabelText("Daycore"));
+    expect(document.getElementById("tuning-reset")).not.toBeNull();
+  });
+
+  it("shows extras reset when an audio mode is already applied", () => {
+    (getExtrasFormValues as Mock).mockReturnValue({
+      ...EXTRAS_FORM,
+      audioMode: "daycore",
+    });
+    render(<TuningModal />);
+    act(() => {
+      useAppStore.setState({ tuningModalOpen: true, tuningModalTab: "extras" });
+    });
+    expect(document.getElementById("tuning-reset")).not.toBeNull();
   });
 
   it("does not expose sleep timer controls", () => {

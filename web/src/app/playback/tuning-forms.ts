@@ -12,7 +12,10 @@ import {
   writeTuningParamsToUrl,
 } from "../tuning";
 import { showToast } from "../ui";
-import { DEFAULT_MIN_LONG_BRANCH_PERCENT } from "@forever-jukebox/shared";
+import {
+  DEFAULT_MIN_LONG_BRANCH_PERCENT,
+  hasNonDefaultTuning as engineHasNonDefaultTuning,
+} from "@forever-jukebox/shared";
 import {
   audioModeChangeAffectsPlayback,
   audioModeSupportsIntensity,
@@ -232,15 +235,11 @@ export function applyExtrasChanges(
   };
 }
 
-export function resetExtrasDefaults(context: AppContext): ExtrasApplyResult {
+export function resetExtrasDefaults(context: AppContext) {
   const { cowbellOverlay, engine, player } = context;
-  const previousBranchStatsEnabled = useAppStore.getState().branchStatsEnabled;
   const previousAudioMode = useAppStore.getState().jukeboxAudioMode;
   useAppStore.setState({ bringItHomeMode: false });
   engine.setBringItHomeMode(false);
-  useAppStore.setState({ branchStatsEnabled: false });
-  useAppStore.setState({ branchStats: null });
-  storeBranchStatsEnabled(false);
   cowbellOverlay.disable();
   cancelInstrumentalRender();
   useAppStore.setState({
@@ -261,11 +260,6 @@ export function resetExtrasDefaults(context: AppContext): ExtrasApplyResult {
   }
   syncTuningParamsState(context);
   writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
-  return {
-    branchStatsChanged:
-      previousBranchStatsEnabled !== useAppStore.getState().branchStatsEnabled,
-    audioModeChanged: previousAudioMode !== useAppStore.getState().jukeboxAudioMode,
-  };
 }
 
 export type TuningFormValues = {
@@ -414,6 +408,10 @@ export function applyTuningChanges(
     minProbPct: Math.round(minProb * 100),
     maxProbPct: Math.round(maxProb * 100),
   };
+}
+
+export function hasNonDefaultTuning(context: AppContext): boolean {
+  return engineHasNonDefaultTuning(context.engine, context.defaultConfig);
 }
 
 export function resetTuningDefaults(context: AppContext) {

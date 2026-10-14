@@ -37,6 +37,7 @@ export {
   changedTuningControls,
   getExtrasFormValues,
   getTuningFormValues,
+  hasNonDefaultTuning,
   resetExtrasDefaults,
   resetTuningDefaults,
   syncDeletedEdgeState,
