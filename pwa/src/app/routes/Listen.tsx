@@ -69,11 +69,13 @@ import {
   resolveStoredBranchStatsEnabled,
   resolveStoredFinishOutSong,
   resolveStoredVisualizationIndex,
+  resolveStoredVolume,
   resolveStoredWubMachineLoop,
   storeAnchorHighlight,
   storeBranchStatsEnabled,
   storeFinishOutSong,
   storeVisualizationIndex,
+  storeVolume,
   storeWubMachineLoop,
 } from "./listen/preferences";
 import {
@@ -199,6 +201,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
   const [finishOutSong, setFinishOutSong] = React.useState<boolean>(() =>
     resolveStoredFinishOutSong(),
   );
+  const [initialVolume] = React.useState(resolveStoredVolume);
   const [tuneForm, setTuneForm] = React.useState<TuneFormState>({
     threshold: 0,
     computedThreshold: 0,
@@ -210,7 +213,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
           RANDOM_BRANCH_DELTA_PERCENT_SCALE *
           10,
       ) / 10,
-    volume: 100,
+    volume: initialVolume,
     highlightAnchorBranch,
     justBackwards: DEFAULT_JUKEBOX_CONFIG.justBackwards,
     minLongBranchPercent: 0,
@@ -395,6 +398,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
 
   React.useEffect(() => {
     const player = new BufferedAudioPlayer();
+    player.setVolume(initialVolume / 100);
     const cowbellOverlay = new CowbellOverlayService(player.getContext(), {
       getPlaybackRate: () => player.getPlaybackRate(),
     });
@@ -455,6 +459,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
       autocanonizerMainPanRef.current / 100,
       autocanonizerOtherPanRef.current / 100,
     );
+    autocanonizer.setVolume(playerRef.current?.getVolume() ?? 1);
     autocanonizer.setOnBeat((index, _beat, cursorTimes) => {
       setBeatsPlayed(index + 1);
       lastBeatRef.current = index;
@@ -1676,6 +1681,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
 
   const onVolumeChange = (value: number) => {
     setTuneForm((prev) => ({ ...prev, volume: value }));
+    storeVolume(value);
     const volume = value / 100;
     playerRef.current?.setVolume(volume);
     autocanonizerRef.current?.setVolume(volume);

@@ -86,6 +86,17 @@ describe("AutocanonizerController", () => {
     expect(panners[1].pan.value).toBe(-1);
   });
 
+  it("applies a volume set before audio is attached", () => {
+    const controller = new AutocanonizerController({} as HTMLElement);
+    controller.setVolume(0.4);
+    const { context, gains } = createAudioContext();
+
+    controller.setAudio({ duration: 30 } as AudioBuffer, context);
+
+    expect(gains[0].gain.value).toBeCloseTo(0.4 * 0.55);
+    expect(gains[1].gain.value).toBeCloseTo(0.4 * 0.45);
+  });
+
   it("keeps the shared volume and base mix independent from stream panning", () => {
     const controller = new AutocanonizerController({} as HTMLElement);
     const { context, gains, panners } = createAudioContext();

@@ -247,6 +247,7 @@ export class AutocanonizerController {
   private currentIndex = 0;
   private mainStreamPan = 0;
   private otherStreamPan = 0;
+  private volume = 1;
   private onBeat:
     | ((
         index: number,
@@ -301,9 +302,8 @@ export class AutocanonizerController {
   }
 
   setVolume(volume: number) {
-    if (this.player) {
-      this.player.setVolume(volume);
-    }
+    this.volume = clampVolume(volume);
+    this.player?.setVolume(this.volume);
   }
 
   setStreamPans(main: number, other: number) {
@@ -317,6 +317,7 @@ export class AutocanonizerController {
       if (!this.player) {
         this.player = new AutocanonizerPlayer(context, buffer);
         this.player.setStreamPans(this.mainStreamPan, this.otherStreamPan);
+        this.player.setVolume(this.volume);
       } else {
         this.player.setBuffer(buffer);
       }

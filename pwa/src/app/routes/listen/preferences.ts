@@ -3,6 +3,10 @@ import {
   safeLocalStorageSet,
 } from "@/shared/utils/safeStorage";
 import {
+  VOLUME_STORAGE_KEY,
+  parseStoredVolumePct,
+} from "@forever-jukebox/shared/audio/volume";
+import {
   DEFAULT_VISUALIZATION_INDEX,
   VISUALIZATION_LABELS,
 } from "@forever-jukebox/shared/constants/visualization";
@@ -69,4 +73,12 @@ export function storeAnchorHighlight(enabled: boolean) {
 
 export function storeBranchStatsEnabled(enabled: boolean) {
   safeLocalStorageSet(BRANCH_STATS_STORAGE_KEY, enabled ? "1" : "0");
+}
+
+export function resolveStoredVolume(): number {
+  return parseStoredVolumePct(safeLocalStorageGet(VOLUME_STORAGE_KEY));
+}
+
+export function storeVolume(volume: number) {
+  safeLocalStorageSet(VOLUME_STORAGE_KEY, String(volume));
 }

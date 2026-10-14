@@ -60,6 +60,7 @@ const wubMachineInstances: MockWubMachineInstance[] = [];
 type MockPlayerInstance = {
   emitEnded: () => void;
   getAudioMode: () => string;
+  getVolume: () => number;
 };
 const playerInstances: MockPlayerInstance[] = [];
 type MockJukeboxControllerInstance = {
@@ -1033,6 +1034,28 @@ describe("Listen route behavior", () => {
     expect(volumeSlider.value).toBe("100");
     await changeRange(volumeSlider, "70");
     expect(autocanonizerInstances[0].setVolume).toHaveBeenLastCalledWith(0.7);
+    rendered.unmount();
+  });
+
+  it("restores and persists the stored volume", async () => {
+    window.localStorage.setItem("fj-volume", "40");
+    const rendered = renderListen();
+    await settleEffects();
+    expect(playerInstances[0].getVolume()).toBe(0.4);
+    expect(autocanonizerInstances[0].setVolume).toHaveBeenLastCalledWith(0.4);
+    expect(wubMachineInstances[0].setVolume).toHaveBeenLastCalledWith(0.4);
+    await click(getRequired(rendered.container, "#volume-button"));
+
+    const volumeSlider = getRequired<HTMLInputElement>(
+      rendered.container,
+      "input[aria-label='Volume']",
+    );
+    expect(volumeSlider.value).toBe("40");
+    const icon = getRequired(rendered.container, "#volume-button .volume-icon");
+    expect(icon.textContent).toBe("volume_up");
+    await changeRange(volumeSlider, "0");
+    expect(window.localStorage.getItem("fj-volume")).toBe("0");
+    expect(icon.textContent).toBe("volume_off");
     rendered.unmount();
   });
 

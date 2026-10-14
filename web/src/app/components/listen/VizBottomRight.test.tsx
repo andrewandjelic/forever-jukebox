@@ -75,6 +75,24 @@ describe("VizBottomRight", () => {
     ).toBe("25");
   });
 
+  it("persists volume changes and shows the muted icon at zero", async () => {
+    render(<VizBottomRight />);
+    const icon = document.querySelector("#volume-button .volume-icon");
+    expect(icon?.textContent).toBe("volume_up");
+    await userEvent.click(document.getElementById("volume-button")!);
+    const slider = document.getElementById("volume") as HTMLInputElement;
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(slider, "0");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(localStorage.getItem("fj-volume")).toBe("0");
+    expect(icon?.textContent).toBe("volume_off");
+  });
+
   it("keeps volume as master volume in autocanonizer mode", async () => {
     act(() => {
       useAppStore.setState({ playMode: "autocanonizer" });

@@ -34,6 +34,7 @@ export const MATERIAL_SYMBOL_ICON_NAMES = [
   "swap_horiz",
   "timer",
   "tune",
+  "volume_off",
   "volume_up",
 ] as const;
 
