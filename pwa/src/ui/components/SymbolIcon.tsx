@@ -9,6 +9,7 @@ type SymbolName =
   | "arrow_drop_down"
   | "swap_horiz"
   | "volume_up"
+  | "volume_off"
   | "fullscreen"
   | "fullscreen_exit"
   | "close"
@@ -91,6 +92,13 @@ export function SymbolIcon({ name, className }: SymbolIconProps) {
           <polygon points="5 10 8 10 12 7 12 17 8 14 5 14" fill="currentColor" stroke="none" />
           <path d="M15 9.5c1.3 1.3 1.3 3.7 0 5" />
           <path d="M17.5 7c2.6 2.6 2.6 7.4 0 10" />
+        </>
+      ) : null}
+      {name === "volume_off" ? (
+        <>
+          <polygon points="5 10 8 10 12 7 12 17 8 14 5 14" fill="currentColor" stroke="none" />
+          <path d="M15.5 9.5l5 5" />
+          <path d="M20.5 9.5l-5 5" />
         </>
       ) : null}
       {name === "fullscreen" ? (

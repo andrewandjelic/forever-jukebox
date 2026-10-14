@@ -7,6 +7,7 @@ import { JukeboxController } from "@forever-jukebox/shared/viz/JukeboxController
 import { applyThemeVariables, resolveStoredTheme } from "./theme";
 import { resolveStoredAnchorHighlight } from "./anchorHighlight";
 import { resolveStoredBranchStatsEnabled } from "./extrasMode";
+import { resolveStoredVolumePct } from "./volume";
 import {
   setAnalysisStatus,
   setLoadingProgress,
@@ -73,6 +74,8 @@ export function initRuntime(): void {
   applyThemeVariables(initialTheme);
   document.body.classList.toggle("theme-light", initialTheme === "light");
   const player = new BufferedAudioPlayer();
+  const volumePct = resolveStoredVolumePct();
+  player.setVolume(volumePct / 100);
   const cowbellOverlay = new CowbellOverlayService(player.getContext(), {
     getPlaybackRate: () => player.getPlaybackRate(),
   });
@@ -90,6 +93,7 @@ export function initRuntime(): void {
     favoritesSyncCode: loadFavoritesSyncCode(),
     branchStatsEnabled,
     highlightAnchorBranch,
+    volumePct,
   });
   // Controllers need their DOM nodes, which exist only after <VizContainer>
   // renders; attachViz (below) constructs them and fills these slots before
@@ -178,6 +182,8 @@ export function initRuntime(): void {
     context.autocanonizer = autocanonizer;
     context.wubmachine = new WubMachineController(nodes.wubMachineLayer);
     context.jukebox = jukebox;
+    autocanonizer.setVolume(player.getVolume());
+    context.wubmachine.setVolume(player.getVolume());
     const { autocanonizerMainPan, autocanonizerOtherPan } =
       useAppStore.getState();
     autocanonizer.setStreamPans(

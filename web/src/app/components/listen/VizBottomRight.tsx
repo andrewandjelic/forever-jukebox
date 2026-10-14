@@ -14,6 +14,7 @@ import {
 import { getAppContext } from "../../runtime";
 import { useAppStore } from "../../store";
 import { toggleFullscreen } from "../../fullscreen";
+import { storeVolumePct } from "../../volume";
 import { useTranslation } from "react-i18next";
 
 // The right-hand cluster of the viz bottom bar: playlist-open button,
@@ -75,6 +76,7 @@ export function VizBottomRight() {
   const handleVolumeChange = (pct: number) => {
     useAppStore.setState({ volumePct: pct });
     setMasterVolume(getAppContext(), pct);
+    storeVolumePct(pct);
   };
 
   const handleStreamPanChange = (stream: "main" | "other", pan: number) => {
@@ -235,7 +237,7 @@ export function VizBottomRight() {
             className="material-symbols-outlined volume-icon"
             aria-hidden="true"
           >
-            volume_up
+            {volumePct === 0 ? "volume_off" : "volume_up"}
           </span>
         </button>
       </div>

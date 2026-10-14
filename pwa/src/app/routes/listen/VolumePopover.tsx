@@ -53,7 +53,10 @@ export function VolumePopover({
         title={t("listen.volume")}
         aria-label={t("listen.volume")}
       >
-        <SymbolIcon className="volume-icon" name="volume_up" />
+        <SymbolIcon
+          className="volume-icon"
+          name={volume === 0 ? "volume_off" : "volume_up"}
+        />
       </button>
     </div>
   );
