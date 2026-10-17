@@ -643,7 +643,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
           setProgressMessage(analysisStageLabel(progress.stage, t));
         },
       })
-      .then(async (result) => {
+      .then((result) => {
         if (cancelled) {
           return;
         }
