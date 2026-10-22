@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from ..admin_auth import ADMIN_KEY_HEADER, admin_key_matches, require_admin_key
 from ..db import (
+    claim_job_for_download,
     count_queued_jobs_ahead,
     create_job,
     delete_job,
@@ -58,6 +59,7 @@ from .jobs_runtime import (
     error_code_for,
     fallback_source_url_for_source_id,
     is_retryable_download_error,
+    is_terminal_job_failure,
     log_event,
     message_for_progress,
     normalize_job_error,
@@ -86,6 +88,39 @@ JOB_NOT_FOUND_DETAIL = "Job not found"
 
 def _allow_user_url() -> bool:
     return env_flag("ALLOW_USER_URL")
+
+
+def _recycle_stalled_job(job, background_tasks: BackgroundTasks):
+    """Restart a stalled download in place and queue a fresh attempt.
+
+    Returns the refreshed job, or None when there is no source to re-fetch from
+    and the caller should fall back to creating a new job.
+    """
+    source_url = _source_url_for_job(job)
+    if not source_url:
+        log_event(
+            "job_recycle",
+            job_id=job.id,
+            source=job.source_provider or "unknown",
+            result="skipped_no_source_url",
+        )
+        return None
+    owner = recycle_job(job)
+    if owner is not None:
+        background_tasks.add_task(
+            download_source_audio,
+            job.id,
+            source_url,
+            job.source_provider,
+            owner,
+        )
+        log_event(
+            "job_recycle",
+            job_id=job.id,
+            source=job.source_provider or "unknown",
+            result="restarted_in_place",
+        )
+    return get_job(DB_PATH, job.id) or job
 
 
 def _source_url_for_job(job) -> str | None:
@@ -159,14 +194,15 @@ def _restart_retryable_failed_job(
             reason="missing_source_url",
         )
         return job
-    retry_claimed = restart_failed_job(DB_PATH, job.id, job.updated_at)
-    if retry_claimed:
+    owner = restart_failed_job(DB_PATH, job.id, job.updated_at)
+    if owner:
         delete_job_artifacts(job.id, storage_root=STORAGE_ROOT)
         background_tasks.add_task(
             download_source_audio,
             job.id,
             source_url,
             job.source_provider,
+            owner,
         )
         log_event(
             "job_retry_started",
@@ -204,7 +240,8 @@ def _create_source_job(
     if track_title and track_artist:
         existing_by_track = get_job_by_track(DB_PATH, track_title, track_artist)
         if existing_by_track and should_recycle_job(existing_by_track):
-            recycle_job(existing_by_track)
+            existing_by_track = _recycle_stalled_job(existing_by_track, background_tasks)
+        if existing_by_track and is_terminal_job_failure(existing_by_track):
             existing_by_track = None
         if existing_by_track:
             existing_by_track = _restart_retryable_failed_job(
@@ -226,8 +263,7 @@ def _create_source_job(
     elif source_url:
         existing = get_job_by_source_url(DB_PATH, source_url)
     if existing and should_recycle_job(existing):
-        recycle_job(existing)
-        existing = None
+        existing = _recycle_stalled_job(existing, background_tasks)
     if existing:
         existing = _restart_retryable_failed_job(
             existing,
@@ -251,7 +287,7 @@ def _create_source_job(
             )
 
     job_id = uuid.uuid4().hex
-    create_job(
+    owner = create_job(
         DB_PATH,
         job_id,
         status="downloading",
@@ -269,7 +305,9 @@ def _create_source_job(
         source_id=source_id,
         source_url=source_url,
     )
-    background_tasks.add_task(download_source_audio, job_id, source_url, source_provider)
+    background_tasks.add_task(
+        download_source_audio, job_id, source_url, source_provider, owner
+    )
     response_source_id = source_id if source_provider == "youtube" else None
     response_payload = AnalysisStartResponse(
         id=job_id,
@@ -333,13 +371,25 @@ def _attempt_auto_repair(job, background_tasks: BackgroundTasks):
             )
             refreshed_job = get_job(DB_PATH, job.id)
             return refreshed_job or job
-        set_job_progress(DB_PATH, job.id, 0)
-        set_job_status(DB_PATH, job.id, "downloading", None)
+        # Claim atomically: concurrent requests both saw this job as idle, and
+        # only the winner may dispatch a download for it.
+        owner = claim_job_for_download(DB_PATH, job.id, job.updated_at)
+        if owner is None:
+            log_event(
+                "auto_repair",
+                job_id=job.id,
+                source=job.source_provider or "unknown",
+                trigger="audio_missing",
+                result="already_claimed",
+            )
+            refreshed_job = get_job(DB_PATH, job.id)
+            return refreshed_job or job
         background_tasks.add_task(
             download_source_audio,
             job.id,
             source_url,
             job.source_provider,
+            owner,
         )
         log_event(
             "auto_repair",
@@ -492,8 +542,7 @@ def create_analysis_url(
     preflight_provider, preflight_source_id = _source_identity_from_url(normalized_url)
     existing = _find_existing_source_job(preflight_provider, preflight_source_id, normalized_url)
     if existing and should_recycle_job(existing):
-        recycle_job(existing)
-        existing = None
+        existing = _recycle_stalled_job(existing, background_tasks)
     if existing:
         existing = _restart_retryable_failed_job(
             existing,
@@ -711,8 +760,10 @@ def get_job_by_source_route(
     if not job:
         raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
     if should_recycle_job(job):
-        recycle_job(job)
-        raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
+        recycled = _recycle_stalled_job(job, background_tasks)
+        if recycled is None:
+            raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
+        job = recycled
     if _is_retryable_failed_job(job):
         job = _restart_retryable_failed_job(
             job,
@@ -730,11 +781,13 @@ def get_job_by_track_match(
 ) -> JSONResponse:
     log_event("spotify_selection", title=title, artist=artist)
     job = get_job_by_track(DB_PATH, title, artist)
-    if not job:
+    if not job or is_terminal_job_failure(job):
         raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
     if should_recycle_job(job):
-        recycle_job(job)
-        raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
+        recycled = _recycle_stalled_job(job, background_tasks)
+        if recycled is None:
+            raise HTTPException(status_code=404, detail=JOB_NOT_FOUND_DETAIL)
+        job = recycled
     if _is_retryable_failed_job(job):
         job = _restart_retryable_failed_job(
             job,

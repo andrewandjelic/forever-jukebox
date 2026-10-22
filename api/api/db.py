@@ -333,7 +333,8 @@ def create_job(
     source_url: Optional[str] = None,
     progress: int = 0,
     play_count: int = 0,
-) -> None:
+) -> str:
+    """Create a job and return its ownership stamp (created_at)."""
     now = _utc_now()
     provider, normalized_source_id, normalized_source_url = _normalize_job_source(
         source_provider=source_provider,
@@ -378,6 +379,7 @@ def create_job(
                 (max(0, int(play_count)), now, source_ref),
             )
         conn.commit()
+    return now
 
 
 def get_notify_state(db_path: Path, key: str) -> Optional[str]:
@@ -488,18 +490,32 @@ def get_job(db_path: Path, job_id: str) -> Optional[Job]:
     return _job_from_row(row)
 
 
-def set_job_status(db_path: Path, job_id: str, status: str, error: Optional[str] = None) -> None:
+def set_job_status(
+    db_path: Path,
+    job_id: str,
+    status: str,
+    error: Optional[str] = None,
+    owner: Optional[str] = None,
+) -> bool:
+    """Set status, optionally only while `owner` still holds the job.
+
+    See set_job_progress for what `owner` means.
+    """
+    sql = "UPDATE jobs SET status = ?, error = ?, updated_at = ? WHERE id = ?"
+    params: list[object] = [status, error, _utc_now(), job_id]
+    if owner is not None:
+        sql += " AND created_at = ?"
+        params.append(owner)
     with _connect(db_path) as conn:
         # Stamp under the write lock so concurrent writers commit in stamp order.
         conn.execute("BEGIN IMMEDIATE")
-        conn.execute(
-            "UPDATE jobs SET status = ?, error = ?, updated_at = ? WHERE id = ?",
-            (status, error, _utc_now(), job_id),
-        )
+        cur = conn.execute(sql, params)
         conn.commit()
+    return int(cur.rowcount or 0) == 1
 
 
-def restart_failed_job(db_path: Path, job_id: str, expected_updated_at: str) -> bool:
+def restart_failed_job(db_path: Path, job_id: str, expected_updated_at: str) -> Optional[str]:
+    """Restart a failed job and return its new ownership stamp, or None if lost."""
     now = _utc_now()
     with _connect(db_path) as conn:
         cur = conn.execute(
@@ -517,7 +533,69 @@ def restart_failed_job(db_path: Path, job_id: str, expected_updated_at: str) -> 
             (now, now, job_id, expected_updated_at),
         )
         conn.commit()
-    return int(cur.rowcount or 0) == 1
+    return now if int(cur.rowcount or 0) == 1 else None
+
+
+def restart_stalled_download(
+    db_path: Path,
+    job_id: str,
+    expected_updated_at: str,
+) -> Optional[str]:
+    """Restart a stalled download in place and return the new ownership stamp.
+
+    Keeps the job and source rows so links, favorites and play history survive.
+    Returns None when the job moved on since it was observed, leaving the other
+    writer in charge.
+    """
+    now = _utc_now()
+    with _connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        cur = conn.execute(
+            """
+            UPDATE jobs
+            SET error = NULL,
+                progress = 0,
+                created_at = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND status = 'downloading'
+              AND updated_at = ?
+            """,
+            (now, now, job_id, expected_updated_at),
+        )
+        conn.commit()
+    return now if int(cur.rowcount or 0) == 1 else None
+
+
+def claim_job_for_download(
+    db_path: Path,
+    job_id: str,
+    expected_updated_at: str,
+) -> Optional[str]:
+    """Take exclusive ownership of an idle job for a fresh download attempt.
+
+    Returns the new ownership stamp, or None when the job is already active or
+    another caller claimed it first.
+    """
+    now = _utc_now()
+    with _connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        cur = conn.execute(
+            """
+            UPDATE jobs
+            SET status = 'downloading',
+                error = NULL,
+                progress = 0,
+                created_at = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND updated_at = ?
+              AND status NOT IN ('downloading', 'queued', 'processing')
+            """,
+            (now, now, job_id, expected_updated_at),
+        )
+        conn.commit()
+    return now if int(cur.rowcount or 0) == 1 else None
 
 
 def recover_stalled_processing_jobs(db_path: Path) -> int:
@@ -712,14 +790,28 @@ def set_job_play_count(db_path: Path, job_id: str, play_count: int) -> Optional[
     return int(count_row[0])
 
 
-def set_job_progress(db_path: Path, job_id: str, progress: int) -> None:
+def set_job_progress(
+    db_path: Path,
+    job_id: str,
+    progress: int,
+    owner: Optional[str] = None,
+) -> bool:
+    """Set progress, optionally only while `owner` still holds the job.
+
+    `owner` is a job's created_at stamp, which changes only when the job is
+    created or restarted. A worker that passes the stamp it started with cannot
+    write to a job that has since been restarted under a new attempt.
+    """
     clamped = _clamp_progress(progress)
+    sql = "UPDATE jobs SET progress = ?, updated_at = ? WHERE id = ?"
+    params: list[object] = [clamped, _utc_now(), job_id]
+    if owner is not None:
+        sql += " AND created_at = ?"
+        params.append(owner)
     with _connect(db_path) as conn:
-        conn.execute(
-            "UPDATE jobs SET progress = ?, updated_at = ? WHERE id = ?",
-            (clamped, _utc_now(), job_id),
-        )
+        cur = conn.execute(sql, params)
         conn.commit()
+    return int(cur.rowcount or 0) == 1
 
 
 def update_job_track_metadata(

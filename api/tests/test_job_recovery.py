@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from fastapi import BackgroundTasks
+from fastapi import BackgroundTasks, HTTPException
 
 from api import db as db_module
 from api.db import (
@@ -21,13 +21,20 @@ from api.db import (
     get_recent_tracks,
     get_top_tracks,
     init_db,
+    claim_job_for_download,
     recover_stalled_processing_jobs,
     restart_failed_job,
+    restart_stalled_download,
+    set_job_progress,
     set_job_status,
 )
 from api.models import AnalysisUrlRequest
 from api.routes import jobs, jobs_runtime as jobs_runtime_module
-from api.routes.jobs import _create_source_job, _should_attempt_auto_repair
+from api.routes.jobs import (
+    _attempt_auto_repair,
+    _create_source_job,
+    _should_attempt_auto_repair,
+)
 from api.routes.jobs_runtime import ANALYSIS_MISSING_MESSAGE, ERROR_YOUTUBE_LIVE
 from worker import worker as worker_module
 
@@ -839,6 +846,83 @@ class JobRecoveryTests(unittest.TestCase):
             finally:
                 jobs.DB_PATH = original_db_path
 
+    TERMINAL_FAILURE_ERRORS = (
+        "ERROR: Sign in to confirm your age",
+        ERROR_YOUTUBE_LIVE,
+        "Track exceeds MAX_TRACK_LENGTH (10 minutes)",
+        "ERROR: No beats or downbeats were detected in this audio.",
+        "Engine exited with status 1",
+    )
+
+    def test_by_track_lookup_skips_terminal_failed_job(self) -> None:
+        for error in self.TERMINAL_FAILURE_ERRORS:
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as temp_dir:
+                db_path = Path(temp_dir) / "jobs.db"
+                init_db(db_path)
+                original_db_path = jobs.DB_PATH
+                jobs.DB_PATH = db_path
+                try:
+                    create_job(
+                        db_path,
+                        "terminal-track-job",
+                        status="queued",
+                        track_title="Song",
+                        track_artist="Artist",
+                        source_id="yt-terminal",
+                        source_provider="youtube",
+                        source_url="https://www.youtube.com/watch?v=yt-terminal",
+                    )
+                    set_job_status(db_path, "terminal-track-job", "failed", error)
+
+                    with self.assertRaises(HTTPException) as ctx:
+                        jobs.get_job_by_track_match(
+                            BackgroundTasks(),
+                            title="Song",
+                            artist="Artist",
+                        )
+                    self.assertEqual(ctx.exception.status_code, 404)
+                finally:
+                    jobs.DB_PATH = original_db_path
+
+    def test_create_source_job_skips_terminal_failed_job_by_track(self) -> None:
+        for error in self.TERMINAL_FAILURE_ERRORS:
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as temp_dir:
+                db_path = Path(temp_dir) / "jobs.db"
+                init_db(db_path)
+                original_db_path = jobs.DB_PATH
+                jobs.DB_PATH = db_path
+                try:
+                    create_job(
+                        db_path,
+                        "terminal-track-job",
+                        status="queued",
+                        track_title="Song",
+                        track_artist="Artist",
+                        source_id="yt-terminal",
+                        source_provider="youtube",
+                        source_url="https://www.youtube.com/watch?v=yt-terminal",
+                    )
+                    set_job_status(db_path, "terminal-track-job", "failed", error)
+
+                    background_tasks = BackgroundTasks()
+                    response = _create_source_job(
+                        background_tasks,
+                        source_id="yt-other",
+                        source_url="https://www.youtube.com/watch?v=yt-other",
+                        source_provider="youtube",
+                        track_title="Song",
+                        track_artist="Artist",
+                    )
+
+                    self.assertEqual(response.status_code, 202)
+                    payload = json.loads(response.body)
+                    self.assertNotEqual(payload["id"], "terminal-track-job")
+                    self.assertEqual(payload["status"], "downloading")
+                    self.assertEqual(len(background_tasks.tasks), 1)
+                    self.assertEqual(get_job(db_path, "terminal-track-job").status, "failed")
+                finally:
+                    jobs.DB_PATH = original_db_path
+
     def test_url_start_restarts_retryable_failed_youtube_job_without_metadata_probe(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "jobs.db"
@@ -1013,3 +1097,314 @@ class JobRecoveryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StalledDownloadRecycleTests(unittest.TestCase):
+    """recycle_job restarts a stalled download in place instead of deleting it."""
+
+    def _stalled_job(self, db_path: Path, storage_root: Path, job_id: str = "stalled"):
+        create_job(
+            db_path,
+            job_id,
+            status="downloading",
+            track_title="T",
+            track_artist="A",
+            source_id="vid-%s" % job_id,
+            source_provider="youtube",
+            source_url="https://www.youtube.com/watch?v=vid-%s" % job_id,
+        )
+        audio = storage_root / "audio"
+        audio.mkdir(parents=True, exist_ok=True)
+        (audio / ("%s.m4a.part" % job_id)).write_bytes(b"partial")
+        return get_job(db_path, job_id)
+
+    def test_recycle_keeps_the_row_and_returns_a_new_owner_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            job = self._stalled_job(db_path, storage_root)
+
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path), \
+                 patch.object(jobs_runtime_module, "STORAGE_ROOT", storage_root):
+                owner = jobs_runtime_module.recycle_job(job)
+
+            self.assertIsNotNone(owner)
+            refreshed = get_job(db_path, job.id)
+            # The row and its source survive, so links and play history do too.
+            self.assertIsNotNone(refreshed)
+            self.assertEqual(refreshed.status, "downloading")
+            self.assertEqual(refreshed.progress, 0)
+            self.assertEqual(refreshed.created_at, owner)
+            self.assertNotEqual(refreshed.created_at, job.created_at)
+            with sqlite3.connect(db_path) as conn:
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0], 1)
+            # The abandoned attempt's partial file is gone.
+            self.assertEqual(list((storage_root / "audio").glob("stalled.*")), [])
+
+    def test_recycle_defers_when_the_job_already_moved_on(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            job = self._stalled_job(db_path, storage_root)
+            # Someone else writes first, so the observed updated_at is stale.
+            set_job_status(db_path, job.id, "downloading", None)
+
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path), \
+                 patch.object(jobs_runtime_module, "STORAGE_ROOT", storage_root):
+                self.assertIsNone(jobs_runtime_module.recycle_job(job))
+
+            # Nothing touched: the other writer stays in charge of the artifacts.
+            self.assertEqual(get_job(db_path, job.id).created_at, job.created_at)
+            self.assertTrue((storage_root / "audio" / "stalled.m4a.part").exists())
+
+    def test_restart_rejects_a_job_that_is_not_downloading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            create_job(
+                db_path,
+                "done",
+                status="complete",
+                track_title="T",
+                track_artist="A",
+                source_id="vid-done",
+                source_provider="youtube",
+                source_url="https://www.youtube.com/watch?v=vid-done",
+            )
+            job = get_job(db_path, "done")
+            self.assertIsNone(restart_stalled_download(db_path, job.id, job.updated_at))
+            self.assertEqual(get_job(db_path, "done").status, "complete")
+
+    def test_stale_worker_cannot_write_to_a_restarted_job(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            job = self._stalled_job(db_path, storage_root)
+            stale_owner = job.created_at
+
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path), \
+                 patch.object(jobs_runtime_module, "STORAGE_ROOT", storage_root):
+                new_owner = jobs_runtime_module.recycle_job(job)
+                # The new attempt gets to 20%.
+                self.assertTrue(set_job_progress(db_path, job.id, 20, new_owner))
+                # The abandoned worker's writes land on nothing.
+                self.assertFalse(set_job_progress(db_path, job.id, 5, stale_owner))
+                self.assertFalse(
+                    set_job_status(db_path, job.id, "failed", "boom", stale_owner)
+                )
+                # ...and it must not delete the new attempt's work or fail the job.
+                (storage_root / "audio" / "stalled.m4a").write_bytes(b"new attempt")
+                jobs_runtime_module.cleanup_failure(
+                    job.id, "boom", "youtube", stale_owner
+                )
+
+            refreshed = get_job(db_path, job.id)
+            self.assertEqual(refreshed.status, "downloading")
+            self.assertEqual(refreshed.progress, 20)
+            self.assertIsNone(refreshed.error)
+            self.assertTrue((storage_root / "audio" / "stalled.m4a").exists())
+
+
+class DownloadOwnershipStampTests(unittest.TestCase):
+    """Every download attempt is stamped, so a superseded one cannot interfere."""
+
+    def test_create_job_returns_its_ownership_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            owner = create_job(
+                db_path,
+                "J",
+                status="downloading",
+                track_title="T",
+                track_artist="A",
+                source_id="vid",
+                source_provider="youtube",
+                source_url="https://www.youtube.com/watch?v=vid",
+            )
+            self.assertEqual(owner, get_job(db_path, "J").created_at)
+
+    def test_restart_failed_job_returns_the_new_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            first = create_job(
+                db_path,
+                "J",
+                status="queued",
+                track_title="T",
+                track_artist="A",
+                source_id="vid",
+                source_provider="youtube",
+                source_url="https://www.youtube.com/watch?v=vid",
+            )
+            set_job_status(db_path, "J", "failed", "Unable to download video data.")
+            job = get_job(db_path, "J")
+            owner = restart_failed_job(db_path, job.id, job.updated_at)
+            self.assertIsNotNone(owner)
+            self.assertNotEqual(owner, first)
+            self.assertEqual(owner, get_job(db_path, "J").created_at)
+
+    def test_fresh_download_is_dispatched_with_its_stamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            original_db_path = jobs.DB_PATH
+            jobs.DB_PATH = db_path
+            try:
+                background_tasks = BackgroundTasks()
+                response = _create_source_job(
+                    background_tasks,
+                    source_id="yt-new",
+                    source_url="https://www.youtube.com/watch?v=yt-new",
+                    source_provider="youtube",
+                    track_title="Song",
+                    track_artist="Artist",
+                )
+                job_id = json.loads(response.body)["id"]
+                self.assertEqual(len(background_tasks.tasks), 1)
+                task = background_tasks.tasks[0]
+                # A download dispatched without a stamp would be unguarded and
+                # could clobber a later attempt on the same job.
+                self.assertEqual(len(task.args), 4)
+                self.assertEqual(task.args[3], get_job(db_path, job_id).created_at)
+            finally:
+                jobs.DB_PATH = original_db_path
+
+    def test_job_taken_over_distinguishes_missing_from_restarted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            owner = create_job(
+                db_path,
+                "J",
+                status="downloading",
+                track_title="T",
+                track_artist="A",
+                source_id="vid",
+                source_provider="youtube",
+                source_url="https://www.youtube.com/watch?v=vid",
+            )
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path):
+                self.assertFalse(jobs_runtime_module.job_taken_over("J", None))
+                self.assertFalse(jobs_runtime_module.job_taken_over("J", owner))
+                self.assertFalse(jobs_runtime_module.job_taken_over("gone", owner))
+                job = get_job(db_path, "J")
+                new_owner = restart_stalled_download(db_path, "J", job.updated_at)
+                self.assertTrue(jobs_runtime_module.job_taken_over("J", owner))
+                self.assertFalse(jobs_runtime_module.job_taken_over("J", new_owner))
+
+    def test_cleanup_failure_clears_artifacts_of_a_deleted_job(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            (storage_root / "audio").mkdir(parents=True)
+            (storage_root / "audio" / "gone.m4a.part").write_bytes(b"partial")
+
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path), \
+                 patch.object(jobs_runtime_module, "STORAGE_ROOT", storage_root):
+                jobs_runtime_module.cleanup_failure("gone", "boom", "youtube", "stamp-x")
+
+            # Nobody owns a deleted id, so its leftovers must not be stranded.
+            self.assertEqual(list((storage_root / "audio").glob("gone.*")), [])
+            # ...and there is no row left to report a failure for.
+            self.assertFalse((storage_root / "logs" / "gone.log").exists())
+
+    def test_cleanup_failure_leaves_a_taken_over_job_untouched(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            stale_owner = create_job(
+                db_path,
+                "J",
+                status="downloading",
+                track_title="T",
+                track_artist="A",
+                source_id="vid",
+                source_provider="youtube",
+                source_url="https://www.youtube.com/watch?v=vid",
+            )
+            job = get_job(db_path, "J")
+            restart_stalled_download(db_path, "J", job.updated_at)
+            (storage_root / "audio").mkdir(parents=True)
+            (storage_root / "audio" / "J.m4a").write_bytes(b"new attempt")
+
+            with patch.object(jobs_runtime_module, "DB_PATH", db_path), \
+                 patch.object(jobs_runtime_module, "STORAGE_ROOT", storage_root):
+                jobs_runtime_module.cleanup_failure("J", "boom", "youtube", stale_owner)
+
+            self.assertTrue((storage_root / "audio" / "J.m4a").exists())
+            self.assertEqual(get_job(db_path, "J").status, "downloading")
+            self.assertIsNone(get_job(db_path, "J").error)
+
+
+class AutoRepairClaimTests(unittest.TestCase):
+    """Only one concurrent auto-repair may dispatch a download for a job."""
+
+    def _tombstoned_job(self, db_path: Path):
+        create_job(
+            db_path,
+            "T",
+            status="complete",
+            track_title="Song",
+            track_artist="Artist",
+            source_id="yt-tomb",
+            source_provider="youtube",
+            source_url="https://www.youtube.com/watch?v=yt-tomb",
+        )
+        return get_job(db_path, "T")
+
+    def test_concurrent_auto_repairs_dispatch_only_one_download(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            job = self._tombstoned_job(db_path)
+            original_db_path = jobs.DB_PATH
+            original_root = jobs.STORAGE_ROOT
+            jobs.DB_PATH = db_path
+            jobs.STORAGE_ROOT = storage_root
+            try:
+                # Two requests that both read the job before either wrote: the
+                # same stale snapshot each sees as idle.
+                first_tasks = BackgroundTasks()
+                second_tasks = BackgroundTasks()
+                self.assertTrue(_should_attempt_auto_repair(job))
+                _attempt_auto_repair(job, first_tasks)
+                _attempt_auto_repair(job, second_tasks)
+            finally:
+                jobs.DB_PATH = original_db_path
+                jobs.STORAGE_ROOT = original_root
+
+            self.assertEqual(len(first_tasks.tasks), 1)
+            self.assertEqual(len(second_tasks.tasks), 0)
+            # The winner's stamp is fresh, so the loser could not have shared it.
+            owner = first_tasks.tasks[0].args[3]
+            self.assertEqual(owner, get_job(db_path, "T").created_at)
+            self.assertNotEqual(owner, job.created_at)
+
+    def test_claim_refuses_a_job_that_is_already_active(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            self._tombstoned_job(db_path)
+            for status in ("downloading", "queued", "processing"):
+                with self.subTest(status=status):
+                    set_job_status(db_path, "T", status, None)
+                    active = get_job(db_path, "T")
+                    self.assertIsNone(
+                        claim_job_for_download(db_path, "T", active.updated_at)
+                    )
+
+    def test_claim_rejects_a_stale_observation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            init_db(db_path)
+            job = self._tombstoned_job(db_path)
+            set_job_status(db_path, "T", "complete", None)
+            self.assertIsNone(claim_job_for_download(db_path, "T", job.updated_at))

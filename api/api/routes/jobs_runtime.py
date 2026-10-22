@@ -19,11 +19,11 @@ from urllib.parse import urlsplit, urlunsplit
 
 from ..db import (
     claim_notify_state,
-    delete_job,
     first_youtube_success_after,
     get_job,
     get_notify_state,
     latest_youtube_success,
+    restart_stalled_download,
     set_job_progress,
     set_job_status,
     set_notify_state,
@@ -283,6 +283,11 @@ def is_retryable_download_error(raw: str | None) -> bool:
     }
 
 
+# A failure that retrying the same source won't fix; a different source for the track may work.
+def is_terminal_job_failure(job) -> bool:
+    return job.status == "failed" and not is_retryable_download_error(job.error)
+
+
 def sanitize_title(filename: str | None) -> str:
     if not filename:
         return "Untitled"
@@ -417,9 +422,21 @@ def should_recycle_job(job) -> bool:
     return job.progress >= 25 and age_s > 30
 
 
-def recycle_job(job) -> None:
-    delete_job(DB_PATH, job.id)
+def recycle_job(job) -> str | None:
+    """Restart a stalled download in place, returning the new ownership stamp.
+
+    Artifacts from the abandoned attempt are dropped so the retry starts clean.
+    None means another writer already moved the job on.
+    """
+    owner = restart_stalled_download(DB_PATH, job.id, job.updated_at)
+    if owner is None:
+        logger.info("Skipped recycling job %s (already moved on)", job.id)
+        return None
+    for candidate in (STORAGE_ROOT / "audio").glob(f"{job.id}.*"):
+        if candidate.is_file():
+            candidate.unlink()
     logger.info("Recycling stale job %s (%s)", job.id, job.status)
+    return owner
 
 
 def message_for_progress(status: str, progress: int | None) -> str | None:
@@ -631,19 +648,49 @@ def _write_failure_log(job_id: str, message: str) -> None:
     log_path.write_text(f"Job failed: {message}\n", encoding="utf-8")
 
 
+class _OwnershipLost(RuntimeError):
+    """Raised to abort a download whose job was restarted under a new attempt."""
+
+
+def job_taken_over(job_id: str, owner: str | None, job=None) -> bool:
+    """True when the job exists under a different stamp than `owner`.
+
+    A missing row is not a takeover: nobody owns that id, so its leftovers are
+    safe to clear. Pass `job` to reuse a row the caller already read.
+    """
+    if owner is None:
+        return False
+    if job is None:
+        job = get_job(DB_PATH, job_id)
+    return job is not None and job.created_at != owner
+
+
 def cleanup_failure(
     job_id: str,
     message: str,
     source_provider: str | None = None,
+    owner: str | None = None,
 ) -> None:
-    _write_failure_log(job_id, message)
+    job = get_job(DB_PATH, job_id)
+    if job_taken_over(job_id, owner, job):
+        # A newer attempt owns the job; its artifacts and status are not ours
+        # to touch.
+        logger.info("Discarded stale download failure for job %s", job_id)
+        return
+    if job is not None:
+        _write_failure_log(job_id, message)
     for candidate in (STORAGE_ROOT / "audio").glob(f"{job_id}.*"):
         if candidate.is_file():
             candidate.unlink()
     for result_path in (STORAGE_ROOT / "analysis").glob(f"{job_id}.json*"):
         if result_path.is_file():
             result_path.unlink()
-    set_job_status(DB_PATH, job_id, "failed", message)
+    if job is None:
+        # Deleted mid-download: artifacts are cleared, and there is no row left
+        # to mark failed or report on.
+        logger.info("Cleared artifacts for deleted job %s", job_id)
+        return
+    set_job_status(DB_PATH, job_id, "failed", message, owner)
     log_event(
         "job_failed",
         job_id=job_id,
@@ -709,11 +756,12 @@ def download_source_audio(
     job_id: str,
     source_url: str,
     source_provider: str | None = None,
+    owner: str | None = None,
 ) -> None:
     try:
         from yt_dlp import YoutubeDL
     except Exception:
-        cleanup_failure(job_id, "yt-dlp is not available", source_provider)
+        cleanup_failure(job_id, "yt-dlp is not available", source_provider, owner)
         return
 
     audio_dir = STORAGE_ROOT / "audio"
@@ -738,7 +786,8 @@ def download_source_audio(
         progress = int(round(ratio * 25))
         if progress != last_progress["value"]:
             last_progress["value"] = progress
-            set_job_progress(DB_PATH, job_id, progress)
+            if not set_job_progress(DB_PATH, job_id, progress, owner):
+                raise _OwnershipLost(job_id)
 
     ydl_opts = {
         "quiet": True,
@@ -747,6 +796,9 @@ def download_source_audio(
         "noplaylist": True,
         "max_filesize": 100 * 1024 * 1024,
         "outtmpl": outtmpl,
+        # A restarted attempt reuses the job id, so it must replace whatever the
+        # abandoned attempt left behind rather than adopt it as finished.
+        "overwrites": True,
         "progress_hooks": [progress_hook],
     }
 
@@ -771,7 +823,8 @@ def download_source_audio(
         # Drop attempt 1's partial files so the retry downloads from scratch
         # instead of resuming a stale .part, and let the progress bar restart.
         last_progress["value"] = -1
-        set_job_progress(DB_PATH, job_id, 0)
+        if not set_job_progress(DB_PATH, job_id, 0, owner):
+            raise _OwnershipLost(job_id)
         for candidate in audio_dir.glob(f"{job_id}.*"):
             if candidate.is_file():
                 candidate.unlink()
@@ -786,7 +839,7 @@ def download_source_audio(
             on_retry=discard_first_attempt,
         )
     except Exception as exc:  # pragma: no cover - network call
-        cleanup_failure(job_id, str(exc), source_provider)
+        cleanup_failure(job_id, str(exc), source_provider, owner)
         return
 
     job = get_job(DB_PATH, job_id)
@@ -818,7 +871,7 @@ def download_source_audio(
                 break
 
     if not input_path:
-        cleanup_failure(job_id, "Download failed", source_provider)
+        cleanup_failure(job_id, "Download failed", source_provider, owner)
         return
 
     # Normalize the downloaded file to audio/<id>.<ext> so it can be located
@@ -826,12 +879,21 @@ def download_source_audio(
     input_path_obj = Path(input_path)
     suffix = input_path_obj.suffix or ".audio"
     target_path = (STORAGE_ROOT / "audio" / f"{job_id}{suffix}").resolve()
+    if job_taken_over(job_id, owner):
+        # The shared path belongs to the newer attempt now, so only this
+        # attempt's own file may be discarded.
+        logger.info("Discarded stale download for job %s", job_id)
+        if input_path_obj.resolve() != target_path and input_path_obj.is_file():
+            input_path_obj.unlink()
+        return
     if input_path_obj.resolve() != target_path:
         target_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(input_path_obj), str(target_path))
-    set_job_progress(DB_PATH, job_id, 25)
-    set_job_status(DB_PATH, job_id, "queued", None)
+    if not set_job_progress(DB_PATH, job_id, 25, owner):
+        logger.info("Discarded stale download for job %s", job_id)
+        return
+    set_job_status(DB_PATH, job_id, "queued", None, owner)
 
 
-def download_youtube_audio(job_id: str, youtube_id: str) -> None:
-    download_source_audio(job_id, source_url_from_youtube_id(youtube_id), "youtube")
+def download_youtube_audio(job_id: str, youtube_id: str, owner: str | None = None) -> None:
+    download_source_audio(job_id, source_url_from_youtube_id(youtube_id), "youtube", owner)
