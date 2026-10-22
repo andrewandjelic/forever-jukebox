@@ -358,6 +358,16 @@
             ],
             "title": "Confirm"
           },
+          "days": {
+            "default": 365,
+            "enum": [
+              180,
+              270,
+              365
+            ],
+            "title": "Days",
+            "type": "integer"
+          },
           "dry_run": {
             "default": true,
             "title": "Dry Run",
@@ -384,16 +394,12 @@
             "title": "Candidates",
             "type": "array"
           },
+          "cleared_jobs": {
+            "title": "Cleared Jobs",
+            "type": "integer"
+          },
           "days": {
             "title": "Days",
-            "type": "integer"
-          },
-          "deleted_bytes": {
-            "title": "Deleted Bytes",
-            "type": "integer"
-          },
-          "deleted_jobs": {
-            "title": "Deleted Jobs",
             "type": "integer"
           },
           "dry_run": {
@@ -410,16 +416,25 @@
           "failed_jobs": {
             "title": "Failed Jobs",
             "type": "integer"
+          },
+          "freed_bytes": {
+            "title": "Freed Bytes",
+            "type": "integer"
+          },
+          "zero_play_days": {
+            "title": "Zero Play Days",
+            "type": "integer"
           }
         },
         "required": [
           "dry_run",
           "days",
+          "zero_play_days",
           "candidate_jobs",
           "candidate_bytes",
           "candidates",
-          "deleted_jobs",
-          "deleted_bytes",
+          "cleared_jobs",
+          "freed_bytes",
           "failed_jobs",
           "errors"
         ],

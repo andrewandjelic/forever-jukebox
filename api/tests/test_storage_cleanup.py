@@ -2,20 +2,26 @@ from __future__ import annotations
 
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from api import db as db_module
 from api.db import create_job, get_job, init_db
 from api.models import StorageCleanupRequest
 from api.routes import admin as admin_routes
-from api.storage_cleanup import build_cleanup_preview, execute_cleanup
+from api.storage_cleanup import CLEANUP_POLICY_DAYS, build_cleanup_preview, execute_cleanup
 
 
 OLD_UPDATED_AT = "2000-01-01T00:00:00.000000+00:00"
+MID_WINDOW_AGO = (datetime.now(timezone.utc) - timedelta(days=200)).isoformat()
+# Inside the dormancy window at any policy value, but past the zero-play grace.
+INSIDE_WINDOW = (datetime.now(timezone.utc) - timedelta(days=CLEANUP_POLICY_DAYS // 2)).isoformat()
+THREE_DAYS_AGO = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
 RECENT_UPDATED_AT = "2999-01-01T00:00:00.000000+00:00"
 
 
@@ -118,6 +124,7 @@ class StorageCleanupTests(unittest.TestCase):
 
             self.assertTrue(response.dry_run)
             self.assertEqual(response.days, 365)
+            self.assertEqual(response.zero_play_days, 7)
             self.assertEqual(response.candidate_jobs, 1)
             self.assertEqual(response.candidate_bytes, 15)
             self.assertEqual(_job_count(db_path), 1)
@@ -157,10 +164,80 @@ class StorageCleanupTests(unittest.TestCase):
             self.assertEqual(preview.candidates[0].job_id, "old-youtube")
 
             response = execute_cleanup(db_path, storage_root)
-            self.assertEqual(response.deleted_jobs, 1)
+            self.assertEqual(response.cleared_jobs, 1)
             self.assertIsNotNone(get_job(db_path, "old-upload"))
-            self.assertIsNone(get_job(db_path, "old-youtube"))
+            self.assertIsNotNone(get_job(db_path, "old-youtube"))
             self.assertTrue((storage_root / "audio" / "old-upload.m4a").exists())
+            self.assertFalse((storage_root / "audio" / "old-youtube.m4a").exists())
+
+    def test_never_opened_tracks_are_candidates_after_the_grace_period(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            # Inside the full window, so only the zero-play rule can match.
+            _make_job(db_path, storage_root, "never-opened", play_count=0, updated_at=INSIDE_WINDOW)
+            _make_job(db_path, storage_root, "opened-once", play_count=1, updated_at=INSIDE_WINDOW)
+
+            preview = build_cleanup_preview(db_path, storage_root)
+            self.assertEqual(preview.candidate_jobs, 1)
+            self.assertEqual(preview.candidates[0].job_id, "never-opened")
+
+            response = execute_cleanup(db_path, storage_root)
+            self.assertEqual(response.cleared_jobs, 1)
+            self.assertIsNotNone(get_job(db_path, "never-opened"))
+            self.assertIsNotNone(get_job(db_path, "opened-once"))
+            self.assertFalse((storage_root / "audio" / "never-opened.m4a").exists())
+            self.assertTrue((storage_root / "audio" / "opened-once.m4a").exists())
+
+    def test_never_opened_tracks_are_spared_during_the_grace_period(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            _make_job(db_path, storage_root, "just-added", play_count=0, updated_at=THREE_DAYS_AGO)
+
+            preview = build_cleanup_preview(db_path, storage_root)
+            self.assertEqual(preview.candidate_jobs, 0)
+
+            response = execute_cleanup(db_path, storage_root)
+            self.assertEqual(response.cleared_jobs, 0)
+            self.assertIsNotNone(get_job(db_path, "just-added"))
+            self.assertTrue((storage_root / "audio" / "just-added.m4a").exists())
+
+    def test_request_default_window_matches_the_policy_constant(self) -> None:
+        self.assertEqual(StorageCleanupRequest().days, CLEANUP_POLICY_DAYS)
+
+    def test_request_rejects_windows_outside_the_allowed_set(self) -> None:
+        for days in (18, 90, 400, 0, -270):
+            with self.subTest(days=days):
+                with self.assertRaises(ValidationError):
+                    StorageCleanupRequest(days=days)
+
+    def test_window_selects_which_tracks_are_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            # Dormant 200 days: inside 270/365, past 180.
+            _make_job(db_path, storage_root, "mid", updated_at=MID_WINDOW_AGO)
+
+            for days, expected in ((180, 1), (270, 0), (365, 0)):
+                with self.subTest(days=days):
+                    preview = build_cleanup_preview(db_path, storage_root, days)
+                    self.assertEqual(preview.candidate_jobs, expected)
+                    self.assertEqual(preview.days, days)
+
+            # The pre-delete re-check must use the same window as the scan.
+            spared = execute_cleanup(db_path, storage_root, 365)
+            self.assertEqual(spared.cleared_jobs, 0)
+            self.assertTrue((storage_root / "audio" / "mid.m4a").exists())
+
+            swept = execute_cleanup(db_path, storage_root, 180)
+            self.assertEqual(swept.cleared_jobs, 1)
+            self.assertEqual(swept.days, 180)
+            self.assertFalse((storage_root / "audio" / "mid.m4a").exists())
+            self.assertIsNotNone(get_job(db_path, "mid"))
 
     def test_execute_rejects_missing_or_wrong_confirmation(self) -> None:
         with patch.dict(os.environ, {"ADMIN_KEY": "secret"}, clear=True):
@@ -206,14 +283,14 @@ class StorageCleanupTests(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 400)
         self.assertTrue(response.dry_run)
 
-    def test_execute_deletes_stale_complete_jobs_regardless_of_play_count(self) -> None:
+    def test_execute_clears_artifacts_but_keeps_rows_regardless_of_play_count(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "jobs.db"
             storage_root = Path(temp_dir) / "storage"
             init_db(db_path)
             _make_job(db_path, storage_root, "eligible")
             _make_job(db_path, storage_root, "recent", updated_at=RECENT_UPDATED_AT)
-            # Stale but high play count: still deleted, play_count no longer gates.
+            # Stale but high play count: still cleared, play_count no longer gates.
             _make_job(db_path, storage_root, "popular", play_count=3)
             _make_job(db_path, storage_root, "queued", status="queued")
 
@@ -221,33 +298,38 @@ class StorageCleanupTests(unittest.TestCase):
 
             self.assertFalse(response.dry_run)
             self.assertEqual(response.candidate_jobs, 2)
-            self.assertEqual(response.deleted_jobs, 2)
-            self.assertEqual(response.deleted_bytes, 30)
+            self.assertEqual(response.cleared_jobs, 2)
+            self.assertEqual(response.freed_bytes, 30)
             self.assertEqual(response.failed_jobs, 0)
-            self.assertIsNone(get_job(db_path, "eligible"))
-            self.assertIsNone(get_job(db_path, "popular"))
+            self.assertIsNotNone(get_job(db_path, "eligible"))
+            self.assertIsNotNone(get_job(db_path, "popular"))
             self.assertIsNotNone(get_job(db_path, "recent"))
             self.assertIsNotNone(get_job(db_path, "queued"))
             self.assertFalse((storage_root / "audio" / "eligible.m4a").exists())
             self.assertFalse((storage_root / "analysis" / "eligible.json").exists())
             self.assertFalse((storage_root / "logs" / "eligible.log").exists())
             self.assertTrue((storage_root / "audio" / "recent.m4a").exists())
-            self.assertEqual(_job_count(db_path), 2)
-            self.assertEqual(_source_count(db_path), 2)
+            self.assertEqual(_job_count(db_path), 4)
+            self.assertEqual(_source_count(db_path), 4)
 
-    def test_missing_files_do_not_fail_deletion(self) -> None:
+    def test_already_cleared_jobs_are_not_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "jobs.db"
             storage_root = Path(temp_dir) / "storage"
             init_db(db_path)
             _make_job(db_path, storage_root, "missing-files", write_files=False)
 
+            preview = build_cleanup_preview(db_path, storage_root)
+            self.assertEqual(preview.candidate_jobs, 0)
+            self.assertEqual(preview.candidate_bytes, 0)
+            self.assertEqual(preview.candidates, [])
+
             response = execute_cleanup(db_path, storage_root)
 
-            self.assertEqual(response.deleted_jobs, 1)
-            self.assertEqual(response.deleted_bytes, 0)
+            self.assertEqual(response.cleared_jobs, 0)
+            self.assertEqual(response.freed_bytes, 0)
             self.assertEqual(response.failed_jobs, 0)
-            self.assertIsNone(get_job(db_path, "missing-files"))
+            self.assertIsNotNone(get_job(db_path, "missing-files"))
 
     def test_unlink_failure_records_error_and_keeps_db_row(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -265,7 +347,7 @@ class StorageCleanupTests(unittest.TestCase):
             with patch.object(Path, "unlink", fail_first_audio):
                 response = execute_cleanup(db_path, storage_root)
 
-            self.assertEqual(response.deleted_jobs, 0)
+            self.assertEqual(response.cleared_jobs, 0)
             self.assertEqual(response.failed_jobs, 1)
             self.assertEqual(response.errors[0].job_id, "fail")
             self.assertIn("cannot unlink", response.errors[0].error)

@@ -29,12 +29,14 @@ def run_storage_cleanup(
             return build_cleanup_preview(
                 DB_PATH,
                 STORAGE_ROOT,
+                payload.days,
             )
         if payload.confirm != "delete":
             raise HTTPException(status_code=400, detail='confirm must be "delete" when dry_run is false')
         return execute_cleanup(
             DB_PATH,
             STORAGE_ROOT,
+            payload.days,
         )
     finally:
         _storage_cleanup_lock.release()

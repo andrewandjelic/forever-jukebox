@@ -95,9 +95,14 @@ class PlayCountUpdate(BaseModel):
     play_count: int
 
 
+# Vetted windows only: a free-form value here would be one typo from a near-total sweep.
+CleanupWindowDays = Literal[180, 270, 365]
+
+
 class StorageCleanupRequest(BaseModel):
     dry_run: bool = True
     confirm: str | None = None
+    days: CleanupWindowDays = 365
 
 
 class StorageCleanupCandidateItem(BaseModel):
@@ -119,11 +124,12 @@ class StorageCleanupError(BaseModel):
 class StorageCleanupResponse(BaseModel):
     dry_run: bool
     days: int
+    zero_play_days: int
     candidate_jobs: int
     candidate_bytes: int
     candidates: list[StorageCleanupCandidateItem]
-    deleted_jobs: int
-    deleted_bytes: int
+    cleared_jobs: int
+    freed_bytes: int
     failed_jobs: int
     errors: list[StorageCleanupError]
 

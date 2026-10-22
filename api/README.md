@@ -261,8 +261,17 @@ curl -X POST "/api/admin/storage-cleanup" \
 ```
 
 The cleanup policy is server-side: completed jobs whose source has not been
-played in over 365 days (`updated_at` is bumped on each play). Uploaded tracks
-are never candidates since they cannot be re-fetched. Dry-run is the
+played in over 365 days (`updated_at` is bumped on each play). Pass `days` as
+`180`, `270` or `365` to run a tighter window when storage is tight; anything
+else is rejected. Tracks that were
+never opened (`play_count` 0) qualify after 7 days instead, since loading an
+analysis counts as a play. Uploaded tracks are never candidates since they have
+no source to re-fetch from.
+
+Cleanup removes only the audio and analysis files. The job and source rows are
+kept, so `/listen/<job_id>` links, favorites and play counts keep working; the
+next request for the track re-downloads and re-analyzes it. Jobs whose artifacts
+are already gone are not reported again. Dry-run is the
 default, and lists every match in `candidates` (oldest first) alongside the
 `candidate_bytes` total. To execute the cleanup, set `dry_run` to `false` and
 include the explicit confirmation:
@@ -272,6 +281,15 @@ curl -X POST "/api/admin/storage-cleanup" \
   -H "Content-Type: application/json" \
   -H "X-Admin-Key: $ADMIN_KEY" \
   -d '{"dry_run":false,"confirm":"delete"}'
+```
+
+Preview a tighter window before committing to it:
+
+```bash
+curl -X POST "/api/admin/storage-cleanup" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Key: $ADMIN_KEY" \
+  -d '{"days":180}'
 ```
 
 ## Storage
