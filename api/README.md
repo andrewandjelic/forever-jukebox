@@ -265,8 +265,9 @@ played in over 365 days (`updated_at` is bumped on each play). Pass `days` as
 `180`, `270` or `365` to run a tighter window when storage is tight; anything
 else is rejected. Tracks that were
 never opened (`play_count` 0) qualify after 7 days instead, since loading an
-analysis counts as a play. Uploaded tracks are never candidates since they have
-no source to re-fetch from.
+analysis counts as a play. Only YouTube tracks are candidates: uploads have no
+source to re-fetch from, and the other providers re-fetch too unreliably to risk
+clearing something that cannot be restored.
 
 Cleanup removes only the audio and analysis files. The job and source rows are
 kept, so `/listen/<job_id>` links, favorites and play counts keep working; the

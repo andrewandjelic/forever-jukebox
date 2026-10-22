@@ -55,6 +55,16 @@ def _source_count(db_path: Path) -> int:
     return int(row[0])
 
 
+def _source_url_for(provider: str, job_id: str) -> str | None:
+    """A URL on the provider's own host, since the provider is derived from it."""
+    hosts = {
+        "youtube": f"https://www.youtube.com/watch?v=source-{job_id}",
+        "soundcloud": f"https://soundcloud.com/artist/{job_id}",
+        "bandcamp": f"https://artist.bandcamp.com/track/{job_id}",
+    }
+    return hosts.get(provider)
+
+
 def _make_job(
     db_path: Path,
     storage_root: Path,
@@ -80,7 +90,7 @@ def _make_job(
         track_artist="Artist",
         source_id=f"source-{job_id}",
         source_provider=provider,
-        source_url=f"https://www.youtube.com/watch?v=source-{job_id}",
+        source_url=_source_url_for(provider, job_id),
     )
     _set_source_activity(db_path, job_id, play_count=play_count, updated_at=updated_at)
     if write_files:
@@ -151,12 +161,14 @@ class StorageCleanupTests(unittest.TestCase):
         self.assertEqual(len(response.candidates), 12)
         self.assertEqual([item.job_id for item in response.candidates], [f"job-{index:02d}" for index in range(12)])
 
-    def test_uploaded_tracks_are_never_candidates(self) -> None:
+    def test_only_youtube_tracks_are_candidates(self) -> None:
+        exempt = ("upload", "soundcloud", "bandcamp")
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "jobs.db"
             storage_root = Path(temp_dir) / "storage"
             init_db(db_path)
-            _make_job(db_path, storage_root, "old-upload", provider="upload")
+            for provider in exempt:
+                _make_job(db_path, storage_root, "old-%s" % provider, provider=provider)
             _make_job(db_path, storage_root, "old-youtube", provider="youtube")
 
             preview = build_cleanup_preview(db_path, storage_root)
@@ -165,10 +177,11 @@ class StorageCleanupTests(unittest.TestCase):
 
             response = execute_cleanup(db_path, storage_root)
             self.assertEqual(response.cleared_jobs, 1)
-            self.assertIsNotNone(get_job(db_path, "old-upload"))
-            self.assertIsNotNone(get_job(db_path, "old-youtube"))
-            self.assertTrue((storage_root / "audio" / "old-upload.m4a").exists())
             self.assertFalse((storage_root / "audio" / "old-youtube.m4a").exists())
+            for provider in exempt:
+                # Only YouTube re-fetches reliably, so nothing else may be cleared.
+                self.assertIsNotNone(get_job(db_path, "old-%s" % provider))
+                self.assertTrue((storage_root / "audio" / ("old-%s.m4a" % provider)).exists())
 
     def test_never_opened_tracks_are_candidates_after_the_grace_period(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

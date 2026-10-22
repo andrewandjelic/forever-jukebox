@@ -3,8 +3,9 @@
 Only artifacts are removed; the job and source rows stay, so shared links,
 favorites and play history survive and the track is re-fetched on next request.
 Tracks that were never opened are eligible after a short grace period; everything
-else waits out the full dormancy window. Uploaded tracks are exempt: they have no
-source to re-fetch from.
+else waits out the full dormancy window. Only YouTube tracks are eligible at all:
+uploads have no source to re-fetch from, and the other providers re-fetch too
+unreliably to risk clearing something that cannot be restored.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ ZERO_PLAY_GRACE_DAYS = 7
 # Shared by the scan and the pre-delete re-check so the two cannot diverge.
 _ELIGIBILITY_SQL = """
               j.status = 'complete'
-              AND s.provider != 'upload'
+              AND s.provider = 'youtube'
               AND (
                 julianday(s.updated_at) < julianday('now', ?)
                 OR (
