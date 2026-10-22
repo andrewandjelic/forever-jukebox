@@ -361,6 +361,9 @@ class JobRecoveryTests(unittest.TestCase):
                     json.dumps({"track": {"title": "Complete"}}),
                     encoding="utf-8",
                 )
+                audio_path = storage_root / "audio" / "complete-job.mp3"
+                audio_path.parent.mkdir(parents=True, exist_ok=True)
+                audio_path.write_bytes(b"audio")
                 create_job(
                     db_path,
                     "complete-job",
@@ -1408,3 +1411,70 @@ class AutoRepairClaimTests(unittest.TestCase):
             job = self._tombstoned_job(db_path)
             set_job_status(db_path, "T", "complete", None)
             self.assertIsNone(claim_job_for_download(db_path, "T", job.updated_at))
+
+    def test_provider_without_source_id_is_still_repairable(self) -> None:
+        """SoundCloud and Bandcamp carry a source_url but no source_id."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            create_job(
+                db_path,
+                "SC",
+                status="complete",
+                track_title="Song",
+                track_artist="Artist",
+                source_id=None,
+                source_provider="soundcloud",
+                source_url="https://soundcloud.com/artist/song",
+            )
+            job = get_job(db_path, "SC")
+            self.assertIsNone(job.source_id)
+            original_db_path = jobs.DB_PATH
+            original_root = jobs.STORAGE_ROOT
+            jobs.DB_PATH = db_path
+            jobs.STORAGE_ROOT = storage_root
+            try:
+                # Tombstoned: both artifacts cleared, row kept.
+                self.assertTrue(_should_attempt_auto_repair(job))
+                background_tasks = BackgroundTasks()
+                _attempt_auto_repair(job, background_tasks)
+            finally:
+                jobs.DB_PATH = original_db_path
+                jobs.STORAGE_ROOT = original_root
+
+            # Without this, cleanup would strip the artifacts and nothing could
+            # ever restore them.
+            self.assertEqual(len(background_tasks.tasks), 1)
+            self.assertEqual(
+                background_tasks.tasks[0].args[1], "https://soundcloud.com/artist/song"
+            )
+            self.assertEqual(get_job(db_path, "SC").status, "downloading")
+
+    def test_uploads_remain_unrepairable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "jobs.db"
+            storage_root = Path(temp_dir) / "storage"
+            init_db(db_path)
+            create_job(
+                db_path,
+                "UP",
+                status="complete",
+                track_title="Song",
+                track_artist="",
+                source_id=None,
+                source_provider="upload",
+            )
+            job = get_job(db_path, "UP")
+            original_db_path = jobs.DB_PATH
+            original_root = jobs.STORAGE_ROOT
+            jobs.DB_PATH = db_path
+            jobs.STORAGE_ROOT = storage_root
+            try:
+                background_tasks = BackgroundTasks()
+                _attempt_auto_repair(job, background_tasks)
+            finally:
+                jobs.DB_PATH = original_db_path
+                jobs.STORAGE_ROOT = original_root
+
+            self.assertEqual(len(background_tasks.tasks), 0)

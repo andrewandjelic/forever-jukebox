@@ -103,7 +103,13 @@ class AutoRepairGzTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             _write_gz(root, "job1", {"track": {}})
-            job = SimpleNamespace(id="job1", status="complete", source_id=None)
+            job = SimpleNamespace(
+                id="job1",
+                status="complete",
+                source_id=None,
+                source_url=None,
+                source_provider=None,
+            )
 
             with patch.object(jobs, "STORAGE_ROOT", root):
                 self.assertFalse(jobs._should_attempt_auto_repair(job))
@@ -111,7 +117,13 @@ class AutoRepairGzTests(unittest.TestCase):
     def test_missing_analysis_still_triggers_repair(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            job = SimpleNamespace(id="job1", status="complete", source_id=None)
+            job = SimpleNamespace(
+                id="job1",
+                status="complete",
+                source_id=None,
+                source_url=None,
+                source_provider=None,
+            )
 
             with patch.object(jobs, "STORAGE_ROOT", root):
                 self.assertTrue(jobs._should_attempt_auto_repair(job))

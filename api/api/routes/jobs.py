@@ -335,7 +335,7 @@ def _should_attempt_auto_repair(job) -> bool:
     result_path = resolve_analysis_path(STORAGE_ROOT, job.id)
     if not result_path.exists():
         return True
-    if not job.source_id:
+    if not _source_url_for_job(job):
         return False
     return audio_path_for(STORAGE_ROOT, job.id) is None
 
@@ -359,7 +359,7 @@ def _attempt_auto_repair(job, background_tasks: BackgroundTasks):
             trigger="analysis_missing",
             result="queued",
         )
-    elif audio_missing and job.source_id:
+    elif audio_missing:
         source_url = _source_url_for_job(job)
         if not source_url:
             log_event(
@@ -398,15 +398,6 @@ def _attempt_auto_repair(job, background_tasks: BackgroundTasks):
             trigger="audio_missing",
             result="redownload_started",
         )
-    elif audio_missing:
-        log_event(
-            "auto_repair",
-            job_id=job.id,
-            source=job.source_provider or "unknown",
-            trigger="audio_missing",
-            result="skipped_no_source_id",
-        )
-
     refreshed_job = get_job(DB_PATH, job.id)
     return refreshed_job or job
 
