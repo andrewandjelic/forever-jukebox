@@ -115,6 +115,8 @@ export type TrackLoadOptions = {
   playlistLoad?: boolean;
   preservePlaylist?: boolean;
   selectedTrack?: PlaylistTrack | null;
+  // Called when a job-id load finds the API has no such job.
+  onJobMissing?: () => void;
 };
 
 function maybeUpdateDeleteEligibility(
@@ -621,6 +623,9 @@ async function loadTrack(
     // flight; its response must not rewrite identity, URL, or status.
     if (isStaleLoad(generation)) {
       return false;
+    }
+    if (source.type === "job" && response === null) {
+      options?.onJobMissing?.();
     }
     if (source.type === "job" && isAnalysisFailed(response)) {
       response = await retryJob(source.id);

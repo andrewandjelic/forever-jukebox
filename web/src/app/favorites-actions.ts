@@ -566,6 +566,8 @@ export function maybeAutoFavoriteUserSupplied(response: AnalysisComplete) {
       void loadTrackByJobId(context, deps, favoriteId, {
         preserveUrlTuning: true,
         selectedTrack,
+        // Source-id favorites are never pruned: their loads can fail transiently.
+        onJobMissing: () => removeFavoriteWithToast(favoriteId),
       });
       return;
     }

@@ -211,12 +211,20 @@ function parseAnalysisResponse(data: unknown): AnalysisResponse | null {
   return null;
 }
 
+// The API's 404 detail for a job id it has no row for.
+const JOB_NOT_FOUND_DETAIL = "Job not found";
+
+// Null only when the API says the job does not exist; any other 404 (a proxy or a
+// missing route) throws like other failed requests.
 export async function fetchAnalysis(jobId: string, signal?: AbortSignal) {
   const response = await fetch(`/api/analysis/${encodeURIComponent(jobId)}`, {
     signal,
   });
   if (response.status === 404) {
-    return null;
+    const data: unknown = await response.json().catch(() => null);
+    if (extractApiError(data)?.message === JOB_NOT_FOUND_DETAIL) {
+      return null;
+    }
   }
   if (!response.ok) {
     const error = new Error(`Request failed (${response.status})`);

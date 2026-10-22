@@ -2784,7 +2784,7 @@ describe("playback loading", () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: false,
       status: 404,
-      json: async () => ({}),
+      json: async () => ({ detail: "Job not found" }),
     } as Response);
 
     await pollAnalysis(context, deps, "missing-job");

@@ -21,12 +21,33 @@ vi.mock("./instrumental", () => ({
 }));
 vi.mock("./swing", () => ({ maybePrepareSwingMode: vi.fn() }));
 vi.mock("./transport", () => ({ stopPlayback: vi.fn() }));
+vi.mock("./wubmachine", () => ({
+  maybePrepareWubMachine: vi.fn(),
+  resetWubMachine: vi.fn(),
+  setWubMachineAnalysis: vi.fn(),
+}));
+vi.mock("../tuning", async (importActual) => ({
+  ...(await importActual<typeof import("../tuning")>()),
+  clearTuningParamsFromUrl: vi.fn(),
+  getTuningParamsStringFromUrl: vi.fn(() => null),
+  resetAudioModeToOff: vi.fn(),
+  syncTuningParamsState: vi.fn(),
+}));
+vi.mock("../playlist", async (importActual) => ({
+  ...(await importActual<typeof import("../playlist")>()),
+  savePlaylist: vi.fn(),
+}));
+vi.mock("../api", async (importActual) => ({
+  ...(await importActual<typeof import("../api")>()),
+  fetchAnalysis: vi.fn(),
+}));
 
+import { fetchAnalysis } from "../api";
 import { readCachedTrack } from "../cache";
 import { maybePrepareInstrumentalMode } from "./instrumental";
 import { maybePrepareSwingMode } from "./swing";
 import { updateTrackInfo, updateVizVisibility } from "./status-ui";
-import { tryLoadCachedAudio } from "./track-load";
+import { loadTrackByJobId, tryLoadCachedAudio, type PlaybackDeps } from "./track-load";
 
 const initialStoreState = useAppStore.getState();
 const readCachedTrackMock = vi.mocked(readCachedTrack);
@@ -131,5 +152,47 @@ describe("tryLoadCachedAudio", () => {
     expect(result).toBe(false);
     expect(useAppStore.getState().audioLoaded).toBe(false);
     warn.mockRestore();
+  });
+});
+
+// Every property is a no-op function that returns another stub.
+function deepStub(): never {
+  const stub: object = new Proxy(() => stub, {
+    get: (_target, key) => (key === "then" ? undefined : stub),
+  });
+  return stub as never;
+}
+
+describe("loadTrackByJobId", () => {
+  const jobId = "5efa4421f5924eee8aac43d997e9aa5a";
+
+  beforeEach(() => {
+    useAppStore.setState(initialStoreState, true);
+    vi.clearAllMocks();
+    readCachedTrackMock.mockResolvedValue(null as never);
+  });
+
+  it("reports a missing job when the API has no such job", async () => {
+    vi.mocked(fetchAnalysis).mockResolvedValue(null);
+    const onJobMissing = vi.fn();
+
+    const loaded = await loadTrackByJobId(deepStub(), deepStub() as PlaybackDeps, jobId, {
+      onJobMissing,
+    });
+
+    expect(loaded).toBe(false);
+    expect(onJobMissing).toHaveBeenCalledOnce();
+  });
+
+  it("does not report a missing job when the request fails otherwise", async () => {
+    vi.mocked(fetchAnalysis).mockRejectedValue(new Error("Request failed (500)"));
+    const onJobMissing = vi.fn();
+
+    const loaded = await loadTrackByJobId(deepStub(), deepStub() as PlaybackDeps, jobId, {
+      onJobMissing,
+    });
+
+    expect(loaded).toBe(false);
+    expect(onJobMissing).not.toHaveBeenCalled();
   });
 });

@@ -10,11 +10,13 @@ import {
   saveFavorites,
   type FavoriteTrack,
 } from "./favorites";
-import { setAppRuntime } from "./runtime";
+import { loadTrackById, loadTrackByJobId, type PlaybackDeps } from "./playback";
+import { setAppRuntime, setPlaybackDeps } from "./runtime";
 import { useAppStore } from "./store";
 import {
   maybeAutoFavoriteUserSupplied,
   resetFavoritesActionsForTest,
+  selectFavorite,
   toggleFavorite,
   updateFavorites,
 } from "./favorites-actions";
@@ -34,6 +36,11 @@ vi.mock("./api", () => ({
   createFavoritesSync: vi.fn(async () => ({})),
   updateFavoritesSync: vi.fn(async () => ({})),
 }));
+vi.mock("./playback", () => ({
+  loadTrackById: vi.fn(async () => true),
+  loadTrackByJobId: vi.fn(async () => true),
+}));
+vi.mock("./playback-ui", () => ({ setPlayMode: vi.fn() }));
 vi.mock("./favorites", async (importActual) => ({
   ...(await importActual<typeof import("./favorites")>()),
   saveFavorites: vi.fn(),
@@ -378,5 +385,40 @@ describe("favorites actions", () => {
     await flushMicrotasks();
 
     expect(useAppStore.getState().favorites).toHaveLength(0);
+  });
+
+  describe("selecting a favorite", () => {
+    beforeEach(() => {
+      setPlaybackDeps({} as PlaybackDeps);
+    });
+
+    it("removes a job-id favorite whose job no longer exists", () => {
+      const missing = favorite("5efa4421f5924eee8aac43d997e9aa5a");
+      const kept = favorite("a3f3c0dc73c6476c9db95c227f9206f2");
+      setupFavorites([missing, kept]);
+      useAppStore.setState({ navigateToTabWithState: vi.fn() });
+      vi.mocked(loadTrackByJobId).mockImplementationOnce(
+        async (_context, _deps, _jobId, options) => {
+          options?.onJobMissing?.();
+          return false;
+        },
+      );
+
+      selectFavorite(missing.uniqueSongId, "youtube");
+
+      expect(useAppStore.getState().favorites).toEqual([kept]);
+    });
+
+    it("loads a source-id favorite without a missing-job prune", () => {
+      setupFavorites([favorite("wdSfFVe_L3s")]);
+      useAppStore.setState({ navigateToTabWithState: vi.fn() });
+
+      selectFavorite("wdSfFVe_L3s", "youtube");
+
+      expect(loadTrackByJobId).not.toHaveBeenCalled();
+      expect(vi.mocked(loadTrackById).mock.calls[0][3]).not.toHaveProperty(
+        "onJobMissing",
+      );
+    });
   });
 });

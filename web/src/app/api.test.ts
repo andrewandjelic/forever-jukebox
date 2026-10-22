@@ -53,10 +53,17 @@ describe("api", () => {
     configureMaxFavorites(null);
   });
 
-  it("returns null on 404 analysis", async () => {
-    (fetch as any).mockResolvedValue(createResponse(404, {}));
+  it("returns null when the API reports the job missing", async () => {
+    (fetch as any).mockResolvedValue(
+      createResponse(404, { detail: "Job not found" }),
+    );
     const result = await fetchAnalysis("missing");
     expect(result).toBeNull();
+  });
+
+  it("throws on a 404 that is not the API's missing-job answer", async () => {
+    (fetch as any).mockResolvedValue(createResponse(404, "<html>Not Found</html>"));
+    await expect(fetchAnalysis("missing")).rejects.toThrow("Request failed (404)");
   });
 
   it("parses analysis in progress", async () => {
