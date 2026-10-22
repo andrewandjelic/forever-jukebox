@@ -26,19 +26,27 @@ def init_favorites_db(db_path: Path) -> None:
             CREATE TABLE IF NOT EXISTS favorites_sync (
                 code TEXT PRIMARY KEY,
                 payload TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """
         )
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(favorites_sync)")}
+        if "updated_at" not in columns:
+            # Rows that predate the column have no edit history; created_at is the
+            # only timestamp available for them.
+            conn.execute("ALTER TABLE favorites_sync ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE favorites_sync SET updated_at = created_at WHERE updated_at = ''")
         conn.commit()
 
 
 def save_favorites(db_path: Path, code: str, favorites: list[dict[str, Any]]) -> None:
     payload = json.dumps(favorites, ensure_ascii=True)
+    now = _utc_now()
     with sqlite3.connect(db_path) as conn:
         conn.execute(
-            "INSERT INTO favorites_sync (code, payload, created_at) VALUES (?, ?, ?)",
-            (code, payload, _utc_now()),
+            "INSERT INTO favorites_sync (code, payload, created_at, updated_at) VALUES (?, ?, ?, ?)",
+            (code, payload, now, now),
         )
         conn.commit()
 
@@ -47,8 +55,8 @@ def update_favorites(db_path: Path, code: str, favorites: list[dict[str, Any]]) 
     payload = json.dumps(favorites, ensure_ascii=True)
     with sqlite3.connect(db_path) as conn:
         cur = conn.execute(
-            "UPDATE favorites_sync SET payload = ? WHERE code = ?",
-            (payload, code),
+            "UPDATE favorites_sync SET payload = ?, updated_at = ? WHERE code = ?",
+            (payload, _utc_now(), code),
         )
         conn.commit()
     return cur.rowcount > 0
