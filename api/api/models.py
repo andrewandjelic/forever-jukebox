@@ -159,6 +159,7 @@ class AppConfigResponse(BaseModel):
     allow_user_upload: bool
     allow_user_url: bool
     allow_favorites_sync: bool = False
+    allow_track_reports: bool = False
     max_upload_size: int | None = None
     allowed_upload_exts: list[str] | None = None
     max_track_length: float | None = None

@@ -10,7 +10,12 @@ from urllib.parse import parse_qs, urlsplit
 from fastapi import APIRouter, BackgroundTasks, File, Header, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 
-from ..admin_auth import ADMIN_KEY_HEADER, admin_key_matches, require_admin_key
+from ..admin_auth import (
+    ADMIN_KEY_HEADER,
+    admin_key_configured,
+    admin_key_matches,
+    require_admin_key,
+)
 from ..db import (
     claim_job_for_download,
     count_queued_jobs_ahead,
@@ -707,8 +712,11 @@ def get_recent_songs(limit: int = Query(10, ge=1, le=50)) -> JSONResponse:
     return JSONResponse(payload.model_dump(), status_code=200)
 
 
-@router.post("/api/reports/{job_id}")
+@router.post("/api/reports/{job_id}", responses=error_responses(403))
 def report_track_by_id(job_id: str, payload: TrackReportRequest) -> JSONResponse:
+    # Reports need an admin to review them.
+    if not admin_key_configured():
+        raise HTTPException(status_code=403, detail="Track reports are disabled")
     report_track(DB_PATH, job_id, payload.reason)
     return JSONResponse({"status": "ok"}, status_code=200)
 

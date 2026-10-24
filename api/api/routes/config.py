@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from ..admin_auth import admin_key_configured
 from ..env import env_flag, env_positive_float, env_string
 from ..favorites_config import max_favorites
 from ..models import AppConfigResponse
@@ -23,6 +24,7 @@ def get_app_config() -> JSONResponse:
         allow_user_upload=allow_user_upload,
         allow_user_url=allow_user_url,
         allow_favorites_sync=env_flag("ALLOW_FAVORITES_SYNC"),
+        allow_track_reports=admin_key_configured(),
         max_upload_size=max_upload_size,
         allowed_upload_exts=allowed_upload_exts,
         max_track_length=env_positive_float("MAX_TRACK_LENGTH"),

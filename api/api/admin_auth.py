@@ -10,6 +10,10 @@ from fastapi import HTTPException
 ADMIN_KEY_HEADER = "X-Admin-Key"
 
 
+def admin_key_configured() -> bool:
+    return bool(os.environ.get("ADMIN_KEY"))
+
+
 def admin_key_matches(provided_key: str | None) -> bool:
     expected_key = os.environ.get("ADMIN_KEY")
     return bool(expected_key and provided_key == expected_key)

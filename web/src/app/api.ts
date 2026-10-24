@@ -80,6 +80,7 @@ export type AppConfig = {
   allow_user_upload: boolean;
   allow_user_url: boolean;
   allow_favorites_sync?: boolean;
+  allow_track_reports?: boolean;
   max_upload_size?: number | null;
   allowed_upload_exts?: string[] | null;
   max_track_length?: number | null;

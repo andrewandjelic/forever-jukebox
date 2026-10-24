@@ -1426,6 +1426,9 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -1678,7 +1681,7 @@
     },
     "/{full_path}": {
       "get": {
-        "operationId": "spa_fallback__full_path__get",
+        "operationId": "spa_fallback__full_path__head",
         "parameters": [
           {
             "in": "path",
@@ -1716,7 +1719,7 @@
         "summary": "Spa Fallback"
       },
       "head": {
-        "operationId": "spa_fallback__full_path__get",
+        "operationId": "spa_fallback__full_path__head",
         "parameters": [
           {
             "in": "path",

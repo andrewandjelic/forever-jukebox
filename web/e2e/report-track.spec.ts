@@ -1,8 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { expectToast, loadFirstTopTrack } from "./helpers";
+
+// Pins the server's report flag so the spec doesn't depend on ADMIN_KEY.
+async function setAllowTrackReports(page: Page, allow: boolean) {
+  await page.route("**/api/app-config", async (route) => {
+    const response = await route.fetch();
+    const config = await response.json();
+    await route.fulfill({
+      response,
+      json: { ...config, allow_track_reports: allow },
+    });
+  });
+}
 
 test.describe("report track", () => {
   test("reports a loaded track with the chosen reason", async ({ page }) => {
+    await setAllowTrackReports(page, true);
     // Mock the report so no real data is written.
     const reportBodies: unknown[] = [];
     await page.route("**/api/reports/*", (route) => {
@@ -62,9 +75,19 @@ test.describe("report track", () => {
     expect(reportBodies).toEqual([{ reason: "bad_audio" }]);
   });
 
+  test("hides the report flag when the server disallows reports", async ({
+    page,
+  }) => {
+    await setAllowTrackReports(page, false);
+    await loadFirstTopTrack(page);
+    await expect(page.locator("#delete-job")).toHaveClass(/\bhidden\b/);
+    await expect(page.locator("#report-track")).toHaveClass(/\bhidden\b/);
+  });
+
   test("admins get the delete button instead of the report flag", async ({
     page,
   }) => {
+    await setAllowTrackReports(page, true);
     await page.addInitScript(() => {
       localStorage.setItem("fj-admin-key", "e2e-not-a-real-key");
     });

@@ -66,6 +66,11 @@ describe("PlayMenu", () => {
         lastJobId: "job1",
         lastSourceId: null,
         lastSourceProvider: null,
+        appConfig: {
+          allow_user_upload: false,
+          allow_user_url: false,
+          allow_track_reports: true,
+        },
       });
     });
   });
@@ -162,6 +167,25 @@ describe("PlayMenu", () => {
     expect(button()?.classList.contains("hidden")).toBe(false);
     act(() => {
       useAppStore.setState({ deleteEligible: true });
+    });
+    expect(button()?.classList.contains("hidden")).toBe(true);
+  });
+
+  it("hides the report button when the server disallows reports", () => {
+    act(() => {
+      useAppStore.setState({ appConfig: null });
+    });
+    render(<PlayMenu />);
+    const button = () => document.getElementById("report-track");
+    expect(button()?.classList.contains("hidden")).toBe(true);
+    act(() => {
+      useAppStore.setState({
+        appConfig: {
+          allow_user_upload: false,
+          allow_user_url: false,
+          allow_track_reports: false,
+        },
+      });
     });
     expect(button()?.classList.contains("hidden")).toBe(true);
   });

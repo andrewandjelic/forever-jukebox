@@ -56,6 +56,13 @@ class TrackReportsTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(get_reported_tracks(self.db_path), [])
 
+    def test_report_is_rejected_without_admin_key_configured(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(HTTPException) as ctx:
+                self._report("job-1", "other")
+        self.assertEqual(ctx.exception.status_code, 403)
+        self.assertEqual(get_reported_tracks(self.db_path), [])
+
     def test_list_requires_admin_key_and_returns_track_details(self) -> None:
         self._report("job-1", "bad_audio")
 

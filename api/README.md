@@ -201,7 +201,7 @@ Fetch recently played songs (defaults to 10):
 curl "/api/recent?limit=10"
 ```
 
-Report a bad track (`reason` is `wrong_track`, `bad_audio`, or `other`; only the first report per track is kept):
+Report a bad track (`reason` is `wrong_track`, `bad_audio`, or `other`; only the first report per track is kept; returns 403 when `ADMIN_KEY` is not set):
 
 ```bash
 curl -X POST "/api/reports/<id>" -H "Content-Type: application/json" -d '{"reason":"bad_audio"}'

@@ -211,6 +211,9 @@ export function PlayMenu() {
   const favorites = useAppStore((s) => s.favorites);
   const lastTrackId = useAppStore((s) => s.lastTrackId);
   const lastJobId = useAppStore((s) => s.lastJobId);
+  const allowTrackReports = useAppStore((s) =>
+    Boolean(s.appConfig?.allow_track_reports),
+  );
   const lastSourceId = useAppStore((s) => s.lastSourceId);
   const lastSourceProvider = useAppStore((s) => s.lastSourceProvider);
   const favoriteToggleBusy = useAppStore((s) => s.favoriteToggleBusy);
@@ -329,7 +332,7 @@ export function PlayMenu() {
             id="report-track"
             ref={reportButtonRef}
             className={
-              deleteEligible || adminMode || !lastJobId
+              deleteEligible || adminMode || !lastJobId || !allowTrackReports
                 ? "report-toggle hidden"
                 : "report-toggle"
             }

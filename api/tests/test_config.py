@@ -32,6 +32,15 @@ class AppConfigTests(unittest.TestCase):
                 payload = json.loads(response.body)
                 self.assertEqual(payload["max_favorites"], 150)
 
+    def test_app_config_allows_track_reports_only_with_admin_key(self) -> None:
+        for env, expected in (({}, False), ({"ADMIN_KEY": ""}, False), ({"ADMIN_KEY": "secret"}, True)):
+            with self.subTest(env=env):
+                with patch.dict(os.environ, env, clear=True):
+                    response = get_app_config()
+
+                payload = json.loads(response.body)
+                self.assertIs(payload["allow_track_reports"], expected)
+
     def test_app_config_includes_host_credit_env(self) -> None:
         with patch.dict(
             os.environ,
