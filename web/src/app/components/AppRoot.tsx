@@ -16,6 +16,7 @@ import { FaqPanel } from "./FaqPanel";
 import { FeedbackModal } from "./FeedbackModal";
 import { Footer } from "./Footer";
 import { Hero } from "./Hero";
+import { JayZBob } from "./JayZBob";
 import { NavigationDriver } from "./NavigationDriver";
 import { SearchPanel } from "./SearchPanel";
 import { SettingsModal } from "./SettingsModal";
@@ -148,6 +149,7 @@ export function AppRoot() {
       {activeTab === "faq" ? <FaqPanel /> : null}
       <Footer />
       <Toast />
+      <JayZBob />
       <TuningModal />
       <SettingsModal />
       <FeedbackModal />
