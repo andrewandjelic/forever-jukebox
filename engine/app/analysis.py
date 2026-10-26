@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from typing import Dict, Any, List, Optional, Callable
 
 import numpy as np
@@ -321,6 +323,17 @@ def analyze_audio(
             "time_signature": float(config.time_signature),
         },
     }
+
+    # Style tags drive the web UI's automatic visual style. Optional: a missing
+    # model or a tagging failure must never fail the analysis itself.
+    try:
+        from .genre import predict_genres
+
+        genres = predict_genres(audio_path)
+        if genres:
+            analysis["track"]["genres"] = genres
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: genre tagging skipped: {exc}", file=sys.stderr, flush=True)
 
     report(100, "features")
     return analysis

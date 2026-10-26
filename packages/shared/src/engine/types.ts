@@ -4,6 +4,8 @@ export interface TrackMeta {
   duration?: number;
   tempo?: number;
   time_signature?: number;
+  // Top Discogs styles from the engine's genre model, best first.
+  genres?: Array<{ label: string; score: number }>;
 }
 
 export interface QuantumBase {

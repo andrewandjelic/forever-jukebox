@@ -2,6 +2,8 @@ export const BEAT_SELECT_RADIUS_PX = 8;
 export const EDGE_SELECT_RADIUS_PX = 8;
 export const MAX_EDGE_SAMPLES = 300;
 export const MAX_EDGES_BASE = 2500;
+// Live waveform edges redraw every frame, so cap them lower than the static set.
+export const MAX_WAVE_EDGES = 800;
 export const BEAT_AVOID_RADIUS_PX = 6;
 export const VISUALIZATION_LABELS = [
   "Arc",

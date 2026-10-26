@@ -21,6 +21,14 @@ class MockSourceNode {
   stop = vi.fn();
 }
 
+function isJumpTail(source: MockSourceNode) {
+  return source.connect.mock.calls.some(
+    ([node]) =>
+      node instanceof MockGainNode &&
+      node.gain.linearRampToValueAtTime.mock.calls.length > 0,
+  );
+}
+
 class MockBiquadNode {
   type: BiquadFilterType = "lowpass";
   frequency = { value: 0 };
@@ -63,7 +71,14 @@ class MockAudioContext {
   currentTime = 0;
   destination = {};
   sampleRate = 48_000;
-  createdSources: MockSourceNode[] = [];
+  allSources: MockSourceNode[] = [];
+  // Jump tails are the sources routed through a fading gain.
+  get createdTails() {
+    return this.allSources.filter(isJumpTail);
+  }
+  get createdSources() {
+    return this.allSources.filter((source) => !isJumpTail(source));
+  }
   createdGains: MockGainNode[] = [];
   createdBiquads: MockBiquadNode[] = [];
   createdConvolvers: MockConvolverNode[] = [];
@@ -117,7 +132,7 @@ class MockAudioContext {
   }
   createBufferSource() {
     const source = new MockSourceNode();
-    this.createdSources.push(source);
+    this.allSources.push(source);
     return source;
   }
   decodeAudioData(buffer: ArrayBuffer) {
@@ -873,6 +888,29 @@ describe("BufferedAudioPlayer", () => {
     expect(context.createdSources).toHaveLength(2);
     expect(context.createdSources[1]?.start).toHaveBeenCalledWith(11, 2, 18);
     expect(context.createdSources[0]?.stop).toHaveBeenCalledWith(11);
+  });
+
+  it("fades the outgoing audio out under a jump instead of hard-cutting it", async () => {
+    const context = new MockAudioContext();
+    context.currentTime = 10;
+    const player = new BufferedAudioPlayer(context as unknown as AudioContext);
+    await player.loadBuffer({ duration: 20 } as AudioBuffer);
+    player.play();
+    context.currentTime = 10.25;
+
+    expect(player.scheduleJump(2, 1)).toBe(true);
+
+    expect(context.createdTails).toHaveLength(1);
+    const tail = context.createdTails[0]!;
+    // Continues the old audio from the jump point, fading to silence.
+    expect(tail.start).toHaveBeenCalledWith(11, 1);
+    expect(tail.stop).toHaveBeenCalledWith(11.08);
+    const fade = tail.connect.mock.calls[0]![0] as MockGainNode;
+    expect(fade.gain.setValueAtTime).toHaveBeenCalledWith(1, 11);
+    expect(fade.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 11.08);
+
+    player.cancelScheduledJump();
+    expect(tail.stop).toHaveBeenCalledWith(0);
   });
 
   it("schedules a jump from a single audio clock read", async () => {

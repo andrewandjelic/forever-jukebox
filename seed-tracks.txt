@@ -1,0 +1,4 @@
+# Songs queued on the first `./dev.sh` run (one YouTube/SoundCloud/Bandcamp
+# link per line). Audio is fetched by your local server; none is stored here.
+https://www.youtube.com/watch?v=I8bLLM0vqSM  # Come Out ye Black and Tans (BEAT REMIX)
+https://www.youtube.com/watch?v=5Rk8u2FTaG0  # Darude - Sandstorm

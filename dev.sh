@@ -331,6 +331,36 @@ ensure_web_deps() {
 }
 
 export ENGINE_REPO="$ROOT/engine"
+# Local dev: allow file uploads (incl. drag and drop) and pasted links unless
+# api/.env or the shell says otherwise.
+export ALLOW_USER_UPLOAD="${ALLOW_USER_UPLOAD:-true}"
+export ALLOW_USER_URL="${ALLOW_USER_URL:-true}"
+
+SEED_FILE="$ROOT/seed-tracks.txt"
+SEED_MARKER="$ROOT/api/storage/.seeded"
+
+# First run only: queue the songs listed in seed-tracks.txt so a fresh checkout
+# opens with something to play. Deleting api/storage/.seeded re-seeds.
+seed_tracks() {
+  if [[ ! -f "$SEED_FILE" || -f "$SEED_MARKER" ]]; then
+    return
+  fi
+  for _ in {1..60}; do
+    curl -sf http://localhost:8000/api/app-config >/dev/null && break
+    sleep 1
+  done
+  while IFS= read -r line; do
+    local url="${line%%#*}"
+    url="${url//[[:space:]]/}"
+    [[ -z "$url" ]] && continue
+    echo "[seed] queueing $url"
+    curl -sf -X POST http://localhost:8000/api/analysis/url \
+      -H "Content-Type: application/json" \
+      -d "{\"url\": \"$url\"}" >/dev/null || echo "[seed] failed: $url"
+  done < "$SEED_FILE"
+  mkdir -p "$(dirname "$SEED_MARKER")"
+  touch "$SEED_MARKER"
+}
 
 pids=()
 
@@ -417,6 +447,7 @@ start_api
 start_worker
 start_web
 start_pwa
+seed_tracks &
 
 echo "API: http://localhost:8000"
 echo "Web: http://localhost:5173"

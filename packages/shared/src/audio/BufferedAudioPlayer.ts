@@ -18,6 +18,9 @@ import {
 export type { JukeboxAudioMode } from "./audioModes";
 
 const MAX_LATE_JUMP_FRAMES = 8;
+// The outgoing audio keeps ringing this long under the landing beat, fading
+// to silence, so a jump never hard-cuts reverb or sustained notes.
+const JUMP_TAIL_SECONDS = 0.08;
 
 type AnchorJump = {
   targetTime: number;
@@ -43,6 +46,9 @@ export class BufferedAudioPlayer {
   private anchorPendingStartAt = 0;
   private anchorPendingJumpEvent: JumpEvent | null = null;
   private anchorStopSource: AudioBufferSourceNode | null = null;
+  private pendingTail: AudioBufferSourceNode | null = null;
+  private anchorPendingTail: AudioBufferSourceNode | null = null;
+  private readonly liveTails = new Set<AudioBufferSourceNode>();
   private anchorJump: AnchorJump | null = null;
   private promotedJumpEvent: JumpEvent | null = null;
   private scheduledStopSource: AudioBufferSourceNode | null = null;
@@ -51,6 +57,8 @@ export class BufferedAudioPlayer {
   private readonly masterGain: GainNode;
   private readonly sourceChainInput: GainNode;
   private readonly sourceChainOutput: GainNode;
+  private readonly analyser: AnalyserNode | null = null;
+  private waveform: Float32Array<ArrayBuffer> = new Float32Array(0);
   private limiter: DynamicsCompressorNode | null = null;
   private masterRoutedThroughLimiter: boolean | null = null;
   private stereoPanner: StereoPannerNode | null = null;
@@ -95,7 +103,23 @@ export class BufferedAudioPlayer {
     } else {
       this.sourceChainOutput.connect(this.masterGain);
     }
+    // Pre-volume tap so visualizers see the same waveform at any volume.
+    if (typeof this.context.createAnalyser === "function") {
+      this.analyser = this.context.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.waveform = new Float32Array(this.analyser.fftSize);
+      this.sourceChainOutput.connect(this.analyser);
+    }
     this.rebuildSourceChain();
+  }
+
+  // Live time-domain samples (-1..1) of what is playing; null when no tap.
+  getWaveform(): Float32Array | null {
+    if (!this.analyser) {
+      return null;
+    }
+    this.analyser.getFloatTimeDomainData(this.waveform);
+    return this.waveform;
   }
 
   loadBuffer(buffer: AudioBuffer) {
@@ -438,6 +462,7 @@ export class BufferedAudioPlayer {
       }
     }
     this.pendingSource = source;
+    this.pendingTail = this.startJumpTail(sourceStartTime, startTime);
     this.pendingStartAt = startTime - targetTime / this.playbackRate;
     this.pendingSwapAt = startTime;
     this.pendingJumpEvent =
@@ -529,6 +554,9 @@ export class BufferedAudioPlayer {
     this.clearScheduledStopState();
     this.clearAnchorPendingSwap();
     this.clearPendingSwap();
+    for (const tail of this.liveTails) {
+      this.stopTail(tail);
+    }
     if (this.source) {
       this.source.onended = null;
       try {
@@ -540,6 +568,48 @@ export class BufferedAudioPlayer {
       this.source = null;
     }
     this.promotedJumpEvent = null;
+  }
+
+  // ponytail: fade-out tail only; the landing beat starts at full level so
+  // its attack stays punchy. Add an equal-power fade-in if overlaps sound loud.
+  private startJumpTail(fromOffset: number, startTime: number) {
+    if (!this.buffer) {
+      return null;
+    }
+    const tail = this.context.createBufferSource();
+    tail.buffer = this.buffer;
+    tail.playbackRate.value = this.playbackRate;
+    const fade = this.context.createGain();
+    fade.gain.setValueAtTime(1, startTime);
+    fade.gain.linearRampToValueAtTime(0, startTime + JUMP_TAIL_SECONDS);
+    tail.connect(fade);
+    fade.connect(this.sourceChainInput);
+    tail.onended = () => {
+      this.liveTails.delete(tail);
+      fade.disconnect();
+    };
+    try {
+      tail.start(startTime, fromOffset);
+      tail.stop(startTime + JUMP_TAIL_SECONDS);
+    } catch {
+      fade.disconnect();
+      return null;
+    }
+    this.liveTails.add(tail);
+    return tail;
+  }
+
+  private stopTail(tail: AudioBufferSourceNode | null) {
+    if (!tail) {
+      return;
+    }
+    this.liveTails.delete(tail);
+    try {
+      tail.stop(0);
+    } catch {
+      // no-op
+    }
+    tail.disconnect();
   }
 
   private clearPendingSwap(options: { restartCurrentSource?: boolean } = {}) {
@@ -556,6 +626,8 @@ export class BufferedAudioPlayer {
       : null;
     this.pendingSwapAt = null;
     this.pendingJumpEvent = null;
+    this.stopTail(this.pendingTail);
+    this.pendingTail = null;
     if (!this.pendingSource) {
       return;
     }
@@ -588,6 +660,7 @@ export class BufferedAudioPlayer {
     this.startAt = this.pendingStartAt;
     this.promotedJumpEvent = this.pendingJumpEvent;
     this.pendingSource = null;
+    this.pendingTail = null;
     this.pendingSwapAt = null;
     this.pendingJumpEvent = null;
     this.maybePromoteAnchorPending();
@@ -608,6 +681,7 @@ export class BufferedAudioPlayer {
     this.startAt = this.anchorPendingStartAt;
     this.promotedJumpEvent = this.anchorPendingJumpEvent;
     this.anchorPendingSource = null;
+    this.anchorPendingTail = null;
     this.anchorPendingSwapAt = null;
     this.anchorPendingJumpEvent = null;
     this.anchorStopSource = null;
@@ -736,6 +810,7 @@ export class BufferedAudioPlayer {
       return false;
     }
     this.anchorPendingSource = source;
+    this.anchorPendingTail = this.startJumpTail(sourceStartTime, startTime);
     this.anchorPendingStartAt = startTime - targetTime / this.playbackRate;
     this.anchorPendingSwapAt = startTime;
     this.anchorPendingJumpEvent = { targetTime, sourceStartTime };
@@ -778,6 +853,8 @@ export class BufferedAudioPlayer {
     this.anchorPendingSwapAt = null;
     this.anchorPendingJumpEvent = null;
     this.anchorStopSource = null;
+    this.stopTail(this.anchorPendingTail);
+    this.anchorPendingTail = null;
     if (!this.anchorPendingSource) {
       if (restartOffset !== null) {
         this.replaceCurrentSourceAt(restartOffset, now, { syncAnchor: false });

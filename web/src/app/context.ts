@@ -59,6 +59,7 @@ export type AppState = {
   trackDurationSec: number | null;
   trackTitle: string | null;
   trackArtist: string | null;
+  trackGenres: Array<{ label: string; score: number }> | null;
   deleteEligible: boolean;
   deleteEligibilityJobId: string | null;
   appConfig: AppConfig | null;

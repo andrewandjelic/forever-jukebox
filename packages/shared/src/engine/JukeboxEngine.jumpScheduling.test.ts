@@ -130,6 +130,36 @@ describe("JukeboxEngine jump scheduling", () => {
     expect(engine.getLastJumpWasBranch()).toBe(true);
   });
 
+  it("plays the intro section through before branching", () => {
+    const player = makePlayer();
+    const engine = new JukeboxEngine(player, { randomMode: "seeded", seed: 1 });
+    const beats = [0, 1, 2].map(makeBeat);
+    linkBeats(beats);
+    const edge: Edge = {
+      id: 0,
+      src: beats[1],
+      dest: beats[0],
+      distance: 10,
+      deleted: false,
+    };
+    beats[1].neighbors = [edge];
+    beats[1].allNeighbors = [edge];
+    const engineAny = installEngineState(
+      engine,
+      beats,
+      makeGraph(beats, edge),
+      0,
+      10.75,
+    );
+    // Second section starts at beat 2, so beats 0-1 are the intro.
+    engineAny.analysis.sections = [makeBeat(0), makeBeat(2)];
+
+    engineAny.advanceBeat(engineAny.nextAudioTime);
+
+    expect(player.scheduleJump).not.toHaveBeenCalled();
+    expect(engine.getLastJumpWasBranch()).toBe(false);
+  });
+
   it("uses the final beat end as the source boundary when wrapping", () => {
     const player = makePlayer();
     const engine = new JukeboxEngine(player, { randomMode: "seeded", seed: 2 });

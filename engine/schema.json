@@ -95,7 +95,19 @@
         "tempo": { "type": "number" },
         "time_signature": { "type": "number" },
         "artist": { "type": "string" },
-        "title": { "type": "string" }
+        "title": { "type": "string" },
+        "genres": {
+          "description": "Top Discogs styles from the Discogs-EffNet model, best first. Absent when the model is not installed.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "score": { "type": "number" }
+            },
+            "required": ["label", "score"]
+          }
+        }
       },
       "additionalProperties": true
     }

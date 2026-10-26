@@ -112,6 +112,7 @@ export class JukeboxEngine {
   private lastJumpFromIndex: number | null = null;
   private lastJumpToIndex: number | null = null;
   private lastJumpWasBranch = false;
+  private introPlayed = false;
   private forceBranch = false;
   private bringItHomeMode = false;
   private playVelocity = 1;
@@ -549,7 +550,18 @@ export class JukeboxEngine {
     this.lastJumpFromIndex = null;
     this.lastJumpToIndex = null;
     this.lastJumpWasBranch = false;
+    this.introPlayed = false;
     this.clearPendingAdvance(true);
+  }
+
+  // The first section (the intro) plays through once before any random
+  // branching, so build-ups are never cut short.
+  private isPastIntro(beatIndex: number) {
+    if (!this.introPlayed) {
+      const introEnd = this.getSectionStartBeatIndices()[0] ?? 0;
+      this.introPlayed = beatIndex >= introEnd;
+    }
+    return this.introPlayed;
   }
 
   private resetPlaybackControls() {
@@ -696,7 +708,10 @@ export class JukeboxEngine {
         }
         const seedIndex = this.wrapBeatIndex(rawSeedIndex, beatsCount);
         chosenIndex = seedIndex;
-        if (!this.bringItHomeMode) {
+        if (
+          !this.bringItHomeMode &&
+          (this.forceBranch || this.isPastIntro(seedIndex))
+        ) {
           const seed = this.beats[seedIndex];
           if (!this.hasJumpScheduleLead(sourceBoundaryTime)) {
             return {
