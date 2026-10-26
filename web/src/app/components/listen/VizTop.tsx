@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CANONIZER_FINISH_KEY,
   VISUALIZATION_LABELS,
@@ -14,6 +14,14 @@ import {
   setPlayMode,
   setWubMachineLoop,
 } from "../../playback-ui";
+import {
+  VIZ_STYLES,
+  VIZ_STYLE_LABELS,
+  applyStyle,
+  getTrackStyle,
+  saveTrackStyle,
+  type VizStyle,
+} from "../../vizStyle";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
@@ -46,6 +54,24 @@ export function VizTop() {
   const [loopTrack, setLoopTrack] = useState(
     () => localStorage.getItem(WUB_MACHINE_LOOP_KEY) === "true",
   );
+  const trackId = useAppStore((s) => s.lastTrackId ?? s.lastJobId);
+  // Genres belong to the loaded analysis; ignore them until it has loaded so
+  // a new track never borrows the previous one's genres.
+  const trackGenres = useAppStore((s) =>
+    s.analysisLoaded ? s.trackGenres : null,
+  );
+  const trackTitle = useAppStore((s) =>
+    s.analysisLoaded ? [s.trackTitle, s.trackArtist].filter(Boolean).join(" - ") : null,
+  );
+  const [vizStyle, setVizStyle] = useState<VizStyle>(() =>
+    getTrackStyle(trackId, trackGenres, trackTitle),
+  );
+  // Each song remembers its own style, falling back to its title or genre.
+  useEffect(() => {
+    const style = getTrackStyle(trackId, trackGenres, trackTitle);
+    setVizStyle(style);
+    applyStyle(style);
+  }, [trackId, trackGenres, trackTitle]);
 
   const vizSelectDisabled =
     !(audioLoaded && analysisLoaded) ||
@@ -73,6 +99,34 @@ export function VizTop() {
               <option value="autocanonizer">{t("playback.autocanonizer")}</option>
               <option value="jukebox">{t("playback.jukebox")}</option>
               <option value="wubmachine">{t("playback.wubMachine")}</option>
+            </select>
+            <span
+              className="material-symbols-outlined viz-select-arrow"
+              aria-hidden="true"
+            >
+              arrow_drop_down
+            </span>
+          </span>
+        </label>
+        <label className="viz-select-group" htmlFor="style-select">
+          <span className="viz-select-wrap">
+            <select
+              id="style-select"
+              className="viz-select"
+              aria-label="Visual style"
+              value={vizStyle}
+              onChange={(event) => {
+                const style = event.target.value as VizStyle;
+                setVizStyle(style);
+                saveTrackStyle(trackId, style);
+                applyStyle(style);
+              }}
+            >
+              {VIZ_STYLES.map((style) => (
+                <option key={style} value={style}>
+                  {VIZ_STYLE_LABELS[style]}
+                </option>
+              ))}
             </select>
             <span
               className="material-symbols-outlined viz-select-arrow"

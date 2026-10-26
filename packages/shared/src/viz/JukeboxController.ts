@@ -28,6 +28,10 @@ export class JukeboxController {
     this.viz.setAnchorHighlightEnabled(enabled);
   }
 
+  setWaveformSource(source: Parameters<JukeboxViz["setWaveformSource"]>[0]) {
+    this.viz.setWaveformSource(source);
+  }
+
   refresh() {
     this.viz.refresh();
   }

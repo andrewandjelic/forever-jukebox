@@ -9,6 +9,28 @@ also includes an installable offline PWA.
 It replaces reliance on the deprecated Spotify Audio Analysis engine by
 generating similar beat/segment/section data locally.
 
+## What's new in this fork
+
+- **Smoother jumps:** an 80 ms crossfade on every jump instead of a hard cut,
+  and the intro (first section) always plays through before branching starts.
+- **Live waveform visuals:** in the Classic layout the ring and every arc ripple
+  gently with the audio; arcs and beats are colored by timbre (like the
+  original Infinite Jukebox) so linked passages share a color, and jump lines
+  flare thick and fade.
+- **Per-song visual styles:** Cyberpunk, Rustic, Psychedelic, Soviet, Street,
+  Celestial, Inferno, Bubblegum, Speakeasy and Irish, picked from a dropdown on
+  the listen page and remembered per song.
+- **Automatic style from genre:** the engine tags each track with its top
+  Discogs styles using the Discogs-EffNet model (see
+  [engine/models/README.md](./engine/models/README.md) for its non-commercial
+  license); the UI maps them to a style. A saved pick always wins.
+- **Drag and drop:** drop an audio file anywhere on the page to analyze and
+  play it.
+- **Pre-loaded songs:** on the first `./dev.sh` run, the links in
+  [seed-tracks.txt](./seed-tracks.txt) are queued so the app opens with music.
+  No audio is stored in this repo; your local server fetches it. Delete
+  `api/storage/.seeded` to seed again.
+
 ## Structure
 
 - `engine/` — the Forever Jukebox audio analysis engine.

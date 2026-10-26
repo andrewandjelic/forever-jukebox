@@ -6,7 +6,158 @@ import {
   EDGE_SELECT_RADIUS_PX,
   MAX_EDGE_SAMPLES,
   MAX_EDGES_BASE,
+  MAX_WAVE_EDGES,
 } from "../constants/visualization";
+
+export type WaveformSource = () => Float32Array | null;
+
+const WAVE_EDGE_POINTS = 28;
+const WAVE_RING_POINTS = 360;
+// Raw samples averaged into each drawn point; smooths the waveform so it
+// reads as a wave, not noise.
+const WAVE_BLOCK = 8;
+// Floor for auto-gain so near-silence is not blown up into full-scale noise.
+const WAVE_MIN_PEAK = 0.12;
+// Gentle by default so the waves add motion without hiding the jumps.
+const WAVE_ARC_MAX_PX = 8;
+const WAVE_ARC_RATIO = 0.04;
+const WAVE_RING_RATIO = 0.03;
+// How much of each new frame blends into the displayed wave (lower = calmer).
+const WAVE_SMOOTHING = 0.2;
+
+type PathSink = Pick<CanvasRenderingContext2D, "moveTo" | "lineTo">;
+
+function waveSample(wave: Float32Array | null, index: number) {
+  return wave && wave.length > 0 ? wave[index % wave.length] : 0;
+}
+
+// Traces a quadratic curve displaced along its normal by the waveform. The
+// sin envelope pins both ends so arcs stay attached to their beats.
+export function traceWaveCurve(
+  ctx: PathSink,
+  from: Point,
+  control: Point,
+  to: Point,
+  wave: Float32Array | null,
+  offset: number,
+  amplitude: number,
+) {
+  for (let k = 0; k < WAVE_EDGE_POINTS; k += 1) {
+    const t = k / (WAVE_EDGE_POINTS - 1);
+    const u = 1 - t;
+    const x = u * u * from.x + 2 * u * t * control.x + t * t * to.x;
+    const y = u * u * from.y + 2 * u * t * control.y + t * t * to.y;
+    const dx = 2 * u * (control.x - from.x) + 2 * t * (to.x - control.x);
+    const dy = 2 * u * (control.y - from.y) + 2 * t * (to.y - control.y);
+    const len = Math.hypot(dx, dy) || 1;
+    const d =
+      waveSample(wave, offset + k) *
+      amplitude *
+      Math.sin(Math.PI * t);
+    const px = x - (dy / len) * d;
+    const py = y + (dx / len) * d;
+    if (k === 0) {
+      ctx.moveTo(px, py);
+    } else {
+      ctx.lineTo(px, py);
+    }
+  }
+}
+
+// Traces a closed circle whose radius follows the waveform. Samples are
+// mirrored around the loop so the seam at the top joins smoothly.
+export function traceWaveRing(
+  ctx: PathSink,
+  center: Point,
+  radius: number,
+  wave: Float32Array | null,
+  amplitude: number,
+) {
+  const half = WAVE_RING_POINTS / 2;
+  for (let k = 0; k <= WAVE_RING_POINTS; k += 1) {
+    const mirrored = k <= half ? k : WAVE_RING_POINTS - k;
+    const r = radius + waveSample(wave, mirrored) * amplitude;
+    const angle = (k / WAVE_RING_POINTS) * Math.PI * 2 - Math.PI / 2;
+    const x = center.x + Math.cos(angle) * r;
+    const y = center.y + Math.sin(angle) * r;
+    if (k === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+}
+
+// Block-averages the raw analyser samples and normalizes them to the frame's
+// peak, so quiet passages still swing visibly. Loudness is shown separately
+// through line width and glow.
+export function shapeWaveform(wave: Float32Array, block = WAVE_BLOCK) {
+  const shaped = new Float32Array(Math.floor(wave.length / block));
+  let peak = WAVE_MIN_PEAK;
+  for (let i = 0; i < shaped.length; i += 1) {
+    let sum = 0;
+    for (let j = 0; j < block; j += 1) {
+      sum += wave[i * block + j];
+    }
+    shaped[i] = sum / block;
+    peak = Math.max(peak, Math.abs(shaped[i]));
+  }
+  for (let i = 0; i < shaped.length; i += 1) {
+    shaped[i] /= peak;
+  }
+  return shaped;
+}
+
+// Colors each beat by its timbre, like the original Infinite Jukebox, so
+// beats that sound alike (and so link by arcs) share a color. Timbre is
+// normalized across the track and hues are quantized so arcs can be stroked
+// in a few batches. Beats without segment data get "".
+export type BeatPalette = { hueStart: number; hueRange: number; saturation: string };
+
+const DEFAULT_BEAT_PALETTE: BeatPalette = {
+  hueStart: 0,
+  hueRange: 300,
+  saturation: "100%",
+};
+
+export function computeBeatColors(
+  beats: QuantumBase[],
+  palette: BeatPalette = DEFAULT_BEAT_PALETTE,
+): string[] {
+  const timbres = beats.map(
+    (beat) => (beat.oseg ?? beat.overlappingSegments?.[0])?.timbre ?? null,
+  );
+  const min = [Infinity, Infinity];
+  const max = [-Infinity, -Infinity];
+  for (const timbre of timbres) {
+    for (let i = 0; timbre && i < 2; i += 1) {
+      min[i] = Math.min(min[i], timbre[i + 1]);
+      max[i] = Math.max(max[i], timbre[i + 1]);
+    }
+  }
+  const norm = (value: number, i: number) =>
+    max[i] > min[i] ? (value - min[i]) / (max[i] - min[i]) : 0.5;
+  return timbres.map((timbre) => {
+    if (!timbre) {
+      return "";
+    }
+    // The default 300-degree range keeps the two extremes from wrapping
+    // into the same red; styles narrow it (rustic) or open it up (psych).
+    const hue =
+      palette.hueStart +
+      Math.round((norm(timbre[1], 0) * palette.hueRange) / 12) * 12;
+    const light = 55 + Math.round(norm(timbre[2], 1) * 3) * 5;
+    return `hsl(${hue}, ${palette.saturation}, ${light}%)`;
+  });
+}
+
+function rms(wave: Float32Array) {
+  let sum = 0;
+  for (let i = 0; i < wave.length; i += 1) {
+    sum += wave[i] * wave[i];
+  }
+  return Math.sqrt(sum / Math.max(1, wave.length));
+}
 
 type VizData = NonNullable<ReturnType<JukeboxEngine["getVisualizationData"]>>;
 
@@ -54,6 +205,8 @@ type CanvasVizOptions = {
   enableInteraction?: boolean;
   forceBendEdges?: boolean;
   edgeControlPointResolver?: EdgeControlPointResolver;
+  // Draw the beat ring itself as a live waveform (circular layouts only).
+  waveRing?: boolean;
 };
 
 type VisualizationDefinition = {
@@ -87,6 +240,12 @@ class CanvasViz {
   private readonly edgeControlPointResolver: EdgeControlPointResolver | null;
   private visible = true;
   private anchorHighlightEnabled = false;
+  private readonly waveRing: boolean;
+  private waveformSource: WaveformSource | null = null;
+  private beatColors: string[] = [];
+  private smoothedWave: Float32Array | null = null;
+  // Live edges grouped by color so each frame needs one stroke per color.
+  private edgesByColor = new Map<string, Edge[]>();
 
   private edgeGeometry = new WeakMap<
     Edge,
@@ -98,6 +257,12 @@ class CanvasViz {
     edgeSelected: "#ff5b5b",
     beatHighlight: "#ffd46a",
     beatHighlightRgb: null as { r: number; g: number; b: number } | null,
+    waveColors: ["#FF2BD6", "#00F0FF", "#F9F871"],
+    beatPalette: DEFAULT_BEAT_PALETTE,
+    // Fraction of the previous live frame kept each frame (motion trails).
+    trails: 0,
+    // Overall brightness of the live waveform layer (0-1).
+    intensity: 1,
   };
 
   constructor(
@@ -109,6 +274,7 @@ class CanvasViz {
     this.positioner = positioner;
     this.forceBendEdges = options.forceBendEdges ?? false;
     this.edgeControlPointResolver = options.edgeControlPointResolver ?? null;
+    this.waveRing = options.waveRing ?? false;
     this.baseCanvas = document.createElement("canvas");
     this.overlayCanvas = document.createElement("canvas");
     const baseCtx = this.baseCanvas.getContext("2d");
@@ -142,6 +308,7 @@ class CanvasViz {
 
   setData(data: VisualizationData) {
     this.data = data;
+    this.rebuildBeatColors();
     this.computePositions();
     this.computeEdgeGeometry();
     this.drawBase();
@@ -153,6 +320,7 @@ class CanvasViz {
       return;
     }
     this.updateTheme();
+    this.rebuildBeatColors();
     this.drawBase();
     this.drawOverlay();
   }
@@ -204,6 +372,14 @@ class CanvasViz {
   setAnchorHighlightEnabled(enabled: boolean) {
     this.anchorHighlightEnabled = enabled;
     this.drawBase();
+  }
+
+  // With a source set, arcs (and the ring, if enabled) are drawn live on the
+  // overlay every frame while the source returns samples.
+  setWaveformSource(source: WaveformSource | null) {
+    this.waveformSource = source;
+    this.drawBase();
+    this.drawOverlay();
   }
 
   resizeNow() {
@@ -273,8 +449,37 @@ class CanvasViz {
     }
   }
 
+  private rebuildBeatColors() {
+    if (!this.data) {
+      return;
+    }
+    const { edges, beats } = this.data;
+    this.beatColors = computeBeatColors(beats, this.theme.beatPalette);
+    this.edgesByColor = new Map();
+    const step = Math.max(1, Math.ceil(edges.length / MAX_WAVE_EDGES));
+    for (let i = 0; i < edges.length; i += step) {
+      const edge = edges[i];
+      if (edge.deleted) {
+        continue;
+      }
+      const color = this.beatColors[edge.src.which] ?? "";
+      const bucket = this.edgesByColor.get(color);
+      if (bucket) {
+        bucket.push(edge);
+      } else {
+        this.edgesByColor.set(color, [edge]);
+      }
+    }
+  }
+
   private updateTheme() {
-    const styles = getComputedStyle(document.documentElement);
+    // Read from the container (not <html>) so per-style overrides set on
+    // ancestors like <body> apply.
+    const styles = getComputedStyle(this.container);
+    const cssNumber = (name: string, fallback: number) => {
+      const value = Number.parseFloat(styles.getPropertyValue(name));
+      return Number.isFinite(value) ? value : fallback;
+    };
     this.theme.edgeStroke =
       styles.getPropertyValue("--edge-stroke").trim() || this.theme.edgeStroke;
     this.theme.beatFill =
@@ -286,6 +491,19 @@ class CanvasViz {
       styles.getPropertyValue("--beat-highlight").trim() ||
       this.theme.beatHighlight;
     this.theme.beatHighlightRgb = this.parseThemeColor(this.theme.beatHighlight);
+    this.theme.waveColors = this.theme.waveColors.map(
+      (fallback, i) =>
+        styles.getPropertyValue(`--wave-${i + 1}`).trim() || fallback,
+    );
+    this.theme.beatPalette = {
+      hueStart: cssNumber("--beat-hue-start", DEFAULT_BEAT_PALETTE.hueStart),
+      hueRange: cssNumber("--beat-hue-range", DEFAULT_BEAT_PALETTE.hueRange),
+      saturation:
+        styles.getPropertyValue("--beat-sat").trim() ||
+        DEFAULT_BEAT_PALETTE.saturation,
+    };
+    this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
+    this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
   }
 
   private parseThemeColor(color: string) {
@@ -336,7 +554,8 @@ class CanvasViz {
         : 1;
 
     this.baseCtx.strokeStyle = this.theme.edgeStroke;
-    for (let i = 0; i < edges.length; i += step) {
+    // Live waveform mode draws the edges on the overlay instead.
+    for (let i = 0; !this.waveformSource && i < edges.length; i += step) {
       const edge = edges[i];
       if (edge.deleted) {
         continue;
@@ -378,9 +597,9 @@ class CanvasViz {
       }
     }
 
-    this.baseCtx.fillStyle = this.theme.beatFill;
     for (let i = 0; i < this.positions.length; i += 1) {
       const p = this.positions[i];
+      this.baseCtx.fillStyle = this.beatColors[i] || this.theme.beatFill;
       this.baseCtx.beginPath();
       this.baseCtx.arc(p.x, p.y, 2, 0, Math.PI * 2);
       this.baseCtx.fill();
@@ -390,17 +609,158 @@ class CanvasViz {
 
   private drawOverlay() {
     const { width, height } = this.size;
-    this.overlayCtx.clearRect(0, 0, width, height);
+    const wave =
+      this.data && this.visible ? (this.waveformSource?.() ?? null) : null;
+    if (wave && this.theme.trails > 0) {
+      // Fade the last frame instead of clearing it, leaving motion trails.
+      this.overlayCtx.save();
+      this.overlayCtx.globalCompositeOperation = "destination-out";
+      this.overlayCtx.fillStyle = `rgba(0, 0, 0, ${1 - this.theme.trails})`;
+      this.overlayCtx.fillRect(0, 0, width, height);
+      this.overlayCtx.restore();
+    } else {
+      this.overlayCtx.clearRect(0, 0, width, height);
+    }
     if (!this.data || !this.visible) {
       this.cancelOverlayAnimation();
       return;
     }
+    if (this.waveformSource) {
+      this.drawWaveLayer(wave);
+    }
+    this.drawOverlayMarkers();
+    // Keep animating while audio flows; markers may have cancelled the frame.
+    if (wave) {
+      this.requestOverlayAnimation();
+    }
+  }
+
+  private drawWaveLayer(wave: Float32Array | null) {
+    if (!this.data) {
+      return;
+    }
+    const ctx = this.overlayCtx;
+    const { width, height } = this.size;
+    const energy = wave ? Math.min(1, rms(wave) * 3) : 0;
+    const shaped = wave ? this.smoothWave(shapeWaveform(wave)) : null;
+    if (!wave) {
+      this.smoothedWave = null;
+    }
+    // Gradient axis slowly rotates so colors sweep across the arcs.
+    const angle = performance.now() / 2500;
+    const reach = Math.hypot(width, height) / 2;
+    const gx = Math.cos(angle) * reach;
+    const gy = Math.sin(angle) * reach;
+    const gradient = ctx.createLinearGradient(
+      this.center.x - gx,
+      this.center.y - gy,
+      this.center.x + gx,
+      this.center.y + gy,
+    );
+    const [c1, c2, c3] = this.theme.waveColors;
+    gradient.addColorStop(0, c1);
+    gradient.addColorStop(0.5, c2);
+    gradient.addColorStop(1, c3);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineJoin = "round";
+
+    // Trails keep old frames around, so dim each frame to compensate or the
+    // additive blending stacks up into solid white.
+    const trailDim = (1 - this.theme.trails * 0.75) * this.theme.intensity;
+    ctx.globalAlpha = (0.55 + energy * 0.45) * trailDim;
+    ctx.lineWidth = 1.2 + energy * 2;
+    for (const [color, edges] of this.edgesByColor) {
+      ctx.strokeStyle = color || gradient;
+      ctx.beginPath();
+      for (const edge of edges) {
+        const from = this.positions[edge.src.which];
+        const to = this.positions[edge.dest.which];
+        if (!from || !to) {
+          continue;
+        }
+        const geometry = this.getEdgeGeometry(edge);
+        const control =
+          geometry?.bend && geometry.control
+            ? { x: geometry.control[0], y: geometry.control[1] }
+            : { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+        const amplitude = Math.min(
+          WAVE_ARC_MAX_PX,
+          Math.hypot(to.x - from.x, to.y - from.y) * WAVE_ARC_RATIO,
+        );
+        traceWaveCurve(ctx, from, control, to, shaped, edge.id * 37, amplitude);
+      }
+      ctx.stroke();
+    }
+
+    if (this.waveRing && this.positions.length > 0) {
+      const p = this.positions[0];
+      const radius = Math.hypot(p.x - this.center.x, p.y - this.center.y);
+      const ring: Point[] = [];
+      traceWaveRing(
+        {
+          moveTo: (x, y) => ring.push({ x, y }),
+          lineTo: (x, y) => ring.push({ x, y }),
+        },
+        this.center,
+        radius,
+        shaped,
+        radius * WAVE_RING_RATIO,
+      );
+      // Glow underlay, then the ring in each beat's color on top.
+      ctx.globalAlpha = 0.6 * trailDim;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = gradient;
+      ctx.shadowColor = c1;
+      ctx.shadowBlur = 12 + energy * 24;
+      ctx.beginPath();
+      ring.forEach((pt, k) => (k === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = trailDim;
+      ctx.lineWidth = 3;
+      const beatCount = this.beatColors.length;
+      let k = 0;
+      while (k < ring.length - 1) {
+        const color = this.beatColors[Math.floor((k / (ring.length - 1)) * beatCount)];
+        ctx.strokeStyle = color || gradient;
+        ctx.beginPath();
+        ctx.moveTo(ring[k].x, ring[k].y);
+        // Extend the run while the next ring point maps to the same color.
+        do {
+          k += 1;
+          ctx.lineTo(ring[k].x, ring[k].y);
+        } while (
+          k < ring.length - 1 &&
+          this.beatColors[Math.floor((k / (ring.length - 1)) * beatCount)] === color
+        );
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Eases the displayed wave toward each new frame instead of snapping to it.
+  private smoothWave(next: Float32Array) {
+    const prev = this.smoothedWave;
+    if (!prev || prev.length !== next.length) {
+      this.smoothedWave = next;
+      return next;
+    }
+    for (let i = 0; i < prev.length; i += 1) {
+      prev[i] += (next[i] - prev[i]) * WAVE_SMOOTHING;
+    }
+    return prev;
+  }
+
+  private drawOverlayMarkers() {
     if (this.selectedEdge && !this.selectedEdge.deleted) {
       this.drawEdge(
         this.overlayCtx,
         this.selectedEdge,
         this.theme.edgeSelected,
-        2.5
+        4
       );
     }
     if (this.currentIndex < 0) {
@@ -421,6 +781,12 @@ class CanvasViz {
         if (from && to) {
           const alpha = 1 - age / 1000;
           const jumpColor = this.resolveBeatJumpColor(alpha);
+          // Starts thick and glowing, thinning as it fades out.
+          const jumpWidth = 2 + 8 * alpha;
+          this.overlayCtx.save();
+          this.overlayCtx.lineCap = "round";
+          this.overlayCtx.shadowColor = this.theme.beatHighlight;
+          this.overlayCtx.shadowBlur = 24 * alpha;
           if (this.shouldBendEdge(from, to, this.jumpLine.from, this.jumpLine.to)) {
             const control = this.resolveControlPointForPair(
               from,
@@ -434,16 +800,17 @@ class CanvasViz {
               to,
               control,
               jumpColor,
-              2
+              jumpWidth
             );
           } else {
             this.overlayCtx.strokeStyle = jumpColor;
-            this.overlayCtx.lineWidth = 2;
+            this.overlayCtx.lineWidth = jumpWidth;
             this.overlayCtx.beginPath();
             this.overlayCtx.moveTo(from.x, from.y);
             this.overlayCtx.lineTo(to.x, to.y);
             this.overlayCtx.stroke();
           }
+          this.overlayCtx.restore();
         }
         this.requestOverlayAnimation();
       } else {
@@ -967,7 +1334,10 @@ function getDefaultVisualizationDefinitions(): VisualizationDefinition[] {
         edgeControlPointResolver: createArcDiagramControlPointResolver(),
       },
     },
-    { positioner: JukeboxViz.createClassicPositioner() },
+    {
+      positioner: JukeboxViz.createClassicPositioner(),
+      options: { waveRing: true },
+    },
     { positioner: createGalaxyPositioner() },
     { positioner: createGridPositioner() },
     { positioner: createInfinitePositioner() },
@@ -986,6 +1356,7 @@ export class JukeboxViz {
   private selectedEdge: Edge | null = null;
   private lastUpdate: LastUpdate | null = null;
   private anchorHighlightEnabled = false;
+  private waveformSource: WaveformSource | null = null;
   private onSelectHandler: ((index: number) => void) | null = null;
   private onEdgeSelectHandler: ((edge: Edge | null) => void) | null = null;
 
@@ -1034,6 +1405,9 @@ export class JukeboxViz {
       ...(definition.options ?? {}),
     });
     viz.setAnchorHighlightEnabled(this.anchorHighlightEnabled);
+    if (this.waveformSource) {
+      viz.setWaveformSource(this.waveformSource);
+    }
     viz.setVisible(this.visible);
     if (this.onSelectHandler) {
       viz.setOnSelect(this.onSelectHandler);
@@ -1091,6 +1465,11 @@ export class JukeboxViz {
   setAnchorHighlightEnabled(enabled: boolean) {
     this.anchorHighlightEnabled = enabled;
     this.activeViz?.setAnchorHighlightEnabled(enabled);
+  }
+
+  setWaveformSource(source: WaveformSource | null) {
+    this.waveformSource = source;
+    this.activeViz?.setWaveformSource(source);
   }
 
   refresh() {

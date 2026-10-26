@@ -26,6 +26,7 @@ import {
 } from "./playback";
 import { setSearchRuntime, type SearchDeps } from "./search";
 import { setUploadRuntime, type UploadDeps } from "./upload";
+import { installDropUpload } from "./dropUpload";
 import { DEFAULT_VISUALIZATION_INDEX } from "./constants";
 import {
   setAppRuntime,
@@ -179,6 +180,9 @@ export function initRuntime(): void {
     vizAttached = true;
     const autocanonizer = new AutocanonizerController(nodes.canonizerLayer);
     const jukebox = new JukeboxController(nodes.vizLayer);
+    jukebox.setWaveformSource(() =>
+      player.isPlaying() ? player.getWaveform() : null,
+    );
     context.autocanonizer = autocanonizer;
     context.wubmachine = new WubMachineController(nodes.wubMachineLayer);
     context.jukebox = jukebox;
@@ -241,4 +245,5 @@ export function initRuntime(): void {
 
   setSearchRuntime(context, searchDeps);
   setUploadRuntime(uploadDeps);
+  installDropUpload();
 }

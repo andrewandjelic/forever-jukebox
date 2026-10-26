@@ -322,6 +322,7 @@ export function applyAnalysisResult(
   jukebox.setSelectedEdge(null);
   useAppStore.setState({ branchStats: null });
   syncDeletedEdgeState(context);
+  useAppStore.setState({ trackGenres: response.result.track?.genres ?? null });
   useAppStore.setState({ analysisLoaded: true });
   updateVizVisibility();
   maybePrepareSwingMode(context);

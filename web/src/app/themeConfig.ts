@@ -2,44 +2,48 @@ export type ThemeName = "light" | "dark";
 
 export const themeConfig: Record<ThemeName, Record<string, string>> = {
   dark: {
-    // Core
-    "--bg": "#0F1115",
-    "--text": "#E7E4DD",
-    "--text-rgb": "231, 228, 221",
-    "--muted": "#9AA3B2",
-    "--accent": "#4AC7FF",
-    "--title-accent": "#F1C47A",
-    "--title-glow": "rgba(241, 196, 122, 0.55)",
-    "--scrim": "rgba(10, 12, 16, 0.75)",
-    "--shadow-elevated": "rgba(0, 0, 0, 0.35)",
-    "--shadow-soft": "rgba(0, 0, 0, 0.24)",
-    "--danger": "#E35A5A",
-    "--danger-border": "#7F1D1D",
-    "--danger-surface": "#3B1212",
-    "--danger-text": "#FECACA",
+    // Core — cyberpunk: hot magenta, electric cyan, acid yellow on deep violet
+    "--bg": "#07030F",
+    "--text": "#F3EDFF",
+    "--text-rgb": "243, 237, 255",
+    "--muted": "#A99BC9",
+    "--accent": "#00F0FF",
+    "--title-accent": "#FF2BD6",
+    "--title-glow": "rgba(255, 43, 214, 0.6)",
+    "--scrim": "rgba(7, 3, 15, 0.8)",
+    "--shadow-elevated": "rgba(255, 43, 214, 0.18)",
+    "--shadow-soft": "rgba(0, 240, 255, 0.12)",
+    "--danger": "#FF3B6B",
+    "--danger-border": "#8A1240",
+    "--danger-surface": "#2A0716",
+    "--danger-text": "#FFC4D6",
 
     // Surfaces
-    "--surface-panel": "#141922",
-    "--surface-hero": "#1A1F27",
-    "--surface-control": "#1F2633",
-    "--surface-control-hover": "#202835",
+    "--surface-panel": "rgba(18, 8, 38, 0.82)",
+    "--surface-hero": "rgba(28, 10, 56, 0.85)",
+    "--surface-control": "#2A1150",
+    "--surface-control-hover": "#3A1870",
 
     // Borders
-    "--border-panel": "#283142",
-    "--border-hero": "#2B3442",
-    "--border-control": "#3B465B",
+    "--border-panel": "rgba(0, 240, 255, 0.28)",
+    "--border-hero": "rgba(255, 43, 214, 0.45)",
+    "--border-control": "rgba(176, 102, 255, 0.55)",
 
     // Visualizer
     "--viz-bg":
-      "radial-gradient(circle closest-side at 50% 50%, #232B3D 0%, #0F1115 100%)",
-    "--viz-shadow": "rgba(74, 199, 255, 0.14)",
-    "--viz-overlay": "rgba(10, 12, 16, 0.6)",
+      "radial-gradient(circle closest-side at 50% 50%, #2B0B4F 0%, #12052A 55%, #05020B 100%)",
+    "--viz-shadow": "rgba(255, 43, 214, 0.3)",
+    "--viz-overlay": "rgba(7, 3, 15, 0.65)",
 
     // Graph/Beat
-    "--edge-stroke": "rgba(74, 199, 255, 0.5)",
-    "--edge-selected": "#B48CFF",
-    "--beat-fill": "#FFD46A",
-    "--beat-highlight": "#FFD46A",
+    "--edge-stroke": "rgba(0, 240, 255, 0.45)",
+    "--edge-selected": "#F9F871",
+    "--beat-fill": "rgba(255, 43, 214, 0.75)",
+    "--beat-highlight": "#F9F871",
+    // Live waveform gradient stops (ring + arcs)
+    "--wave-1": "#FF2BD6",
+    "--wave-2": "#00F0FF",
+    "--wave-3": "#F9F871",
   },
   light: {
     // Core
@@ -80,5 +84,8 @@ export const themeConfig: Record<ThemeName, Record<string, string>> = {
     "--edge-selected": "#7F39FB",
     "--beat-fill": "#B144FF",
     "--beat-highlight": "#B144FF",
+    "--wave-1": "#B144FF",
+    "--wave-2": "#2E8BFF",
+    "--wave-3": "#FF4FA3",
   },
 };

@@ -437,6 +437,7 @@ const createTrackSlice: Slice<
     | "lastSourceProvider"
     | "trackTitle"
     | "trackArtist"
+    | "trackGenres"
     | "trackDurationSec"
     | "lastPlayCountedJobId"
     | "deleteEligible"
@@ -453,6 +454,7 @@ const createTrackSlice: Slice<
   lastSourceProvider: null,
   trackTitle: null,
   trackArtist: null,
+  trackGenres: null,
   trackDurationSec: null,
   lastPlayCountedJobId: null,
   deleteEligible: false,

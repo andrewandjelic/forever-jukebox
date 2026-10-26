@@ -2841,3 +2841,1243 @@ body.theme-light .pan-slider.stream-pan-slider {
     flex: 0 0 100%;
   }
 }
+
+/* ===== Cyberpunk skin (dark theme only) ===== */
+body[data-style="cyberpunk"]:not(.theme-light) {
+  background:
+    linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(255, 43, 214, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+    radial-gradient(ellipse at 15% 0%, rgba(255, 43, 214, 0.28), transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(0, 240, 255, 0.22), transparent 55%),
+    linear-gradient(160deg, #0B0320 0%, #07030F 50%, #031018 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) .hero {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface-hero), var(--surface-hero)) padding-box,
+    linear-gradient(90deg, #FF2BD6, #B066FF, #00F0FF, #F9F871, #FF2BD6) border-box;
+  background-size: 100% 100%, 300% 100%;
+  animation: cyber-border-flow 8s linear infinite;
+  box-shadow:
+    0 0 24px rgba(255, 43, 214, 0.25),
+    0 0 48px rgba(0, 240, 255, 0.12);
+}
+
+/* The flickering JUKEBOX span is its own layer, so it needs the gradient too.
+   text-shadow is dropped: with transparent text it would draw ghost glyphs. */
+body[data-style="cyberpunk"]:not(.theme-light) .hero-title-neon,
+body[data-style="cyberpunk"]:not(.theme-light) .hero-title-jukebox {
+  text-shadow: none;
+  background: linear-gradient(90deg, #FF2BD6, #00F0FF, #F9F871, #FF2BD6);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cyber-text-flow 6s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 43, 214, 0.7));
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) .panel {
+  backdrop-filter: blur(6px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 43, 214, 0.08),
+    0 0 28px rgba(0, 240, 255, 0.08);
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) button,
+body[data-style="cyberpunk"]:not(.theme-light) .tab-btn {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    color 0.2s ease;
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) button:hover,
+body[data-style="cyberpunk"]:not(.theme-light) .tab-btn:hover {
+  border-color: #00F0FF;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.55);
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(135deg, rgba(255, 43, 214, 0.35), rgba(0, 240, 255, 0.25));
+  border-color: #FF2BD6;
+  box-shadow: 0 0 14px rgba(255, 43, 214, 0.5);
+}
+
+body[data-style="cyberpunk"]:not(.theme-light) .viz {
+  border-color: rgba(255, 43, 214, 0.5);
+  box-shadow:
+    inset 0 0 60px var(--viz-shadow),
+    0 0 30px rgba(0, 240, 255, 0.15);
+}
+
+/* CRT scanlines over the visualizer; clicks pass through to the canvas. */
+body[data-style="cyberpunk"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.18) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+@keyframes cyber-border-flow {
+  to {
+    background-position: 0 0, 300% 0;
+  }
+}
+
+@keyframes cyber-text-flow {
+  to {
+    background-position: 300% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="cyberpunk"]:not(.theme-light) .hero,
+  body[data-style="cyberpunk"]:not(.theme-light) .hero-title-neon {
+    animation: none;
+  }
+}
+
+/* ===== Rustic skin: weathered wood, leather, lantern light ===== */
+body[data-style="rustic"]:not(.theme-light) {
+  --bg: #1A1009;
+  --text: #F4E6CC;
+  --text-rgb: 244, 230, 204;
+  --muted: #C4A984;
+  --accent: #E8A33D;
+  --title-accent: #F2C14E;
+  --title-glow: rgba(242, 193, 78, 0.35);
+  --surface-panel: rgba(42, 27, 16, 0.92);
+  --surface-hero: rgba(58, 36, 20, 0.95);
+  --surface-control: #4A2E19;
+  --surface-control-hover: #5C3A20;
+  --border-panel: rgba(232, 163, 61, 0.35);
+  --border-hero: rgba(232, 163, 61, 0.55);
+  --border-control: rgba(232, 163, 61, 0.5);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #4A2E17 0%, #24160B 60%, #120A05 100%);
+  --viz-shadow: rgba(242, 160, 60, 0.25);
+  --edge-selected: #FFF1C9;
+  --beat-fill: rgba(242, 193, 78, 0.7);
+  --beat-highlight: #FFE08A;
+  --wave-1: #F2A541;
+  --wave-2: #C8553D;
+  --wave-3: #9DBF7E;
+  --beat-hue-start: 8;
+  --beat-hue-range: 50;
+  --beat-sat: 75%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.18) 0 2px,
+      transparent 2px 9px,
+      rgba(255, 220, 170, 0.03) 9px 11px,
+      transparent 11px 23px
+    ),
+    radial-gradient(ellipse at 50% -10%, rgba(242, 170, 70, 0.22), transparent 60%),
+    linear-gradient(180deg, #2A190C 0%, #1A1009 60%, #120A05 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="rustic"]:not(.theme-light) .hero {
+  border: 2px dashed rgba(232, 163, 61, 0.55);
+  box-shadow:
+    inset 0 0 0 4px rgba(26, 16, 9, 0.9),
+    0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+body[data-style="rustic"]:not(.theme-light) .hero-title {
+  border-color: #C8553D;
+  box-shadow: 0 2px 0 #7A3322, 0 0 16px rgba(242, 160, 60, 0.2);
+  animation: none;
+}
+
+body[data-style="rustic"]:not(.theme-light) .hero-title-neon,
+body[data-style="rustic"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Rye", serif;
+  letter-spacing: 0.04em;
+  color: #F2C14E;
+  text-shadow: 2px 2px 0 #7A3322, 0 0 10px rgba(242, 193, 78, 0.35);
+  animation: none;
+}
+
+body[data-style="rustic"]:not(.theme-light) .panel {
+  border: 2px dashed rgba(232, 163, 61, 0.3);
+  box-shadow: inset 0 0 0 3px rgba(26, 16, 9, 0.8), 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+body[data-style="rustic"]:not(.theme-light) button:hover,
+body[data-style="rustic"]:not(.theme-light) .tab-btn:hover {
+  border-color: #F2C14E;
+  box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
+}
+
+body[data-style="rustic"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(180deg, #7A4A22, #4A2E19);
+  border-color: #F2C14E;
+}
+
+body[data-style="rustic"]:not(.theme-light) .viz {
+  border: 3px solid #5C3A20;
+  box-shadow:
+    inset 0 0 70px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(242, 193, 78, 0.25),
+    0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Lantern flicker over the visualizer; clicks pass through. */
+body[data-style="rustic"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(255, 190, 90, 0.1), transparent 65%);
+  animation: lantern 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes lantern {
+  0% { opacity: 0.6; }
+  40% { opacity: 1; }
+  55% { opacity: 0.75; }
+  100% { opacity: 0.95; }
+}
+
+/* ===== Psychedelic skin: melting rainbow, swirling color, motion trails ===== */
+body[data-style="psychedelic"]:not(.theme-light) {
+  --bg: #12001F;
+  --text: #FFF6E9;
+  --text-rgb: 255, 246, 233;
+  --muted: #E3C8FF;
+  --accent: #FFD23F;
+  --title-accent: #FF6EC7;
+  --title-glow: rgba(255, 110, 199, 0.5);
+  --surface-panel: rgba(30, 0, 50, 0.72);
+  --surface-hero: rgba(45, 0, 70, 0.75);
+  --surface-control: #4B0C6B;
+  --surface-control-hover: #62128A;
+  --border-panel: rgba(255, 210, 63, 0.4);
+  --border-hero: rgba(255, 110, 199, 0.6);
+  --border-control: rgba(124, 255, 203, 0.55);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #3D0066 0%, #1A0033 55%, #080010 100%);
+  --viz-shadow: rgba(255, 110, 199, 0.35);
+  --edge-selected: #FFFFFF;
+  --beat-fill: rgba(255, 210, 63, 0.8);
+  --beat-highlight: #FFFFFF;
+  --wave-1: #FF6EC7;
+  --wave-2: #FFD23F;
+  --wave-3: #7CFFCB;
+  --beat-hue-start: 0;
+  --beat-hue-range: 360;
+  --beat-sat: 100%;
+  /* Fraction of the previous frame kept each frame: ghostly motion trails. */
+  --viz-trails: 0.6;
+  --viz-intensity: 0.55;
+  background: #12001F;
+}
+
+/* A slowly spinning, color-cycling swirl behind everything. */
+body[data-style="psychedelic"]:not(.theme-light)::before {
+  content: "";
+  position: fixed;
+  inset: -50vmax;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-conic-gradient(
+      from 0deg at 50% 50%,
+      #3D0066 0deg 12deg,
+      #6A0F8E 12deg 24deg,
+      #B0177A 24deg 36deg,
+      #E05A12 36deg 48deg,
+      #1D6F6A 48deg 60deg
+    );
+  filter: blur(40px) saturate(1.4);
+  opacity: 0.55;
+  animation: psych-swirl 40s linear infinite, psych-hue 12s linear infinite;
+}
+
+@keyframes psych-swirl {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes psych-hue {
+  to { filter: blur(40px) saturate(1.4) hue-rotate(360deg); }
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .hero,
+body[data-style="psychedelic"]:not(.theme-light) .panel {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--surface-panel), var(--surface-panel)) padding-box,
+    linear-gradient(90deg, #FF6EC7, #FFD23F, #7CFFCB, #6E8BFF, #FF6EC7) border-box;
+  background-size: 100% 100%, 400% 100%;
+  animation: psych-border 6s linear infinite;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes psych-border {
+  to { background-position: 0 0, 400% 0; }
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .hero-title {
+  border-color: #FFD23F;
+  border-radius: 999px;
+  box-shadow: 0 0 20px rgba(255, 110, 199, 0.5);
+  animation: none;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .hero-title-neon,
+body[data-style="psychedelic"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Shrikhand", cursive;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  background: linear-gradient(90deg, #FF6EC7, #FFD23F, #7CFFCB, #6E8BFF, #FF6EC7);
+  background-size: 400% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(3px 3px 0 #3D0066);
+  animation: psych-text 5s linear infinite;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .hero-title-neon {
+  display: inline-block;
+  animation: psych-text 5s linear infinite, psych-wobble 4s ease-in-out infinite;
+}
+
+@keyframes psych-text {
+  to { background-position: 400% 0; }
+}
+
+@keyframes psych-wobble {
+  0%, 100% { transform: skewX(0deg) scale(1); }
+  25% { transform: skewX(-4deg) scale(1.02); }
+  75% { transform: skewX(4deg) scale(0.98); }
+}
+
+body[data-style="psychedelic"]:not(.theme-light) button:hover,
+body[data-style="psychedelic"]:not(.theme-light) .tab-btn:hover {
+  border-color: #7CFFCB;
+  box-shadow: 0 0 14px rgba(124, 255, 203, 0.6);
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(135deg, #FF6EC7, #6E8BFF);
+  border-color: #FFD23F;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .viz {
+  border: 2px solid #FFD23F;
+  box-shadow: inset 0 0 80px var(--viz-shadow), 0 0 30px rgba(124, 255, 203, 0.25);
+}
+
+/* Kaleidoscope behind the arcs: two 12-fold mirrored color wheels spinning
+   in opposite directions; "difference" blending between them makes the
+   shifting acid-trip patterns. A dark core keeps the arcs readable. */
+body[data-style="psychedelic"]:not(.theme-light) .viz {
+  isolation: isolate;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .viz::before,
+body[data-style="psychedelic"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .viz::before {
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    #FF2BD6 0deg 5deg,
+    #FFD23F 5deg 10deg,
+    #7CFFCB 10deg 15deg,
+    #FFD23F 15deg 20deg,
+    #FF2BD6 20deg 25deg,
+    #3D0066 25deg 30deg
+  );
+  opacity: 0.45;
+  animation: kaleido-spin 48s linear infinite, kaleido-hue 14s linear infinite;
+}
+
+body[data-style="psychedelic"]:not(.theme-light) .viz::after {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(8, 0, 16, 0.85) 0 18%, transparent 42%),
+    repeating-radial-gradient(
+      circle at 50% 50%,
+      #6E8BFF 0 14px,
+      #FF6EC7 14px 28px,
+      #3D0066 28px 42px
+    ),
+    repeating-conic-gradient(
+      from 15deg at 50% 50%,
+      #3D0066 0deg 15deg,
+      #7CFFCB 15deg 30deg
+    );
+  background-blend-mode: normal, difference, normal;
+  mix-blend-mode: difference;
+  opacity: 0.4;
+  animation: kaleido-spin-back 32s linear infinite, kaleido-breathe 9s ease-in-out infinite alternate;
+}
+
+@keyframes kaleido-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes kaleido-spin-back {
+  to { transform: rotate(-360deg) scale(1); }
+}
+
+@keyframes kaleido-hue {
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes kaleido-breathe {
+  from { scale: 0.9; }
+  to { scale: 1.25; }
+}
+
+/* The whole visualization slowly cycles through the color wheel. */
+body[data-style="psychedelic"]:not(.theme-light) .viz canvas {
+  animation: psych-canvas-hue 20s linear infinite;
+}
+
+@keyframes psych-canvas-hue {
+  to { filter: hue-rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="rustic"]:not(.theme-light) .viz::after,
+  body[data-style="psychedelic"]:not(.theme-light)::before,
+  body[data-style="psychedelic"]:not(.theme-light) .hero,
+  body[data-style="psychedelic"]:not(.theme-light) .panel,
+  body[data-style="psychedelic"]:not(.theme-light) .hero-title-neon,
+  body[data-style="psychedelic"]:not(.theme-light) .hero-title-jukebox,
+  body[data-style="psychedelic"]:not(.theme-light) .viz canvas,
+  body[data-style="psychedelic"]:not(.theme-light) .viz::before,
+  body[data-style="psychedelic"]:not(.theme-light) .viz::after {
+    animation: none;
+  }
+}
+
+/* ===== Soviet skin: constructivist propaganda poster ===== */
+body[data-style="soviet"]:not(.theme-light) {
+  --bg: #140403;
+  --text: #F5E6C8;
+  --text-rgb: 245, 230, 200;
+  --muted: #D9B99A;
+  --accent: #FFD23F;
+  --title-accent: #F5E6C8;
+  --title-glow: rgba(217, 0, 0, 0.5);
+  --surface-panel: rgba(20, 6, 4, 0.9);
+  --surface-hero: #B30000;
+  --surface-control: #2A0B07;
+  --surface-control-hover: #4A120B;
+  --border-panel: rgba(217, 0, 0, 0.6);
+  --border-hero: #F5E6C8;
+  --border-control: rgba(245, 230, 200, 0.45);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #5A0A05 0%, #2A0503 60%, #120302 100%);
+  --viz-shadow: rgba(217, 0, 0, 0.4);
+  --edge-selected: #FFFFFF;
+  --beat-fill: rgba(255, 210, 63, 0.8);
+  --beat-highlight: #FFD23F;
+  --wave-1: #FF1A1A;
+  --wave-2: #FFD23F;
+  --wave-3: #F5E6C8;
+  --beat-hue-start: 352;
+  --beat-hue-range: 56;
+  --beat-sat: 95%;
+  background:
+    repeating-conic-gradient(
+      from -20deg at 0% 100%,
+      rgba(179, 0, 0, 0.35) 0deg 6deg,
+      transparent 6deg 12deg
+    ),
+    linear-gradient(160deg, #2A0503 0%, #140403 55%, #0A0202 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="soviet"]:not(.theme-light) .hero {
+  border: 3px solid #F5E6C8;
+  border-radius: 0;
+  background:
+    linear-gradient(115deg, transparent 0 62%, #140403 62% 66%, transparent 66%),
+    linear-gradient(115deg, #B30000 0%, #8A0000 100%);
+  box-shadow: 8px 8px 0 #0A0202;
+}
+
+body[data-style="soviet"]:not(.theme-light) .hero-title {
+  border: 3px solid #F5E6C8;
+  border-radius: 0;
+  background: #140403;
+  box-shadow: 5px 5px 0 #FFD23F;
+  transform: rotate(-2deg);
+  animation: none;
+}
+
+body[data-style="soviet"]:not(.theme-light) .hero-title-neon,
+body[data-style="soviet"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Russo One", sans-serif;
+  letter-spacing: 0.06em;
+  color: #F5E6C8;
+  text-shadow: 3px 3px 0 #B30000;
+  animation: none;
+}
+
+body[data-style="soviet"]:not(.theme-light) .hero-title-neon::before {
+  content: "\2605  ";
+  color: #FFD23F;
+  text-shadow: none;
+}
+
+body[data-style="soviet"]:not(.theme-light) .panel {
+  border: 2px solid #B30000;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 rgba(179, 0, 0, 0.45);
+}
+
+body[data-style="soviet"]:not(.theme-light) button,
+body[data-style="soviet"]:not(.theme-light) .tab-btn,
+body[data-style="soviet"]:not(.theme-light) .viz-select {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+body[data-style="soviet"]:not(.theme-light) button:hover,
+body[data-style="soviet"]:not(.theme-light) .tab-btn:hover {
+  border-color: #FFD23F;
+  box-shadow: 3px 3px 0 #B30000;
+}
+
+body[data-style="soviet"]:not(.theme-light) .tab-btn.active {
+  background: #B30000;
+  border-color: #F5E6C8;
+  color: #F5E6C8;
+}
+
+body[data-style="soviet"]:not(.theme-light) .viz {
+  border: 3px solid #B30000;
+  border-radius: 0;
+  isolation: isolate;
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.6), 8px 8px 0 #0A0202;
+}
+
+/* Slowly turning sunburst rays behind the arcs. */
+body[data-style="soviet"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(217, 0, 0, 0.32) 0deg 7.5deg,
+    transparent 7.5deg 15deg
+  );
+  animation: soviet-rays 90s linear infinite;
+}
+
+/* A big faint gold star in the middle, with printed halftone grain. */
+body[data-style="soviet"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(46%, 46vh);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(rgba(0, 0, 0, 0.35) 1px, transparent 1.5px) 0 0 / 5px 5px,
+    linear-gradient(160deg, #FFD23F, #C99700);
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
+  opacity: 0.16;
+}
+
+@keyframes soviet-rays {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="soviet"]:not(.theme-light) .viz::before {
+    animation: none;
+  }
+}
+
+/* Full-page hint while a file is dragged over the window (dropUpload.ts). */
+body.is-file-dragging::after {
+  content: "Drop a song to load it";
+  position: fixed;
+  inset: 12px;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  border: 3px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--scrim);
+  color: var(--text);
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+/* Shared: styles that paint layers behind the arcs need .viz to isolate them. */
+body[data-style="street"]:not(.theme-light) .viz,
+body[data-style="celestial"]:not(.theme-light) .viz,
+body[data-style="inferno"]:not(.theme-light) .viz,
+body[data-style="bubblegum"]:not(.theme-light) .viz,
+body[data-style="speakeasy"]:not(.theme-light) .viz {
+  isolation: isolate;
+}
+
+body[data-style="street"]:not(.theme-light) .viz::before,
+body[data-style="celestial"]:not(.theme-light) .viz::before,
+body[data-style="celestial"]:not(.theme-light) .viz::after,
+body[data-style="inferno"]:not(.theme-light) .viz::before,
+body[data-style="bubblegum"]:not(.theme-light) .viz::before,
+body[data-style="speakeasy"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ===== Street skin: spray paint on a brick wall, caution tape ===== */
+body[data-style="street"]:not(.theme-light) {
+  --bg: #1C1C1E;
+  --text: #F2F2F2;
+  --text-rgb: 242, 242, 242;
+  --muted: #B5B5B5;
+  --accent: #B6FF00;
+  --title-accent: #FF3EA5;
+  --title-glow: rgba(255, 62, 165, 0.4);
+  --surface-panel: rgba(24, 24, 26, 0.92);
+  --surface-hero: #26262A;
+  --surface-control: #2E2E33;
+  --surface-control-hover: #3A3A40;
+  --border-panel: rgba(182, 255, 0, 0.35);
+  --border-hero: #FFD400;
+  --border-control: rgba(242, 242, 242, 0.35);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #2E2E33 0%, #18181A 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.6);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #B6FF00;
+  --wave-1: #FF3EA5;
+  --wave-2: #B6FF00;
+  --wave-3: #3EC8FF;
+  --beat-hue-start: 0;
+  --beat-hue-range: 300;
+  --beat-sat: 100%;
+  /* Brick courses: mortar lines every 26px, staggered vertical joints. */
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.55) 2px, transparent 2px) 0 0 / 100% 26px,
+    linear-gradient(90deg, rgba(0, 0, 0, 0.55) 2px, transparent 2px) 0 0 / 60px 52px,
+    linear-gradient(90deg, rgba(0, 0, 0, 0.55) 2px, transparent 2px) 30px 26px / 60px 52px,
+    linear-gradient(160deg, #4A2A22 0%, #3A221C 50%, #2A1A16 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="street"]:not(.theme-light) .hero {
+  border: 10px solid;
+  border-image: repeating-linear-gradient(45deg, #FFD400 0 14px, #111 14px 28px) 10;
+  border-radius: 0;
+}
+
+body[data-style="street"]:not(.theme-light) .hero-title {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  animation: none;
+}
+
+body[data-style="street"]:not(.theme-light) .hero-title-neon,
+body[data-style="street"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Sedgwick Ave Display", cursive;
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: #FF3EA5;
+  text-shadow:
+    3px 3px 0 #111,
+    -2px -2px 0 #B6FF00,
+    0 0 18px rgba(255, 62, 165, 0.6);
+  animation: none;
+}
+
+body[data-style="street"]:not(.theme-light) .hero-title-jukebox {
+  color: #B6FF00;
+  text-shadow: 3px 3px 0 #111, -2px -2px 0 #3EC8FF, 0 0 18px rgba(182, 255, 0, 0.5);
+}
+
+body[data-style="street"]:not(.theme-light) .panel {
+  border: 2px solid #111;
+  box-shadow: 0 0 0 2px rgba(182, 255, 0, 0.35), 6px 8px 0 rgba(0, 0, 0, 0.5);
+}
+
+body[data-style="street"]:not(.theme-light) button:hover,
+body[data-style="street"]:not(.theme-light) .tab-btn:hover {
+  border-color: #B6FF00;
+  box-shadow: 0 0 12px rgba(182, 255, 0, 0.5);
+}
+
+body[data-style="street"]:not(.theme-light) .tab-btn.active {
+  background: #FF3EA5;
+  border-color: #111;
+  color: #111;
+  font-weight: 700;
+}
+
+body[data-style="street"]:not(.theme-light) .viz {
+  border: 3px solid #111;
+}
+
+/* Spray-paint splatter clouds that slowly drift. */
+body[data-style="street"]:not(.theme-light) .viz::before {
+  inset: -10%;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 62, 165, 0.35), transparent 22%),
+    radial-gradient(circle at 82% 30%, rgba(182, 255, 0, 0.28), transparent 20%),
+    radial-gradient(circle at 70% 82%, rgba(62, 200, 255, 0.3), transparent 24%),
+    radial-gradient(circle at 25% 78%, rgba(255, 212, 0, 0.22), transparent 18%);
+  filter: blur(18px);
+  animation: street-drift 16s ease-in-out infinite alternate;
+}
+
+@keyframes street-drift {
+  to { transform: translate(3%, -3%) scale(1.08); }
+}
+
+/* ===== Celestial skin: night sky, twinkling stars, aurora ===== */
+body[data-style="celestial"]:not(.theme-light) {
+  --bg: #050816;
+  --text: #EAF0FF;
+  --text-rgb: 234, 240, 255;
+  --muted: #A9B6D9;
+  --accent: #9FD8FF;
+  --title-accent: #EAF0FF;
+  --title-glow: rgba(159, 216, 255, 0.45);
+  --surface-panel: rgba(10, 16, 40, 0.75);
+  --surface-hero: rgba(14, 22, 54, 0.8);
+  --surface-control: #16224A;
+  --surface-control-hover: #1E2D5E;
+  --border-panel: rgba(159, 216, 255, 0.22);
+  --border-hero: rgba(200, 180, 255, 0.35);
+  --border-control: rgba(159, 216, 255, 0.35);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #142048 0%, #0A1030 55%, #04060F 100%);
+  --viz-shadow: rgba(120, 160, 255, 0.25);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #FFFFFF;
+  --wave-1: #9FD8FF;
+  --wave-2: #C9A8FF;
+  --wave-3: #7CF5D4;
+  --beat-hue-start: 170;
+  --beat-hue-range: 120;
+  --beat-sat: 75%;
+  --viz-trails: 0.45;
+  --viz-intensity: 0.8;
+  background:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 90px 120px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 150px 60px, #fff, transparent),
+    radial-gradient(1px 1px at 200px 170px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(ellipse at 50% 0%, rgba(80, 60, 160, 0.35), transparent 60%),
+    linear-gradient(180deg, #0A0F2C 0%, #050816 60%, #03040B 100%);
+  background-size: 230px 230px, 230px 230px, 230px 230px, 230px 230px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+}
+
+body[data-style="celestial"]:not(.theme-light) .hero,
+body[data-style="celestial"]:not(.theme-light) .panel {
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 40px rgba(120, 160, 255, 0.12);
+}
+
+body[data-style="celestial"]:not(.theme-light) .hero-title {
+  border-color: rgba(234, 240, 255, 0.5);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(159, 216, 255, 0.35);
+  animation: none;
+}
+
+body[data-style="celestial"]:not(.theme-light) .hero-title-neon,
+body[data-style="celestial"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.08em;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  color: #EAF0FF;
+  text-shadow: 0 0 14px rgba(159, 216, 255, 0.7), 0 0 30px rgba(201, 168, 255, 0.4);
+  animation: none;
+}
+
+body[data-style="celestial"]:not(.theme-light) button:hover,
+body[data-style="celestial"]:not(.theme-light) .tab-btn:hover {
+  border-color: #9FD8FF;
+  box-shadow: 0 0 14px rgba(159, 216, 255, 0.4);
+}
+
+body[data-style="celestial"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(135deg, rgba(159, 216, 255, 0.3), rgba(201, 168, 255, 0.3));
+  border-color: #C9A8FF;
+}
+
+body[data-style="celestial"]:not(.theme-light) .viz {
+  border-color: rgba(159, 216, 255, 0.3);
+  border-radius: 16px;
+}
+
+/* Twinkling star field. */
+body[data-style="celestial"]:not(.theme-light) .viz::before {
+  background:
+    radial-gradient(1.5px 1.5px at 30px 40px, #fff, transparent),
+    radial-gradient(1px 1px at 110px 90px, #fff, transparent),
+    radial-gradient(1px 1px at 170px 20px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 60px 150px, rgba(201, 168, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 150px 170px, #fff, transparent);
+  background-size: 200px 200px;
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+/* Slow aurora ribbons. */
+body[data-style="celestial"]:not(.theme-light) .viz::after {
+  inset: -20%;
+  background:
+    linear-gradient(115deg, transparent 30%, rgba(124, 245, 212, 0.22) 45%, transparent 60%),
+    linear-gradient(75deg, transparent 40%, rgba(201, 168, 255, 0.2) 55%, transparent 70%);
+  filter: blur(30px);
+  animation: aurora 18s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+@keyframes aurora {
+  from { transform: translateX(-8%) skewY(-4deg); }
+  to { transform: translateX(8%) skewY(4deg); }
+}
+
+/* ===== Inferno skin: hellfire, charred metal, blackletter ===== */
+body[data-style="inferno"]:not(.theme-light) {
+  --bg: #0A0302;
+  --text: #FFE9D6;
+  --text-rgb: 255, 233, 214;
+  --muted: #D9A88A;
+  --accent: #FF7A00;
+  --title-accent: #FF9A00;
+  --title-glow: rgba(255, 90, 0, 0.6);
+  --surface-panel: rgba(18, 6, 3, 0.9);
+  --surface-hero: rgba(26, 6, 2, 0.92);
+  --surface-control: #2A0A04;
+  --surface-control-hover: #3D1006;
+  --border-panel: rgba(255, 90, 0, 0.35);
+  --border-hero: rgba(255, 60, 0, 0.6);
+  --border-control: rgba(255, 122, 0, 0.45);
+  --viz-bg: radial-gradient(circle closest-side at 50% 60%, #3A0A02 0%, #160402 60%, #050100 100%);
+  --viz-shadow: rgba(255, 60, 0, 0.35);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #FFE066;
+  --wave-1: #FF3B00;
+  --wave-2: #FF9A00;
+  --wave-3: #FFE066;
+  --beat-hue-start: 0;
+  --beat-hue-range: 48;
+  --beat-sat: 100%;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(255, 70, 0, 0.45), transparent 55%),
+    linear-gradient(180deg, #050100 0%, #0A0302 60%, #1F0602 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="inferno"]:not(.theme-light) .hero,
+body[data-style="inferno"]:not(.theme-light) .panel {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px #000, 0 8px 30px rgba(255, 60, 0, 0.18), inset 0 -20px 40px rgba(255, 60, 0, 0.06);
+}
+
+body[data-style="inferno"]:not(.theme-light) .hero-title {
+  border-color: #FF3B00;
+  border-radius: 2px;
+  box-shadow: 0 0 18px rgba(255, 60, 0, 0.6), inset 0 0 12px rgba(255, 60, 0, 0.4);
+}
+
+body[data-style="inferno"]:not(.theme-light) .hero-title-neon,
+body[data-style="inferno"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Metal Mania", cursive;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  text-shadow: none;
+  background: linear-gradient(0deg, #FF2A00 10%, #FF9A00 50%, #FFE066 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255, 70, 0, 0.8));
+  animation: inferno-flicker 2.4s steps(1, end) infinite;
+}
+
+@keyframes inferno-flicker {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 70, 0, 0.8)); }
+  30% { filter: drop-shadow(0 0 14px rgba(255, 120, 0, 0.95)); }
+  55% { filter: drop-shadow(0 0 5px rgba(255, 40, 0, 0.7)); }
+  80% { filter: drop-shadow(0 0 11px rgba(255, 100, 0, 0.9)); }
+}
+
+body[data-style="inferno"]:not(.theme-light) button:hover,
+body[data-style="inferno"]:not(.theme-light) .tab-btn:hover {
+  border-color: #FF7A00;
+  box-shadow: 0 0 14px rgba(255, 90, 0, 0.6);
+}
+
+body[data-style="inferno"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(0deg, #8A1400, #3D0A02);
+  border-color: #FF7A00;
+}
+
+body[data-style="inferno"]:not(.theme-light) .viz {
+  border: 2px solid #3D0A02;
+  box-shadow: inset 0 -60px 80px rgba(255, 60, 0, 0.25), 0 0 30px rgba(255, 60, 0, 0.2);
+}
+
+/* Flames licking up from the bottom of the visualizer. */
+body[data-style="inferno"]:not(.theme-light) .viz::before {
+  top: 45%;
+  background:
+    radial-gradient(ellipse 12% 60% at 10% 100%, rgba(255, 90, 0, 0.55), transparent 70%),
+    radial-gradient(ellipse 10% 75% at 28% 100%, rgba(255, 50, 0, 0.5), transparent 70%),
+    radial-gradient(ellipse 14% 55% at 47% 100%, rgba(255, 150, 0, 0.45), transparent 70%),
+    radial-gradient(ellipse 11% 80% at 66% 100%, rgba(255, 60, 0, 0.5), transparent 70%),
+    radial-gradient(ellipse 12% 60% at 86% 100%, rgba(255, 110, 0, 0.5), transparent 70%);
+  filter: blur(10px);
+  transform-origin: 50% 100%;
+  animation: flames 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes flames {
+  0% { transform: scaleY(0.85) skewX(-2deg); opacity: 0.8; }
+  50% { transform: scaleY(1.05) skewX(1deg); opacity: 1; }
+  100% { transform: scaleY(0.92) skewX(3deg); opacity: 0.85; }
+}
+
+/* ===== Bubblegum skin: candy pastels, rounded everything, floating bubbles ===== */
+body[data-style="bubblegum"]:not(.theme-light) {
+  --bg: #2A1238;
+  --text: #FFF0FA;
+  --text-rgb: 255, 240, 250;
+  --muted: #F2C4E4;
+  --accent: #7FE7FF;
+  --title-accent: #FF8AD8;
+  --title-glow: rgba(255, 138, 216, 0.5);
+  --surface-panel: rgba(58, 24, 78, 0.82);
+  --surface-hero: rgba(74, 30, 98, 0.85);
+  --surface-control: #5A2478;
+  --surface-control-hover: #6E2E92;
+  --border-panel: rgba(255, 138, 216, 0.45);
+  --border-hero: rgba(127, 231, 255, 0.6);
+  --border-control: rgba(255, 138, 216, 0.55);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #5A2478 0%, #3A1650 60%, #220A30 100%);
+  --viz-shadow: rgba(255, 138, 216, 0.3);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #FFF59E;
+  --wave-1: #FF8AD8;
+  --wave-2: #7FE7FF;
+  --wave-3: #B8FFB0;
+  --beat-hue-start: 290;
+  --beat-hue-range: 180;
+  --beat-sat: 95%;
+  --viz-intensity: 0.85;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 138, 216, 0.35), transparent 35%),
+    radial-gradient(circle at 85% 75%, rgba(127, 231, 255, 0.3), transparent 35%),
+    linear-gradient(135deg, #3A1650 0%, #2A1238 50%, #1E0E2E 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="bubblegum"]:not(.theme-light) .hero,
+body[data-style="bubblegum"]:not(.theme-light) .panel,
+body[data-style="bubblegum"]:not(.theme-light) .viz {
+  border-radius: 24px;
+  border-width: 2px;
+  box-shadow: 0 10px 30px rgba(255, 138, 216, 0.18);
+}
+
+body[data-style="bubblegum"]:not(.theme-light) button,
+body[data-style="bubblegum"]:not(.theme-light) .tab-btn,
+body[data-style="bubblegum"]:not(.theme-light) .viz-select {
+  border-radius: 999px;
+}
+
+body[data-style="bubblegum"]:not(.theme-light) .hero-title {
+  border-color: #FFF0FA;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FF8AD8, #B98AFF);
+  box-shadow: 0 6px 0 #9B3C86, 0 10px 24px rgba(255, 138, 216, 0.4);
+  animation: none;
+}
+
+body[data-style="bubblegum"]:not(.theme-light) .hero-title-neon,
+body[data-style="bubblegum"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: #FFFFFF;
+  text-shadow: 2px 3px 0 #9B3C86;
+  animation: none;
+}
+
+body[data-style="bubblegum"]:not(.theme-light) button:hover,
+body[data-style="bubblegum"]:not(.theme-light) .tab-btn:hover {
+  border-color: #7FE7FF;
+  box-shadow: 0 0 14px rgba(127, 231, 255, 0.5);
+}
+
+body[data-style="bubblegum"]:not(.theme-light) .tab-btn.active {
+  background: linear-gradient(135deg, #FF8AD8, #7FE7FF);
+  border-color: #FFF0FA;
+  color: #2A1238;
+  font-weight: 700;
+}
+
+/* Bubbles drifting upward. */
+body[data-style="bubblegum"]:not(.theme-light) .viz::before {
+  background:
+    radial-gradient(circle 18px at 40px 50px, rgba(255, 255, 255, 0.05) 0 60%, rgba(255, 190, 235, 0.55) 85%, transparent 100%) 0 0 / 120px 140px,
+    radial-gradient(circle 11px at 30px 30px, rgba(255, 255, 255, 0.05) 0 55%, rgba(160, 240, 255, 0.55) 85%, transparent 100%) 60px 70px / 170px 190px;
+  opacity: 0.6;
+  animation: bubbles-rise 14s linear infinite;
+}
+
+@keyframes bubbles-rise {
+  to { background-position: 0 -280px, 60px -310px; }
+}
+
+/* ===== Speakeasy skin: art deco, black lacquer and gold ===== */
+body[data-style="speakeasy"]:not(.theme-light) {
+  --bg: #0B0A08;
+  --text: #F3E7C9;
+  --text-rgb: 243, 231, 201;
+  --muted: #C2B28A;
+  --accent: #D4AF37;
+  --title-accent: #D4AF37;
+  --title-glow: rgba(212, 175, 55, 0.45);
+  --surface-panel: rgba(16, 14, 11, 0.94);
+  --surface-hero: #14120E;
+  --surface-control: #1E1B15;
+  --surface-control-hover: #2A251C;
+  --border-panel: rgba(212, 175, 55, 0.45);
+  --border-hero: #D4AF37;
+  --border-control: rgba(212, 175, 55, 0.5);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #1E2A28 0%, #0F1514 60%, #070908 100%);
+  --viz-shadow: rgba(212, 175, 55, 0.2);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #F7E7A1;
+  --wave-1: #D4AF37;
+  --wave-2: #F7E7A1;
+  --wave-3: #3FA796;
+  --beat-hue-start: 30;
+  --beat-hue-range: 150;
+  --beat-sat: 60%;
+  --viz-intensity: 0.85;
+  /* Deco fan motif repeated across the wall. */
+  background:
+    repeating-radial-gradient(circle at 50% 100%, transparent 0 14px, rgba(212, 175, 55, 0.09) 14px 16px) 0 0 / 80px 40px,
+    linear-gradient(180deg, #12100C 0%, #0B0A08 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="speakeasy"]:not(.theme-light) .hero,
+body[data-style="speakeasy"]:not(.theme-light) .panel,
+body[data-style="speakeasy"]:not(.theme-light) .viz {
+  border: 3px double #D4AF37;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 6px var(--surface-panel), inset 0 0 0 7px rgba(212, 175, 55, 0.35), 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+body[data-style="speakeasy"]:not(.theme-light) .hero-title {
+  border: 2px solid #D4AF37;
+  border-radius: 0;
+  box-shadow: 0 0 0 4px #14120E, 0 0 0 5px rgba(212, 175, 55, 0.6);
+  animation: none;
+}
+
+body[data-style="speakeasy"]:not(.theme-light) .hero-title-neon,
+body[data-style="speakeasy"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Limelight", serif;
+  letter-spacing: 0.12em;
+  text-shadow: none;
+  background: linear-gradient(180deg, #F7E7A1 0%, #D4AF37 50%, #9C7A1E 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: none;
+}
+
+body[data-style="speakeasy"]:not(.theme-light) button,
+body[data-style="speakeasy"]:not(.theme-light) .tab-btn,
+body[data-style="speakeasy"]:not(.theme-light) .viz-select {
+  border-radius: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+body[data-style="speakeasy"]:not(.theme-light) button:hover,
+body[data-style="speakeasy"]:not(.theme-light) .tab-btn:hover {
+  border-color: #F7E7A1;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+}
+
+body[data-style="speakeasy"]:not(.theme-light) .tab-btn.active {
+  background: #D4AF37;
+  border-color: #F7E7A1;
+  color: #0B0A08;
+}
+
+/* Golden deco sunburst rising behind the arcs, gently breathing. */
+body[data-style="speakeasy"]:not(.theme-light) .viz::before {
+  background:
+    repeating-conic-gradient(from -90deg at 50% 100%, rgba(212, 175, 55, 0.16) 0deg 4deg, transparent 4deg 12deg),
+    repeating-radial-gradient(circle at 50% 100%, transparent 0 38px, rgba(212, 175, 55, 0.12) 38px 40px);
+  animation: deco-breathe 8s ease-in-out infinite alternate;
+}
+
+@keyframes deco-breathe {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style]:not(.theme-light) .viz::before,
+  body[data-style]:not(.theme-light) .viz::after,
+  body[data-style="inferno"]:not(.theme-light) .hero-title-neon,
+  body[data-style="inferno"]:not(.theme-light) .hero-title-jukebox {
+    animation: none;
+  }
+}
+
+/* ===== Irish skin: emerald and gold, uncial lettering, drifting shamrocks ===== */
+body[data-style="irish"]:not(.theme-light) {
+  --bg: #04150D;
+  --text: #F5F0DC;
+  --text-rgb: 245, 240, 220;
+  --muted: #BFD8B8;
+  --accent: #FF883E;
+  --title-accent: #E8C15A;
+  --title-glow: rgba(232, 193, 90, 0.45);
+  --surface-panel: rgba(6, 34, 20, 0.9);
+  --surface-hero: #0B3A22;
+  --surface-control: #0F4A2B;
+  --surface-control-hover: #155C36;
+  --border-panel: rgba(232, 193, 90, 0.4);
+  --border-hero: #E8C15A;
+  --border-control: rgba(232, 193, 90, 0.5);
+  --viz-bg: radial-gradient(circle closest-side at 50% 50%, #145C35 0%, #0A3320 55%, #03140B 100%);
+  --viz-shadow: rgba(22, 155, 98, 0.35);
+  --edge-selected: #FFFFFF;
+  --beat-highlight: #FF883E;
+  --wave-1: #169B62;
+  --wave-2: #E8C15A;
+  --wave-3: #FF883E;
+  --beat-hue-start: 30;
+  --beat-hue-range: 120;
+  --beat-sat: 80%;
+  --viz-intensity: 0.85;
+  /* Gold Celtic lattice over deep emerald. */
+  background:
+    repeating-linear-gradient(45deg, transparent 0 22px, rgba(232, 193, 90, 0.07) 22px 24px),
+    repeating-linear-gradient(-45deg, transparent 0 22px, rgba(232, 193, 90, 0.07) 22px 24px),
+    radial-gradient(ellipse at 50% 0%, rgba(22, 155, 98, 0.35), transparent 60%),
+    linear-gradient(180deg, #072A18 0%, #04150D 60%, #020B06 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="irish"]:not(.theme-light) .hero,
+body[data-style="irish"]:not(.theme-light) .panel,
+body[data-style="irish"]:not(.theme-light) .viz {
+  border: 3px double #E8C15A;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 5px rgba(4, 21, 13, 0.9), inset 0 0 0 6px rgba(232, 193, 90, 0.3), 0 8px 26px rgba(0, 0, 0, 0.5);
+}
+
+body[data-style="irish"]:not(.theme-light) .hero-title {
+  border: 2px solid #E8C15A;
+  border-radius: 14px;
+  background: #0B3A22;
+  box-shadow: 0 0 0 4px #04150D, 0 0 0 5px rgba(232, 193, 90, 0.6), 0 0 18px rgba(22, 155, 98, 0.5);
+  animation: none;
+}
+
+body[data-style="irish"]:not(.theme-light) .hero-title-neon,
+body[data-style="irish"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Uncial Antiqua", serif;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: #E8C15A;
+  text-shadow: 2px 2px 0 #04150D, 0 0 12px rgba(232, 193, 90, 0.4);
+  animation: none;
+}
+
+body[data-style="irish"]:not(.theme-light) .hero-title-neon::before {
+  content: "\2618\FE0E  ";
+  color: #169B62;
+  text-shadow: 0 0 10px rgba(22, 155, 98, 0.8);
+}
+
+body[data-style="irish"]:not(.theme-light) button:hover,
+body[data-style="irish"]:not(.theme-light) .tab-btn:hover {
+  border-color: #E8C15A;
+  box-shadow: 0 0 12px rgba(232, 193, 90, 0.45);
+}
+
+body[data-style="irish"]:not(.theme-light) .tab-btn.active {
+  background: #169B62;
+  border-color: #E8C15A;
+  color: #F5F0DC;
+}
+
+body[data-style="irish"]:not(.theme-light) .viz {
+  isolation: isolate;
+}
+
+/* Shamrocks drifting up behind the arcs (inline SVG tile). */
+body[data-style="irish"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='160' viewBox='0 0 140 160'%3E%3Cg fill='%23169B62' fill-opacity='0.35'%3E%3Cg transform='translate(40 50) rotate(-15)'%3E%3Ccircle cx='0' cy='-9' r='8'/%3E%3Ccircle cx='-8' cy='4' r='8'/%3E%3Ccircle cx='8' cy='4' r='8'/%3E%3Crect x='-1.5' y='4' width='3' height='18' rx='1.5'/%3E%3C/g%3E%3Cg transform='translate(105 120) rotate(20) scale(0.6)'%3E%3Ccircle cx='0' cy='-9' r='8'/%3E%3Ccircle cx='-8' cy='4' r='8'/%3E%3Ccircle cx='8' cy='4' r='8'/%3E%3Crect x='-1.5' y='4' width='3' height='18' rx='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 140px 160px,
+    radial-gradient(circle at 50% 50%, rgba(232, 193, 90, 0.12), transparent 60%);
+  animation: shamrock-drift 22s linear infinite;
+}
+
+@keyframes shamrock-drift {
+  to { background-position: 40px -320px, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="irish"]:not(.theme-light) .viz::before {
+    animation: none;
+  }
+}
