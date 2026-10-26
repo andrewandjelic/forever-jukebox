@@ -4081,3 +4081,172 @@ body[data-style="irish"]:not(.theme-light) .viz::before {
     animation: none;
   }
 }
+
+/* ===== Jay-Z head-bob button (JayZBob.tsx) ===== */
+/* Room to scroll page content clear of the floating button. */
+#app {
+  padding-bottom: 72px;
+}
+
+.jayz {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.jayz-card {
+  width: min(260px, calc(100vw - 32px));
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 10px 30px var(--shadow-elevated);
+}
+
+.jayz-card canvas,
+.jayz-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.jayz-error {
+  margin: 0;
+  padding: 16px;
+  color: var(--muted);
+}
+
+.jayz-button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  background: var(--surface-control);
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 20px var(--shadow-elevated);
+}
+
+.jayz-button.is-on {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* ===== Tutorial (Tutorial.tsx) ===== */
+.tutorial-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border-color: var(--border-control);
+  background: var(--surface-control);
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.tutorial-button .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* Unseen: bright and slowly pulsing until the tutorial is finished or closed. */
+.tutorial-button.is-fresh {
+  color: var(--text);
+  border-color: var(--accent);
+  opacity: 1;
+  animation: tutorial-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes tutorial-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
+#tutorial-modal {
+  background: transparent;
+  align-items: flex-end;
+  padding: 24px 16px;
+}
+
+#tutorial-modal:has(.tutorial-card.is-top) {
+  align-items: flex-start;
+}
+
+.tutorial-spotlight {
+  position: fixed;
+  z-index: 19;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 24px 4px color-mix(in srgb, var(--accent) 60%, transparent),
+    0 0 0 200vmax var(--scrim);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+.tutorial-card {
+  position: relative;
+  max-width: 420px;
+  width: 100%;
+  padding: 20px 22px 16px;
+}
+
+.tutorial-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  line-height: 0;
+}
+
+.tutorial-close:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.tutorial-count {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.tutorial-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.tutorial-body {
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tutorial-next {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-button.is-fresh {
+    animation: none;
+  }
+  .tutorial-spotlight {
+    transition: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { useAppStore } from "../store";
+import { Tutorial } from "./Tutorial";
 import { TabBar } from "./TabBar";
 import { useTranslation } from "react-i18next";
 
@@ -102,6 +103,7 @@ export function Hero() {
   return (
     <header className="hero">
       <div className="hero-actions">
+        <Tutorial />
         <HeroSocials />
         <SettingsButton className="settings-button settings-button-hero" />
       </div>
