@@ -36,6 +36,14 @@ export class JukeboxController {
     this.viz.refresh();
   }
 
+  canFollowCam(index: number) {
+    return this.viz.canFollowCam(index);
+  }
+
+  setFollowCam(on: boolean) {
+    this.viz.setFollowCam(on);
+  }
+
   resizeNow() {
     this.viz.resizeNow();
   }
