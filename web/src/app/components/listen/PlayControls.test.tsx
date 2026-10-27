@@ -17,6 +17,7 @@ const h = vi.hoisted(() => ({
     getCount: vi.fn(() => 7),
     canFollowCam: vi.fn(() => false),
     setFollowCam: vi.fn(),
+    setMotion: vi.fn(),
   },
 }));
 

@@ -73,6 +73,8 @@ export function VizTop() {
     applyStyle(style);
   }, [trackId, trackGenres, trackTitle]);
 
+  // Automatic rotation/flow; layouts start static.
+  const [rotating, setRotating] = useState(false);
   // Follow cam ("ride"): flies a camera down the line on layouts that offer it.
   const [riding, setRiding] = useState(false);
   const canRide =
@@ -178,6 +180,24 @@ export function VizTop() {
             </span>
           </span>
         </label>
+        {playMode === "jukebox" && (
+          <button
+            type="button"
+            className={rotating ? "viz-ride-button is-on" : "viz-ride-button"}
+            aria-pressed={rotating}
+            title="Rotate the visualization"
+            onClick={() => {
+              const next = !rotating;
+              setRotating(next);
+              getAppContext().jukebox?.setMotion(next);
+            }}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              3d_rotation
+            </span>
+            Rotate
+          </button>
+        )}
         {canRide && (
           <button
             type="button"
