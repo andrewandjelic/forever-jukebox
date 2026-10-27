@@ -44,6 +44,10 @@ export class JukeboxController {
     this.viz.setFollowCam(on);
   }
 
+  setMotion(on: boolean) {
+    this.viz.setMotion(on);
+  }
+
   resizeNow() {
     this.viz.resizeNow();
   }

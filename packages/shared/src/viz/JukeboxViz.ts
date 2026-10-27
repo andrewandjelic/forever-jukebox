@@ -53,6 +53,17 @@ const INFINITE_TRAVEL_BEATS = 64;
 const TUMBLE_BEATS = 64;
 const TUMBLE_AXIS_DEG = 35;
 const TUMBLE_FOCAL = 3;
+// The automatic motion (tumble, ring spin, wave/infinity travel) is a
+// toggle, off by default so layouts start static. Its speed eases toward
+// on/off, keeping MOTION_EASE of the gap per 60 fps frame (~5 s to full);
+// switched off, the layout also drifts back to its static view (RETURN_EASE,
+// ~3 s).
+const MOTION_EASE = 0.99;
+// Jump flash strength (brightness, width, glow) on the flat views.
+const JUMP_FLASH_FIXED = 0.4;
+// Arc brightness on the flat views (riding has its own, RIDE_ARC_DIM).
+const FLAT_ARC_DIM = 0.7;
+const RETURN_EASE = 0.985;
 // Click-and-drag turns the layout on top of the tumble. Drags are slow
 // (radians per pixel), the view eases toward where you dragged it
 // (DRAG_EASE: share of the gap left after each 60 fps frame), and a flick
@@ -566,6 +577,9 @@ class CanvasViz {
     forward: Point3;
   } = null;
   private tumbleAngle = 0;
+  private motionOn = false;
+  // Current speed of the automatic motion, 0 (static) to 1.
+  private motionLevel = 0;
   // Shrinks the tumbled layout so wide shapes turned sideways stay in frame.
   private fitScale = 1;
   // Drag rotation: the shown angles ease toward the targets; velocity
@@ -772,6 +786,12 @@ class CanvasViz {
 
   setSelectedEdge(edge: Edge | null) {
     this.selectedEdge = edge;
+    this.drawOverlay();
+  }
+
+  // Starts (true) or stops the automatic motion, easing either way.
+  setMotion(on: boolean) {
+    this.motionOn = on;
     this.drawOverlay();
   }
 
@@ -1082,7 +1102,7 @@ class CanvasViz {
     this.drawOverlayMarkers();
     // Keep animating while audio flows or the view is being turned; markers
     // may have cancelled the frame.
-    if (wave || this.drag.moving) {
+    if (wave || this.drag.moving || this.motionSettling()) {
       this.requestOverlayAnimation();
     }
   }
@@ -1128,8 +1148,11 @@ class CanvasViz {
     // Trails keep old frames around, so dim each frame to compensate or the
     // additive blending stacks up into solid white.
     const trailDim = (1 - this.theme.trails * 0.75) * this.theme.intensity;
-    const arcAlpha = (0.55 + energy * 0.45) * trailDim;
-    const arcWidth = 1.2 + energy * 2;
+    // Flat views: calmer arcs, so the bundle at the playhead doesn't blow
+    // out to white and loud passages don't fatten every line.
+    const flat = !this.riding();
+    const arcAlpha = (0.55 + energy * 0.45) * trailDim * (flat ? FLAT_ARC_DIM : 1);
+    const arcWidth = flat ? 1 + energy : 1.2 + energy * 2;
     const playhead = this.world[this.currentIndex];
     const unit = Math.min(width, height);
     for (const [color, colorEdges] of this.edgesByColor) {
@@ -1549,7 +1572,27 @@ class CanvasViz {
       return;
     }
     const dragged = this.advanceDrag(elapsed);
-    if (!playing) {
+    const frames = elapsed / (1000 / 60);
+    const target = this.motionOn ? 1 : 0;
+    this.motionLevel += (target - this.motionLevel) * (1 - MOTION_EASE ** frames);
+    if (Math.abs(target - this.motionLevel) < 0.002) {
+      this.motionLevel = target;
+    }
+    // Switched off: drift back to the static view (the short way round).
+    const returning = !this.motionOn && this.awayFromRest();
+    if (returning) {
+      const k = 1 - RETURN_EASE ** frames;
+      const toRest = (value: number, lap: number) => {
+        const off = value > lap / 2 ? value - lap : value;
+        const next = off * (1 - k);
+        return Math.abs(next) < 1e-4 ? 0 : (next + lap) % lap;
+      };
+      this.spinAngle = toRest(this.spinAngle, Math.PI * 2);
+      this.tumbleAngle = toRest(this.tumbleAngle, Math.PI * 2);
+      this.travelPhase = toRest(this.travelPhase, 1);
+    }
+    const moving = playing && this.motionLevel > 0;
+    if (!moving && !returning) {
       if (dragged) {
         this.positions = this.placePositions();
         this.edgeGeometry = new WeakMap();
@@ -1557,16 +1600,17 @@ class CanvasViz {
       }
       return;
     }
+    const level = moving ? this.motionLevel : 0;
     if (this.spin) {
       this.spinAngle =
         (this.spinAngle +
-          (elapsed / (RING_SPIN_BEATS * this.beatMs)) * Math.PI * 2) %
+          (elapsed / (RING_SPIN_BEATS * this.beatMs)) * Math.PI * 2 * level) %
         (Math.PI * 2);
     }
     if (this.travel) {
       const { width, height } = this.size;
       this.travelPhase =
-        (this.travelPhase + elapsed / (this.travel * this.beatMs)) % 1;
+        (this.travelPhase + (elapsed / (this.travel * this.beatMs)) * level) % 1;
       this.basePositions = this.positioner(
         this.data,
         width,
@@ -1576,7 +1620,7 @@ class CanvasViz {
     }
     this.tumbleAngle =
       (this.tumbleAngle +
-        (elapsed / (TUMBLE_BEATS * this.beatMs)) * Math.PI * 2) %
+        (elapsed / (TUMBLE_BEATS * this.beatMs)) * Math.PI * 2 * level) %
       (Math.PI * 2);
     this.positions = this.placePositions();
     this.edgeGeometry = new WeakMap();
@@ -1628,6 +1672,19 @@ class CanvasViz {
       (TUMBLE_FOCAL * Math.max(width, height)) / 2,
       this.drag.yaw,
       this.drag.pitch,
+    );
+  }
+
+  private awayFromRest() {
+    return this.spinAngle !== 0 || this.tumbleAngle !== 0 || this.travelPhase !== 0;
+  }
+
+  // Whether the motion is still speeding up, slowing down or returning to
+  // the static view (keeps frames coming even while paused).
+  private motionSettling() {
+    return (
+      this.motionLevel !== (this.motionOn ? 1 : 0) ||
+      (!this.motionOn && this.awayFromRest())
     );
   }
 
@@ -1923,7 +1980,7 @@ class CanvasViz {
     const elapsed = this.ripplesAt ? Math.min(100, now - this.ripplesAt) : 0;
     this.ripplesAt = now;
     const spinRate = this.spin
-      ? (Math.PI * 2) / (RING_SPIN_BEATS * this.beatMs)
+      ? ((Math.PI * 2) / (RING_SPIN_BEATS * this.beatMs)) * this.motionLevel
       : 0;
     ctx.strokeStyle = gradient;
     ctx.lineWidth = 1.5;
@@ -1983,13 +2040,15 @@ class CanvasViz {
         const to = this.positions[this.jumpLine.to];
         if (from && to) {
           const alpha = 1 - age / 1000;
-          const jumpColor = this.resolveBeatJumpColor(alpha);
+          // Softer on the flat views; the ride view keeps the full flash.
+          const flash = this.riding() ? 1 : JUMP_FLASH_FIXED;
+          const jumpColor = this.resolveBeatJumpColor(alpha * flash);
           // Starts thick and glowing, thinning as it fades out.
-          const jumpWidth = 2 + 8 * alpha;
+          const jumpWidth = 2 + 8 * alpha * flash;
           this.overlayCtx.save();
           this.overlayCtx.lineCap = "round";
           this.overlayCtx.shadowColor = this.theme.beatHighlight;
-          this.overlayCtx.shadowBlur = 24 * alpha;
+          this.overlayCtx.shadowBlur = 24 * alpha * flash;
           if (this.shouldBendEdge(from, to, this.jumpLine.from, this.jumpLine.to)) {
             const control = this.resolveControlPointForPair(
               from,
@@ -2641,6 +2700,7 @@ export class JukeboxViz {
   private lastUpdate: LastUpdate | null = null;
   private anchorHighlightEnabled = false;
   private followCam = false;
+  private motion = false;
   private waveformSource: WaveformSource | null = null;
   private onSelectHandler: ((index: number) => void) | null = null;
   private onEdgeSelectHandler: ((edge: Edge | null) => void) | null = null;
@@ -2716,6 +2776,9 @@ export class JukeboxViz {
     if (this.followCam) {
       viz.setFollowCam(true);
     }
+    if (this.motion) {
+      viz.setMotion(true);
+    }
     return viz;
   }
 
@@ -2763,6 +2826,11 @@ export class JukeboxViz {
   setFollowCam(on: boolean) {
     this.followCam = on;
     this.activeViz?.setFollowCam(on);
+  }
+
+  setMotion(on: boolean) {
+    this.motion = on;
+    this.activeViz?.setMotion(on);
   }
 
   setWaveformSource(source: WaveformSource | null) {
