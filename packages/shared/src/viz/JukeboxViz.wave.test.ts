@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { QuantumBase } from "../engine/types";
 import {
   computeBeatColors,
+  rippleAt,
   shapeWaveform,
+  spikeWaveform,
   traceWaveCurve,
   traceWaveRing,
 } from "./JukeboxViz";
@@ -97,5 +99,36 @@ describe("waveform tracing", () => {
     expect(Math.min(...hues)).toBeGreaterThanOrEqual(8);
     expect(Math.max(...hues)).toBeLessThanOrEqual(58);
     expect(new Set(hues).size).toBeGreaterThan(2);
+  });
+});
+
+describe("rippleAt", () => {
+  it("spreads outward while its waves flatten faster than it fades", () => {
+    const young = rippleAt(200);
+    const old = rippleAt(1400);
+    expect(rippleAt(0)).toEqual({ spread: 0, amplitude: 1, alpha: 1 });
+    expect(old.spread).toBeGreaterThan(young.spread);
+    expect(old.amplitude).toBeLessThan(young.amplitude);
+    expect(old.amplitude).toBeLessThan(old.alpha);
+    expect(rippleAt(5000)).toEqual({ spread: 1, amplitude: 0, alpha: 0 });
+  });
+});
+
+describe("spikeWaveform", () => {
+  it("points every sample outward and sharpens peaks over the baseline", () => {
+    const wave = new Float32Array([0.5, -0.5, 0.5, -1, 0.2, 0, 0.25, -0.25, 0.1]);
+    const spiked = spikeWaveform(wave, 3);
+    // Block peaks 0.5 / 1 / 0.25: loudest is a full spike, quietest is flat.
+    expect(spiked[1]).toBe(1);
+    expect(spiked[2]).toBe(0);
+    expect(spiked.every((v) => v >= 0)).toBe(true);
+    // A third of the way up becomes well under a third: a spike, not a hump.
+    expect(spiked[0]).toBeLessThan(0.2);
+  });
+
+  it("still spikes when every block is loud", () => {
+    const loud = new Float32Array([0.9, -0.95, 1, 0.92, -0.9, 0.97]);
+    const spiked = spikeWaveform(loud, 1);
+    expect(Math.max(...spiked) - Math.min(...spiked)).toBeGreaterThan(0.3);
   });
 });

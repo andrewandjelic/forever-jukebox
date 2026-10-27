@@ -21,7 +21,15 @@ const WAVE_MIN_PEAK = 0.12;
 // Gentle by default so the waves add motion without hiding the jumps.
 const WAVE_ARC_MAX_PX = 8;
 const WAVE_ARC_RATIO = 0.04;
-const WAVE_RING_RATIO = 0.03;
+const WAVE_RING_RATIO = 0.08;
+// The ring is spikier than the arcs: it spans the whole analyser buffer
+// (many cycles around the loop), keeps each block's peak so transients
+// survive, and a power curve sharpens peaks into points.
+const RING_SPIKE = 1.8;
+const RING_SMOOTHING = 0.55;
+// Ripples: on each beat, a snapshot of the ring's waveform drifts outward,
+// flattening and fading as it spreads.
+const RIPPLE_LIFE_MS = 2000;
 // How much of each new frame blends into the displayed wave (lower = calmer).
 const WAVE_SMOOTHING = 0.2;
 
@@ -86,6 +94,56 @@ export function traceWaveRing(
       ctx.lineTo(x, y);
     }
   }
+}
+
+// Ring version of the waveform: the whole buffer squeezed into the ring's
+// mirrored half, max-magnitude per block (so transients survive), stretched
+// between the quietest and loudest block, rectified to push outward, and raised to a power so peaks become sharp
+// spikes over a calm baseline.
+export function spikeWaveform(
+  wave: Float32Array,
+  block = Math.max(1, Math.floor(wave.length / (WAVE_RING_POINTS / 2 + 1))),
+) {
+  const spiked = new Float32Array(Math.floor(wave.length / block));
+  let peak = 0;
+  let floor = Infinity;
+  for (let i = 0; i < spiked.length; i += 1) {
+    let max = 0;
+    for (let j = 0; j < block; j += 1) {
+      max = Math.max(max, Math.abs(wave[i * block + j]));
+    }
+    spiked[i] = max;
+    peak = Math.max(peak, max);
+    floor = Math.min(floor, max);
+  }
+  // Measured from the quietest block up, so loud, compressed music (whose
+  // block peaks are all near the top) still spikes instead of going flat.
+  const range = Math.max(WAVE_MIN_PEAK, peak - floor);
+  for (let i = 0; i < spiked.length; i += 1) {
+    spiked[i] = ((spiked[i] - floor) / range) ** RING_SPIKE;
+  }
+  return spiked;
+}
+
+// Eases a displayed wave toward each new frame instead of snapping to it
+// (k = share of the new frame; lower = calmer). Updates prev in place.
+function ease(prev: Float32Array | null, next: Float32Array, k: number) {
+  if (!prev || prev.length !== next.length) {
+    return next;
+  }
+  for (let i = 0; i < prev.length; i += 1) {
+    prev[i] += (next[i] - prev[i]) * k;
+  }
+  return prev;
+}
+
+// A ripple's state at a given age: how far it has spread (0-1 of the way to
+// the canvas corner), its share of the ring's amplitude, and its opacity.
+// Amplitude falls off faster than opacity, so ripples relax into calm circles.
+export function rippleAt(ageMs: number) {
+  const t = Math.min(1, Math.max(0, ageMs / RIPPLE_LIFE_MS));
+  const ease = 1 - (1 - t) ** 2;
+  return { spread: ease, amplitude: (1 - t) ** 3, alpha: (1 - t) ** 1.5 };
 }
 
 // Block-averages the raw analyser samples and normalizes them to the frame's
@@ -244,6 +302,9 @@ class CanvasViz {
   private waveformSource: WaveformSource | null = null;
   private beatColors: string[] = [];
   private smoothedWave: Float32Array | null = null;
+  private smoothedRing: Float32Array | null = null;
+  private ripples: Array<{ wave: Float32Array; born: number }> = [];
+  private rippleDue = false;
   // Live edges grouped by color so each frame needs one stroke per color.
   private edgesByColor = new Map<string, Edge[]>();
 
@@ -326,6 +387,7 @@ class CanvasViz {
   }
 
   update(currentIndex: number, lastJumped: boolean, previousIndex: number | null) {
+    this.rippleDue = currentIndex !== this.currentIndex;
     this.currentIndex = currentIndex;
     if (lastJumped && previousIndex !== null) {
       this.jumpLine = {
@@ -642,9 +704,13 @@ class CanvasViz {
     const ctx = this.overlayCtx;
     const { width, height } = this.size;
     const energy = wave ? Math.min(1, rms(wave) * 3) : 0;
-    const shaped = wave ? this.smoothWave(shapeWaveform(wave)) : null;
+    const shaped = wave
+      ? (this.smoothedWave = ease(this.smoothedWave, shapeWaveform(wave), WAVE_SMOOTHING))
+      : null;
     if (!wave) {
       this.smoothedWave = null;
+      this.smoothedRing = null;
+      this.ripples = [];
     }
     // Gradient axis slowly rotates so colors sweep across the arcs.
     const angle = performance.now() / 2500;
@@ -697,6 +763,13 @@ class CanvasViz {
     if (this.waveRing && this.positions.length > 0) {
       const p = this.positions[0];
       const radius = Math.hypot(p.x - this.center.x, p.y - this.center.y);
+      const ringAmplitude = radius * WAVE_RING_RATIO;
+      const ringWave = wave
+        ? (this.smoothedRing = ease(this.smoothedRing, spikeWaveform(wave), RING_SMOOTHING))
+        : null;
+      if (ringWave) {
+        this.drawRipples(ringWave, radius, ringAmplitude, reach, gradient, trailDim);
+      }
       const ring: Point[] = [];
       traceWaveRing(
         {
@@ -705,8 +778,8 @@ class CanvasViz {
         },
         this.center,
         radius,
-        shaped,
-        radius * WAVE_RING_RATIO,
+        ringWave,
+        ringAmplitude,
       );
       // Glow underlay, then the ring in each beat's color on top.
       ctx.globalAlpha = 0.6 * trailDim;
@@ -741,17 +814,40 @@ class CanvasViz {
     ctx.restore();
   }
 
-  // Eases the displayed wave toward each new frame instead of snapping to it.
-  private smoothWave(next: Float32Array) {
-    const prev = this.smoothedWave;
-    if (!prev || prev.length !== next.length) {
-      this.smoothedWave = next;
-      return next;
+  // Emits a copy of the ring's waveform on each new beat and draws the live
+  // ones growing out from the ring toward the canvas corners.
+  private drawRipples(
+    shaped: Float32Array,
+    radius: number,
+    amplitude: number,
+    reach: number,
+    gradient: CanvasGradient,
+    trailDim: number,
+  ) {
+    const ctx = this.overlayCtx;
+    const now = performance.now();
+    const newest = this.ripples[this.ripples.length - 1];
+    // A jump updates the viz twice in one beat; that's still one ripple.
+    if (this.rippleDue && (!newest || now - newest.born > 100)) {
+      this.ripples.push({ wave: shaped.slice(), born: now });
     }
-    for (let i = 0; i < prev.length; i += 1) {
-      prev[i] += (next[i] - prev[i]) * WAVE_SMOOTHING;
+    this.rippleDue = false;
+    this.ripples = this.ripples.filter((r) => now - r.born < RIPPLE_LIFE_MS);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 1.5;
+    for (const ripple of this.ripples) {
+      const state = rippleAt(now - ripple.born);
+      ctx.globalAlpha = 0.45 * state.alpha * trailDim;
+      ctx.beginPath();
+      traceWaveRing(
+        ctx,
+        this.center,
+        radius + state.spread * (reach - radius),
+        ripple.wave,
+        amplitude * state.amplitude,
+      );
+      ctx.stroke();
     }
-    return prev;
   }
 
   private drawOverlayMarkers() {
