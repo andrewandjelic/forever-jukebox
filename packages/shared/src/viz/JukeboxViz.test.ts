@@ -89,7 +89,7 @@ describe("JukeboxViz", () => {
   it("tracks available visualization layouts but mounts one active viz", () => {
     const container = createContainer();
     const viz = new JukeboxViz(container);
-    expect(viz.getCount()).toBe(6);
+    expect(viz.getCount()).toBe(7);
     expect(canvases.length).toBe(2);
   });
 

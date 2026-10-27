@@ -6,16 +6,32 @@ import { useAppStore } from "../store";
 // on a canvas; Tenor itself sends no CORS headers.
 const GIF_URL = "/api/media/jayz.gif";
 
-// Measured from the GIF: 30 frames at 70 ms; the head dips on frames 1, 8 and
-// 15, so frames 1-21 are three clean 7-frame bobs (0.49 s each).
-const FIRST_BOB_FRAME = 1;
-const BOB_FRAMES = 7;
-const BOBS_IN_CYCLE = 3;
-const NATIVE_BOB_SECONDS = BOB_FRAMES * 0.07;
+// Two clean nods, measured from the GIF (head offset in px, tracked frame by
+// frame), each listed from head up-left to head down-right. The GIF's own
+// nods are uneven (and the camera drifts), so these play forwards and back
+// instead, alternating beat by beat. Tweak the lists to change the nods.
+const NODS = [
+  [
+    { frame: 5, x: -3.5 },
+    { frame: 6, x: -0.1 },
+    { frame: 8, x: 10.1 },
+    { frame: 9, x: 17.3 },
+  ],
+  [
+    { frame: 14, x: -1.7 },
+    { frame: 15, x: 16.1 },
+    { frame: 17, x: 30.5 },
+  ],
+];
+// Rough length of a natural nod, used to pick nods per beat and as the pace
+// when there's no beat to follow.
+const NATIVE_BOB_SECONDS = 0.49;
 
-// Which GIF frame to show so every bob lands on a beat. Bobs once per beat,
-// or every other beat / twice per beat when the tempo is far from the GIF's
-// own, so it never looks frantic or sluggish.
+// Which GIF frame to show: the head is fully down (right) on each beat and
+// fully up (left) halfway between, easing like a real nod. The two nods take
+// turns, swapping at the top where both have the head in about the same
+// place. Nods once per beat, or every other beat / twice per beat when the
+// tempo is far from a natural nod, so it never looks frantic or sluggish.
 export function bobFrame(
   beatIndex: number,
   beatPhase: number,
@@ -24,16 +40,20 @@ export function bobFrame(
   const ratio = Math.round(Math.log2(beatSeconds / NATIVE_BOB_SECONDS));
   const bobsPerBeat = 2 ** Math.max(-1, Math.min(1, ratio));
   const position = (beatIndex + beatPhase) * bobsPerBeat;
-  const bob = Math.floor(position);
-  const within = Math.min(0.999, Math.max(0, position - bob));
-  return (
-    FIRST_BOB_FRAME +
-    (bob % BOBS_IN_CYCLE) * BOB_FRAMES +
-    Math.floor(within * BOB_FRAMES)
-  );
+  const nod = NODS[Math.floor(position + 0.5) % NODS.length];
+  const down = (1 + Math.cos(2 * Math.PI * position)) / 2;
+  const left = nod[0].x;
+  const x = left + down * (nod[nod.length - 1].x - left);
+  let best = nod[0];
+  for (const step of nod) {
+    if (Math.abs(step.x - x) < Math.abs(best.x - x)) {
+      best = step;
+    }
+  }
+  return best.frame;
 }
 
-// Frame to show right now: beat-synced in Jukebox mode, the GIF's own pace in
+// Frame to show right now: beat-synced in Jukebox mode, a natural pace in
 // the other modes, frozen while paused (null).
 function currentFrame(): number | null {
   const { player, engine } = getAppContext();
@@ -51,8 +71,8 @@ function currentFrame(): number | null {
       );
     }
   }
-  const cycleFrames = BOB_FRAMES * BOBS_IN_CYCLE;
-  return FIRST_BOB_FRAME + (Math.floor(performance.now() / 70) % cycleFrames);
+  const nods = performance.now() / 1000 / NATIVE_BOB_SECONDS;
+  return bobFrame(0, nods, NATIVE_BOB_SECONDS);
 }
 
 async function decodeFrames(blob: Blob): Promise<ImageBitmap[]> {
@@ -109,7 +129,7 @@ export function JayZBob() {
       }
       let shown = -1;
       const draw = () => {
-        const frame = currentFrame() ?? Math.max(shown, FIRST_BOB_FRAME);
+        const frame = currentFrame() ?? (shown >= 0 ? shown : NODS[0][0].frame);
         if (frame !== shown && frames[frame]) {
           ctx.drawImage(frames[frame], 0, 0, ctx.canvas.width, ctx.canvas.height);
           shown = frame;

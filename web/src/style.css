@@ -4250,3 +4250,27 @@ body[data-style="irish"]:not(.theme-light) .viz::before {
     transition: none;
   }
 }
+
+/* Follow cam toggle, next to the layout select (Classic and Infinite). */
+.viz-ride-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-control);
+  background: var(--surface-panel);
+  color: var(--text);
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 3px 10px 3px 7px;
+  cursor: pointer;
+}
+
+.viz-ride-button .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.viz-ride-button.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}

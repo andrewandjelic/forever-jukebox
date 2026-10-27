@@ -73,6 +73,12 @@ export function VizTop() {
     applyStyle(style);
   }, [trackId, trackGenres, trackTitle]);
 
+  // Follow cam ("ride"): flies a camera down the line on layouts that offer it.
+  const [riding, setRiding] = useState(false);
+  const canRide =
+    playMode === "jukebox" &&
+    (getAppContext().jukebox?.canFollowCam(activeVizIndex) ?? false);
+
   const vizSelectDisabled =
     !(audioLoaded && analysisLoaded) ||
     audioModePreparing ||
@@ -172,6 +178,24 @@ export function VizTop() {
             </span>
           </span>
         </label>
+        {canRide && (
+          <button
+            type="button"
+            className={riding ? "viz-ride-button is-on" : "viz-ride-button"}
+            aria-pressed={riding}
+            title="Ride the line"
+            onClick={() => {
+              const next = !riding;
+              setRiding(next);
+              getAppContext().jukebox?.setFollowCam(next);
+            }}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              videocam
+            </span>
+            Ride
+          </button>
+        )}
       </div>
       <label className="canonizer-finish">
         <input

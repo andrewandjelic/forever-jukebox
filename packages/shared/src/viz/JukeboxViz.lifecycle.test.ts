@@ -88,7 +88,7 @@ describe("JukeboxViz lifecycle", () => {
 
   it("mounts only one active visualization at a time", () => {
     const viz = new JukeboxViz(createContainer());
-    expect(viz.getCount()).toBe(6);
+    expect(viz.getCount()).toBe(7);
     expect(canvases.length).toBe(2);
   });
 

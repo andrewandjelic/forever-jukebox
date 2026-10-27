@@ -13,7 +13,11 @@ const h = vi.hoisted(() => ({
   setPlayMode: vi.fn(),
   setActiveVisualization: vi.fn(),
   setCanonizerFinish: vi.fn(),
-  jukebox: { getCount: vi.fn(() => 6) },
+  jukebox: {
+    getCount: vi.fn(() => 7),
+    canFollowCam: vi.fn(() => false),
+    setFollowCam: vi.fn(),
+  },
 }));
 
 vi.mock("../../playback", async (importOriginal) => ({
@@ -156,6 +160,7 @@ describe("VizTop", () => {
       "Classic",
       "Galaxy",
       "Grid",
+      "Hourglass",
       "Infinite",
       "Wave",
     ]);
