@@ -1592,7 +1592,9 @@ class CanvasViz {
       this.travelPhase = toRest(this.travelPhase, 1);
     }
     const moving = playing && this.motionLevel > 0;
-    if (!moving && !returning) {
+    // Riding, the camera follows the playhead every frame, motion or not.
+    const following = playing && this.riding();
+    if (!moving && !returning && !following) {
       if (dragged) {
         this.positions = this.placePositions();
         this.edgeGeometry = new WeakMap();
