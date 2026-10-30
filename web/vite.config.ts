@@ -10,15 +10,20 @@ import pkg from "./package.json";
 // Browser analysis (src/app/browser-analysis.ts) reuses the offline app's
 // engine straight from its source.
 const PWA_SRC = normalizePath(fileURLToPath(new URL("../pwa/src", import.meta.url)));
-const MADMOM_DIR = fileURLToPath(new URL("../pwa/public/madmom", import.meta.url));
+const PWA_PUBLIC = fileURLToPath(new URL("../pwa/public", import.meta.url));
+const MADMOM_DIR = join(PWA_PUBLIC, "madmom");
 const MADMOM_TYPES: Record<string, string> = {
   ".js": "text/javascript",
   ".json": "application/json",
   ".wasm": "application/wasm",
 };
+// ffmpeg.wasm's raw class worker, emitted into assets/, imports these two
+// siblings; the offline app ships them in public/assets/ for that reason.
+const FFMPEG_WORKER_SIBLINGS = ["const.js", "errors.js"];
 
 // That engine's beat-detection worker loads /madmom/* from the offline app's
-// public folder: serve it in dev and copy it into the build.
+// public folder: serve it in dev and copy it into the build, along with the
+// ffmpeg worker's siblings (only a build needs those).
 function madmomAssets(): Plugin {
   return {
     name: "madmom-assets",
@@ -35,7 +40,11 @@ function madmomAssets(): Plugin {
       });
     },
     writeBundle(options) {
-      cpSync(MADMOM_DIR, join(options.dir ?? "dist", "madmom"), { recursive: true });
+      const outDir = options.dir ?? "dist";
+      cpSync(MADMOM_DIR, join(outDir, "madmom"), { recursive: true });
+      for (const name of FFMPEG_WORKER_SIBLINGS) {
+        cpSync(join(PWA_PUBLIC, "assets", name), join(outDir, "assets", name));
+      }
     },
   };
 }
