@@ -84,6 +84,7 @@ Optional:
   instance on a local/container volume supports modest concurrency such as `6`; do not
   point multiple running app instances at the same `jobs.db`.
 - `MAX_TRACK_LENGTH`: optional; when set to a positive number (minutes), rejects jobs over that duration.
+- `MAX_UPLOAD_MB`: optional; defaults to `20` and caps the size of uploaded files.
 - `MAX_FAVORITES`: optional; defaults to `150` and controls the maximum favorites sync payload size.
 - `ALLOW_USER_UPLOAD`: optional; defaults to `false`. Set `true` to enable `/api/upload`.
 - `ALLOW_USER_URL`: optional; defaults to `false`. Set `true` to allow user-supplied URL jobs (YouTube, SoundCloud, Bandcamp).
