@@ -100,6 +100,7 @@
     "linkCopied": "Enlace copiado al portapapeles",
     "processing": "Procesando",
     "analyzing": "Analizando",
+    "analyzingInBrowser": "Analizando en tu navegador (mantén esta pestaña abierta)",
     "wrappingUp": "Terminando",
     "queuedNext": "En cola • Siguiente",
     "queuedAhead_one": "En cola • {{count}} por delante de ti",

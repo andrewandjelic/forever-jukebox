@@ -81,6 +81,8 @@ export type AppConfig = {
   allow_user_url: boolean;
   allow_favorites_sync?: boolean;
   allow_track_reports?: boolean;
+  // The server lets this browser analyze queued jobs (no analysis worker).
+  allow_client_analysis?: boolean;
   max_upload_size?: number | null;
   allowed_upload_exts?: string[] | null;
   max_track_length?: number | null;
@@ -253,6 +255,39 @@ export async function fetchAudio(jobId: string, signal?: AbortSignal) {
     throw error;
   }
   return response.arrayBuffer();
+}
+
+function clientAnalysisUrl(jobId: string, action: string) {
+  return `/api/analysis/${encodeURIComponent(jobId)}/client/${action}`;
+}
+
+export async function claimClientAnalysis(jobId: string): Promise<boolean> {
+  const data = await fetchJson(clientAnalysisUrl(jobId, "claim"), { method: "POST" });
+  return isRecord(data) && data.claimed === true;
+}
+
+export async function reportClientAnalysisProgress(jobId: string, progress: number) {
+  await fetchJson(clientAnalysisUrl(jobId, "progress"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ progress: Math.round(progress) }),
+  });
+}
+
+export async function submitClientAnalysis(jobId: string, analysis: unknown) {
+  await fetchJson(clientAnalysisUrl(jobId, "result"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(analysis),
+  });
+}
+
+export async function failClientAnalysis(jobId: string, error: string) {
+  await fetchJson(clientAnalysisUrl(jobId, "fail"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ error: error.slice(0, 500) }),
+  });
 }
 
 export async function startYoutubeAnalysis(payload: {

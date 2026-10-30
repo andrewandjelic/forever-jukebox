@@ -88,6 +88,7 @@ Optional:
 - `ALLOW_USER_UPLOAD`: optional; defaults to `false`. Set `true` to enable `/api/upload`.
 - `ALLOW_USER_URL`: optional; defaults to `false`. Set `true` to allow user-supplied URL jobs (YouTube, SoundCloud, Bandcamp).
 - `ALLOW_FAVORITES_SYNC`: optional; defaults to `false`. Set `true` to enable favorites sync endpoints.
+- `ALLOW_CLIENT_ANALYSIS`: optional; defaults to `false`. Set `true` on a local setup with no analysis worker (for example Windows without WSL): the web app then analyzes queued songs in the browser, with the offline app's engine, and the server stores the result as sent. Leave it off on a public instance.
 - `HOSTED_BY_NAME`: optional; shows an instance host credit in the web footer.
 - `HOSTED_BY_URL`: optional; links the host credit when `HOSTED_BY_NAME` is set.
 - `PORT`: optional; defaults to `8000`.

@@ -9,6 +9,7 @@ from ..admin_auth import admin_key_configured
 from ..env import env_flag, env_positive_float, env_string
 from ..favorites_config import max_favorites
 from ..models import AppConfigResponse
+from .client_analysis import client_analysis_enabled
 from .jobs_runtime import ALLOWED_UPLOAD_EXTS, MAX_UPLOAD_BYTES
 
 router = APIRouter()
@@ -25,6 +26,7 @@ def get_app_config() -> JSONResponse:
         allow_user_url=allow_user_url,
         allow_favorites_sync=env_flag("ALLOW_FAVORITES_SYNC"),
         allow_track_reports=admin_key_configured(),
+        allow_client_analysis=client_analysis_enabled(),
         max_upload_size=max_upload_size,
         allowed_upload_exts=allowed_upload_exts,
         max_track_length=env_positive_float("MAX_TRACK_LENGTH"),

@@ -391,6 +391,12 @@ export function SearchPanel() {
                   ? (appConfig?.allowed_upload_exts || []).join(",")
                   : undefined
               }
+              // Picking a file starts the upload; Load re-sends the same file.
+              onChange={(event) => {
+                if (event.target.files?.length) {
+                  void handleUploadFile();
+                }
+              }}
             />
             <button
               type="button"

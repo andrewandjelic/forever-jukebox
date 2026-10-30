@@ -95,6 +95,14 @@ class PlayCountUpdate(BaseModel):
     play_count: int
 
 
+class ClientProgressRequest(BaseModel):
+    progress: int = Field(ge=0, le=100)
+
+
+class ClientFailureRequest(BaseModel):
+    error: str = Field(max_length=500)
+
+
 # Vetted windows only: a free-form value here would be one typo from a near-total sweep.
 CleanupWindowDays = Literal[180, 270, 365]
 
@@ -160,6 +168,7 @@ class AppConfigResponse(BaseModel):
     allow_user_url: bool
     allow_favorites_sync: bool = False
     allow_track_reports: bool = False
+    allow_client_analysis: bool = False
     max_upload_size: int | None = None
     allowed_upload_exts: list[str] | None = None
     max_track_length: float | None = None

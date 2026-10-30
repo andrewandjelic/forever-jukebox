@@ -20,6 +20,10 @@ import {
   touchCachedTrack,
   updateCachedTrack,
 } from "../cache";
+import {
+  ensureBrowserAnalysis,
+  getBrowserAnalysisPercent,
+} from "../browser-analysis";
 import { ANALYSIS_POLL_INTERVAL_MS } from "../constants";
 import { formatErrorForDisplay } from "../errorDisplay";
 import i18n from "../i18n";
@@ -409,12 +413,23 @@ export async function pollAnalysis(
       }
       maybeUpdateDeleteEligibility(response, jobId);
       if (isAnalysisInProgress(response)) {
+        // With no analysis worker on the server, this tab does the analysis.
+        if (
+          response.status !== "downloading" &&
+          useAppStore.getState().appConfig?.allow_client_analysis
+        ) {
+          ensureBrowserAnalysis(jobId);
+        }
+        const browserPercent = getBrowserAnalysisPercent(jobId);
         const progress =
-          typeof response.progress === "number" ? response.progress : null;
+          browserPercent ??
+          (typeof response.progress === "number" ? response.progress : null);
         deps.setLoadingProgress(
           progress,
           () =>
-            translateJobProgress(response.status, progress, response.message),
+            browserPercent !== null
+              ? i18n.t("status.analyzingInBrowser")
+              : translateJobProgress(response.status, progress, response.message),
         );
         if (
           response.status !== "downloading" &&

@@ -598,6 +598,22 @@ def claim_job_for_download(
     return now if int(cur.rowcount or 0) == 1 else None
 
 
+def claim_job_for_client(db_path: Path, job_id: str, stale_before: str) -> bool:
+    """Hand a job to browser analysis: a queued one, or one whose progress went
+    quiet before stale_before (a closed tab). True when this caller won.
+
+    Atomic, so two tabs, or a tab and a worker, never analyze the same job.
+    """
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            "UPDATE jobs SET status = 'processing', progress = 0, error = NULL, updated_at = ? "
+            "WHERE id = ? AND (status = 'queued' OR (status = 'processing' AND updated_at < ?))",
+            (_utc_now(), job_id, stale_before),
+        )
+        conn.commit()
+    return bool(cur.rowcount)
+
+
 def recover_stalled_processing_jobs(db_path: Path) -> int:
     now = _utc_now()
     with _connect(db_path) as conn:
