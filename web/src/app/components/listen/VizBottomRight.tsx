@@ -17,6 +17,20 @@ import { toggleFullscreen } from "../../fullscreen";
 import { storeVolumePct } from "../../volume";
 import { useTranslation } from "react-i18next";
 
+// Wheel distance per 5% volume step: one mouse-wheel notch (about 100px in
+// Chrome), or a short trackpad swipe.
+const WHEEL_PX_PER_STEP = 100;
+const WHEEL_STEP_PCT = 5;
+const WHEEL_LINE_PX = 33;
+// How long the volume panel stays up after the last wheel step.
+const WHEEL_PANEL_MS = 1200;
+
+function applyVolume(pct: number) {
+  useAppStore.setState({ volumePct: pct });
+  setMasterVolume(getAppContext(), pct);
+  storeVolumePct(pct);
+}
+
 // The right-hand cluster of the viz bottom bar: playlist-open button,
 // volume panel, fullscreen toggle. Rendered into the .viz-bottom-right
 // container.
@@ -61,6 +75,43 @@ export function VizBottomRight() {
     }
   }, [isCanonizer]);
 
+  // Scrolling over the player turns the volume up or down, showing the
+  // volume panel while it changes. Ctrl+wheel stays the browser's zoom.
+  useEffect(() => {
+    const player = volumeWrapRef.current?.closest("#viz-panel");
+    if (!player) {
+      return;
+    }
+    let pending = 0;
+    let hideTimer: number | undefined;
+    const onWheel = (event: Event) => {
+      const wheel = event as WheelEvent;
+      if (wheel.ctrlKey || wheel.deltaY === 0) {
+        return;
+      }
+      wheel.preventDefault();
+      pending -= wheel.deltaMode === 1 ? wheel.deltaY * WHEEL_LINE_PX : wheel.deltaY;
+      const steps = Math.trunc(pending / WHEEL_PX_PER_STEP);
+      if (steps !== 0) {
+        pending -= steps * WHEEL_PX_PER_STEP;
+        const current = useAppStore.getState().volumePct;
+        const next = Math.max(0, Math.min(100, current + steps * WHEEL_STEP_PCT));
+        if (next !== current) {
+          applyVolume(next);
+        }
+      }
+      setPanOpen(false);
+      setVolumeOpen(true);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => setVolumeOpen(false), WHEEL_PANEL_MS);
+    };
+    player.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      player.removeEventListener("wheel", onWheel);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
   const hasTracks = hasPlaylistControls(playlist);
   const active = hasActivePlaylistControls(playlist);
   const playlistTitle = active
@@ -72,12 +123,6 @@ export function VizBottomRight() {
   const fullscreenLabel = isFullscreen
     ? t("playback.exitFullscreen")
     : t("playback.fullscreen");
-
-  const handleVolumeChange = (pct: number) => {
-    useAppStore.setState({ volumePct: pct });
-    setMasterVolume(getAppContext(), pct);
-    storeVolumePct(pct);
-  };
 
   const handleStreamPanChange = (stream: "main" | "other", pan: number) => {
     const nextMain = stream === "main" ? pan : mainPan;
@@ -213,9 +258,7 @@ export function VizBottomRight() {
               max={100}
               step={1}
               value={volumePct}
-              onChange={(event) =>
-                handleVolumeChange(Number(event.target.value))
-              }
+              onChange={(event) => applyVolume(Number(event.target.value))}
             />
             <div className="label-line">
               <span id="volume-val">{volumePct}</span>

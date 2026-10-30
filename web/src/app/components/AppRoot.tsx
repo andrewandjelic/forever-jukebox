@@ -97,6 +97,14 @@ function usePlaylistAddEnabled() {
   }, [enabled]);
 }
 
+// Body-level flag CSS uses to let the Listen tab's player fill the window.
+function useListenLayout(activeTab: string) {
+  const listening = activeTab === "play";
+  useEffect(() => {
+    document.body.classList.toggle("listen-active", listening);
+  }, [listening]);
+}
+
 function useThemeEffect() {
   const theme = useAppStore((s) => s.theme);
   useEffect(() => {
@@ -138,6 +146,7 @@ export function AppRoot() {
   useThemeEffect();
   useGlobalHotkeys();
   usePlaylistAddEnabled();
+  useListenLayout(activeTab);
   useDocumentTitle();
   return (
     <>

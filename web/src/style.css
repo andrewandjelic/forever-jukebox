@@ -2281,6 +2281,25 @@ body.playlist-add-enabled .favorite-row:focus-within .playlist-add-button {
   touch-action: manipulation;
 }
 
+/* On the Listen tab the player fills the window: the page drops its width
+   cap and the viz takes whatever height the header and footer leave. */
+body.listen-active #app {
+  max-width: none;
+}
+
+body.listen-active [data-tab-panel="play"]:not(.hidden),
+body.listen-active #viz-panel:not(.hidden) {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+body.listen-active #viz-panel .viz {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 360px;
+}
+
 #jukebox-viz.is-canonizer {
   cursor: default;
 }
