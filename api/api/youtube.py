@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from .track_scoring import rank_candidates
 from .ytdlp_config import apply_ejs_config
 
 
@@ -81,7 +82,7 @@ def search_youtube_api(
     if not video_ids:
         return []
     videos_params = {
-        "part": "contentDetails,snippet",
+        "part": "contentDetails,snippet,statistics",
         "id": ",".join(video_ids),
         "key": api_key,
     }
@@ -99,10 +100,22 @@ def search_youtube_api(
         if duration is None:
             continue
         title = (item.get("snippet") or {}).get("title") or title_map.get(vid) or "Untitled"
-        results.append({"id": vid, "title": title, "duration": duration})
-    if target_duration is not None:
-        results.sort(key=lambda item: abs(item["duration"] - target_duration))
-    return results
+        channel = (item.get("snippet") or {}).get("channelTitle") or ""
+        views = (item.get("statistics") or {}).get("viewCount")
+        results.append(
+            {
+                "id": vid,
+                "title": title,
+                "channel": channel,
+                "duration": duration,
+                "view_count": int(views) if isinstance(views, str) and views.isdigit() else views,
+            }
+        )
+    results = rank_candidates(results, query, target_duration)
+    return [
+        {"id": item["id"], "title": item["title"], "duration": item["duration"]}
+        for item in results
+    ]
 
 
 def search_youtube_ytdlp(
@@ -143,11 +156,14 @@ def search_youtube_ytdlp(
             {
                 "id": entry_id,
                 "title": format_search_title(entry),
+                "channel": entry.get("uploader") or entry.get("channel") or "",
                 "duration": entry_duration,
+                "view_count": entry.get("view_count"),
             }
         )
 
-    if target_duration is not None:
-        items.sort(key=lambda item: abs(item["duration"] - target_duration))
-
-    return items
+    items = rank_candidates(items, query, target_duration)
+    return [
+        {"id": item["id"], "title": item["title"], "duration": item["duration"]}
+        for item in items
+    ]

@@ -60,6 +60,9 @@ export type SearchResultsState =
   | {
       kind: "youtube";
       items: Array<{ item: YoutubeSearchItem; name: string; artist: string }>;
+      // Set when the plain-track scorer picked the match itself; the
+      // rendered list marks it and clicking another switches tracks.
+      autoPickedId?: string;
     };
 
 export type TopSongsListTabId = "top" | "trending" | "recent";

@@ -167,7 +167,8 @@ export async function showYoutubeMatches(
   deps: SearchDeps,
   name: string,
   artist: string,
-  duration: number
+  duration: number,
+  autoPick = false,
 ) {
   const query = artist ? `${artist} - ${name}` : name;
   deps.navigateToTab("search", { replace: true });
@@ -180,9 +181,25 @@ export async function showYoutubeMatches(
       setSearchHint(DEFAULT_SEARCH_HINT);
       return;
     }
+    const top = ytItems[0];
+    const autoPickedId =
+      autoPick && top?.id ? String(top.id) : undefined;
+    if (autoPickedId) {
+      // The api ranked the plain studio audio first, so start on it without
+      // waiting for a click. selectYoutubeMatch's flow clears the search
+      // results synchronously -- the list is written after the call so it
+      // survives as the click-to-switch escape hatch.
+      selectYoutubeMatch(_context, deps, {
+        youtubeId: autoPickedId,
+        name,
+        artist,
+        duration: typeof top.duration === "number" ? top.duration : 0,
+      });
+    }
     setSearchResults({
       kind: "youtube",
       items: ytItems.map((item) => ({ item, name, artist })),
+      ...(autoPickedId ? { autoPickedId } : {}),
     });
   } catch (err) {
     setSearchMessage(() =>
@@ -390,7 +407,7 @@ export function selectSpotifyMatch(
       deps.setAnalysisStatus(() => i18n.t("search.noDuration"), false);
       return;
     }
-    showYoutubeMatches(context, deps, name, artist, duration).catch((err) => {
+    showYoutubeMatches(context, deps, name, artist, duration, true).catch((err) => {
       setSearchMessage(() =>
         i18n.t("search.youtubeSearchFailed", {
           error: formatErrorForDisplay(err),

@@ -57,6 +57,8 @@
     "spotifyNone": "Keine Spotify-Ergebnisse gefunden.",
     "youtubeSearching": "YouTube wird nach Treffern durchsucht...",
     "youtubeNone": "Keine YouTube-Treffer gefunden.",
+    "autoPicked": "automatisch gewählt",
+    "autoPickedNote": "Der beste Treffer wurde automatisch über die Audio-Rangfolge gewählt — wähle einen anderen, um zu wechseln.",
     "checkingExisting": "Vorhandene Analyse wird geprüft...",
     "enterQuery": "Gib einen Suchbegriff ein.",
     "searchFailed": "Suche fehlgeschlagen: {{error}}",

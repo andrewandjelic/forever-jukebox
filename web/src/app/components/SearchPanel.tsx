@@ -108,6 +108,11 @@ function SearchResults() {
   }
   return (
     <div className="search-results" id="search-results">
+      {results.autoPickedId ? (
+        <p className="search-autopick-note">
+          {t("search.autoPickedNote")}
+        </p>
+      ) : null}
       <ol className="search-list" aria-label={t("search.resultsLabel")}>
         {results.items.map(({ item, name, artist }) => {
           const title =
@@ -115,6 +120,8 @@ function SearchResults() {
           const ytDuration =
             typeof item.duration === "number" ? item.duration : 0;
           const youtubeId = item.id ? String(item.id) : "";
+          const autoPicked =
+            Boolean(results.autoPickedId) && youtubeId === results.autoPickedId;
           return (
             <li key={youtubeResultKey(item, name, artist, ytDuration)}>
               <div className="search-item">
@@ -137,6 +144,11 @@ function SearchResults() {
                   <span>{formatTrackDuration(item.duration)}</span>
                 </button>
                 <span className="search-meta">
+                  {autoPicked ? (
+                    <span className="search-autopick-badge">
+                      {t("search.autoPicked")}
+                    </span>
+                  ) : null}
                   {item.id ? (
                     <YoutubePreviewButton
                       onOpen={() => {

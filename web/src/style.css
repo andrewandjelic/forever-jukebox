@@ -2039,6 +2039,21 @@ body.playlist-add-enabled .favorite-row:focus-within .playlist-add-button {
   gap: 8px;
 }
 
+.search-autopick-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search-autopick-badge {
+  color: var(--accent);
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .saved-playlist-button {
   border-radius: 8px;
   padding: 8px 10px;

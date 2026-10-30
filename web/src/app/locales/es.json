@@ -57,6 +57,8 @@
     "spotifyNone": "No se encontraron resultados en Spotify.",
     "youtubeSearching": "Buscando coincidencias en YouTube...",
     "youtubeNone": "No se encontraron coincidencias en YouTube.",
+    "autoPicked": "elegido automáticamente",
+    "autoPickedNote": "Se eligió automáticamente la mejor coincidencia por ranking de audio — elige otra para cambiar.",
     "checkingExisting": "Comprobando si ya existe un análisis...",
     "enterQuery": "Escribe una búsqueda.",
     "searchFailed": "La búsqueda falló: {{error}}",

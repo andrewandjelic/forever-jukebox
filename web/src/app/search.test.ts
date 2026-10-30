@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppContext } from "./context";
 import type { SearchDeps } from "./search";
 import {
+  selectSpotifyMatch,
   showYoutubeMatches,
   startYoutubeAnalysisFlow,
   tryLoadExistingTrackByName,
@@ -296,5 +297,80 @@ describe("search flows", () => {
         },
       ],
     });
+  });
+
+  it("auto-picks the top match, starts it, and keeps the list as the override", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "yt-plain", title: "Official Audio", duration: 123 },
+      { id: "yt-video", title: "Official Video", duration: 123 },
+    ]);
+    (api.startYoutubeAnalysis as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "job-auto",
+      status: "queued",
+    });
+
+    await showYoutubeMatches(context, deps, "Song", "Artist", 123, true);
+    // the flow runs fire-and-forget; one macrotask tick drains its awaits
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.startYoutubeAnalysis).toHaveBeenCalledWith({
+      youtube_id: "yt-plain",
+      title: "Song",
+      artist: "Artist",
+    });
+    expect(deps.pollAnalysis).toHaveBeenCalledWith("job-auto");
+    const results = useAppStore.getState().searchResults;
+    expect(results.kind).toBe("youtube");
+    if (results.kind === "youtube") {
+      expect(results.autoPickedId).toBe("yt-plain");
+      expect(results.items).toHaveLength(2);
+    }
+  });
+
+  it("does not auto-pick when no candidate has an id", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { title: "No id", duration: 123 },
+    ]);
+
+    await showYoutubeMatches(context, deps, "Song", "Artist", 123, true);
+
+    expect(api.startYoutubeAnalysis).not.toHaveBeenCalled();
+    const results = useAppStore.getState().searchResults;
+    expect(results.kind).toBe("youtube");
+    if (results.kind === "youtube") {
+      expect(results.autoPickedId).toBeUndefined();
+    }
+  });
+
+  it("spotify selection auto-starts the top-ranked match when no analysis exists", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.fetchJobByTrack as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "yt-plain", title: "Topic Upload", duration: 200 },
+    ]);
+    (api.startYoutubeAnalysis as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "job-flow",
+      status: "queued",
+    });
+
+    await selectSpotifyMatch(context, deps, {
+      name: "Song",
+      artist: "Artist",
+      duration: 200,
+    });
+    // selectSpotifyMatch chains fire-and-forget promises internally
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.startYoutubeAnalysis).toHaveBeenCalledWith({
+      youtube_id: "yt-plain",
+      title: "Song",
+      artist: "Artist",
+    });
+    expect(deps.pollAnalysis).toHaveBeenCalledWith("job-flow");
   });
 });
