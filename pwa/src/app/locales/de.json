@@ -40,6 +40,23 @@
     "deleteTitle": "Gecachte Analyse löschen",
     "cachedTrack": "Gecachter Track {{id}}"
   },
+  "library": {
+    "title": "Bibliothek",
+    "hint": "Songs in {{folder}}. Jede Analyse wird neben ihrem Song gespeichert, daher wird jeder Song nur einmal analysiert.",
+    "choose": "Musikordner wählen",
+    "chooseHint": "Wähle einen Ordner für deine Musik. Die Analyse jedes Songs wird dort als Datei gespeichert, und hineingezogene Songs werden ebenfalls dorthin kopiert.",
+    "reconnect": "Erneut verbinden",
+    "reconnectHint": "Erlaube erneut den Zugriff auf {{folder}}, um deine Bibliothek zu laden.",
+    "refresh": "Aktualisieren",
+    "change": "Ordner wechseln",
+    "loading": "Bibliothek wird geladen...",
+    "empty": "In diesem Ordner sind noch keine Audiodateien.",
+    "loadFailed": "Der Musikordner konnte nicht gelesen werden.",
+    "analyzed": "Analysiert",
+    "notAnalyzed": "Noch nicht analysiert",
+    "playNamed": "{{label}} abspielen",
+    "openFailed": "{{name}} konnte nicht geöffnet werden."
+  },
   "analysis": {
     "progress": "Analysefortschritt",
     "progressPercent": "Analysefortschritt: {{percent}}%",

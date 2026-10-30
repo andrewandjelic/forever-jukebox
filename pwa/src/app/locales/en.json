@@ -40,6 +40,23 @@
     "deleteTitle": "Delete cached analysis",
     "cachedTrack": "Cached track {{id}}"
   },
+  "library": {
+    "title": "Library",
+    "hint": "Songs in {{folder}}. Each analysis is saved beside its song, so a song is only analyzed once.",
+    "choose": "Choose music folder",
+    "chooseHint": "Pick a folder for your music. Each song's analysis is saved there as a file, and songs you drop in are copied there too.",
+    "reconnect": "Reconnect",
+    "reconnectHint": "Allow access to {{folder}} again to load your library.",
+    "refresh": "Refresh",
+    "change": "Change folder",
+    "loading": "Loading library...",
+    "empty": "No audio files in this folder yet.",
+    "loadFailed": "Unable to read the music folder.",
+    "analyzed": "Analyzed",
+    "notAnalyzed": "Not analyzed yet",
+    "playNamed": "Play {{label}}",
+    "openFailed": "Unable to open {{name}}."
+  },
   "analysis": {
     "progress": "Analysis Progress",
     "progressPercent": "Analysis Progress: {{percent}}%",

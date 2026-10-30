@@ -40,6 +40,23 @@
     "deleteTitle": "Borrar análisis del caché",
     "cachedTrack": "Pista en caché {{id}}"
   },
+  "library": {
+    "title": "Biblioteca",
+    "hint": "Canciones en {{folder}}. Cada análisis se guarda junto a su canción, así que cada canción se analiza una sola vez.",
+    "choose": "Elegir carpeta de música",
+    "chooseHint": "Elige una carpeta para tu música. El análisis de cada canción se guarda allí como archivo, y las canciones que sueltes también se copian allí.",
+    "reconnect": "Volver a conectar",
+    "reconnectHint": "Vuelve a permitir el acceso a {{folder}} para cargar tu biblioteca.",
+    "refresh": "Actualizar",
+    "change": "Cambiar carpeta",
+    "loading": "Cargando biblioteca...",
+    "empty": "Todavía no hay archivos de audio en esta carpeta.",
+    "loadFailed": "No fue posible leer la carpeta de música.",
+    "analyzed": "Analizada",
+    "notAnalyzed": "Sin analizar",
+    "playNamed": "Reproducir {{label}}",
+    "openFailed": "No fue posible abrir {{name}}."
+  },
   "analysis": {
     "progress": "Progreso del Análisis",
     "progressPercent": "Progreso del Análisis: {{percent}}%",
