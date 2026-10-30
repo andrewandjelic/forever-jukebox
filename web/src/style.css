@@ -3451,6 +3451,11 @@ body.is-file-dragging::after {
   pointer-events: none;
 }
 
+/* While a song plays, drops go to the playlist instead of interrupting it. */
+body.is-file-dragging.is-file-queueing::after {
+  content: "Drop songs to add them to the playlist";
+}
+
 /* Shared: styles that paint layers behind the arcs need .viz to isolate them. */
 body[data-style="street"]:not(.theme-light) .viz,
 body[data-style="celestial"]:not(.theme-light) .viz,

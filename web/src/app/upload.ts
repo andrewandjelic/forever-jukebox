@@ -1,6 +1,8 @@
 import type { AppContext } from "./context";
 import { trackEvent } from "./analytics";
 import { startUrlAnalysis, uploadAudio } from "./api";
+import { ensureBrowserAnalysis } from "./browser-analysis";
+import { addToPlaylist } from "./playlist-actions";
 import { getLoadGeneration, isStaleLoad, resetForNewTrack } from "./playback";
 import { useAppStore } from "./store";
 import {
@@ -106,20 +108,17 @@ export function normalizeSupportedSourceUrl(value: string) {
   return url.toString();
 }
 
-export async function uploadAudioFile(
-  deps: UploadDeps,
-  file: File | null | undefined,
-  onAccepted?: () => void,
-) {
-  const { context } = deps;
+// The client-side checks before an upload; shows a toast and resolves false
+// when the file cannot be uploaded.
+async function checkUploadable(file: File | null | undefined): Promise<boolean> {
   const config = useAppStore.getState().appConfig;
   if (!config?.allow_user_upload) {
     showToast(i18n.t("upload.disabled"));
-    return;
+    return false;
   }
   if (!file) {
     showToast(i18n.t("upload.chooseFile"));
-    return;
+    return false;
   }
   if (config.max_upload_size && file.size > config.max_upload_size) {
     showToast(
@@ -127,7 +126,7 @@ export async function uploadAudioFile(
         size: Math.round(config.max_upload_size / (1024 * 1024)),
       }),
     );
-    return;
+    return false;
   }
   const maxTrackLengthMinutes = config.max_track_length;
   if (
@@ -145,8 +144,21 @@ export async function uploadAudioFile(
         icon: "error",
         tone: "error",
       });
-      return;
+      return false;
     }
+  }
+  return true;
+}
+
+export async function uploadAudioFile(
+  deps: UploadDeps,
+  file: File | null | undefined,
+  onAccepted?: () => void,
+) {
+  const { context } = deps;
+  const config = useAppStore.getState().appConfig;
+  if (!(await checkUploadable(file)) || !file) {
+    return;
   }
   try {
     const generation = getLoadGeneration();
@@ -339,6 +351,42 @@ export function uploadFile(
   }
   trackEvent("upload", { method: "file" });
   return uploadAudioFile(uploadDeps, file, onAccepted);
+}
+
+// Adds a song to the playlist without touching what is playing: it uploads
+// (and, with browser analysis, gets analyzed) in the background.
+export async function queueUploadFile(file: File): Promise<void> {
+  if (!(await checkUploadable(file))) {
+    return;
+  }
+  trackEvent("upload", { method: "file_queued" });
+  try {
+    const response = await uploadAudio(file);
+    if (!response?.id) {
+      throw new Error("Upload failed");
+    }
+    addToPlaylist(
+      {
+        id: response.id,
+        sourceType: "upload",
+        title: file.name || i18n.t("common.untitled"),
+        artist: "",
+        duration: null,
+        tuningParams: null,
+      },
+      "drop",
+    );
+    if (useAppStore.getState().appConfig?.allow_client_analysis) {
+      ensureBrowserAnalysis(response.id);
+    }
+  } catch (err) {
+    showToast(i18n.t("upload.failedWithError", {
+      error: formatErrorForDisplay(err),
+    }), {
+      icon: "error",
+      tone: "error",
+    });
+  }
 }
 
 export function uploadUrl(raw: string, onAccepted?: () => void): Promise<void> {
