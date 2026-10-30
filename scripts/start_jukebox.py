@@ -133,6 +133,8 @@ def start_server(port: int) -> subprocess.Popen:
         ALLOW_USER_UPLOAD="true",
         ALLOW_USER_URL="true",
         ALLOW_CLIENT_ANALYSIS="true",
+        # Lets Settings > Spotify save keys into api/.env (local requests only).
+        ALLOW_LOCAL_SETTINGS="true",
     )
     env.setdefault("MAX_UPLOAD_MB", "200")
     return subprocess.Popen(

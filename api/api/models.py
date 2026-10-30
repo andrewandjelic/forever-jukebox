@@ -99,6 +99,11 @@ class ClientProgressRequest(BaseModel):
     progress: int = Field(ge=0, le=100)
 
 
+class SpotifyCredentials(BaseModel):
+    client_id: str = Field(max_length=200)
+    client_secret: str = Field(max_length=200)
+
+
 class ClientFailureRequest(BaseModel):
     error: str = Field(max_length=500)
 
@@ -169,6 +174,8 @@ class AppConfigResponse(BaseModel):
     allow_favorites_sync: bool = False
     allow_track_reports: bool = False
     allow_client_analysis: bool = False
+    allow_local_settings: bool = False
+    spotify_configured: bool = False
     max_upload_size: int | None = None
     allowed_upload_exts: list[str] | None = None
     max_track_length: float | None = None

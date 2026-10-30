@@ -13,6 +13,7 @@ import { useAppStore } from "../store";
 import type { ThemeName } from "../themeConfig";
 import { showToast } from "../ui";
 import { Modal } from "./Modal";
+import { SpotifySettings } from "./SpotifySettings";
 
 function valueForDuration(durationMs: number | null) {
   return durationMs === null ? "off" : String(durationMs);
@@ -345,6 +346,8 @@ export function SettingsModal() {
           <div className="label-line">{t("settings.cachedAudio")}</div>
           <CachedAudioClearButton open={open} />
         </section>
+
+        <SpotifySettings />
       </div>
     </Modal>
   );

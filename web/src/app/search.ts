@@ -314,6 +314,31 @@ export async function tryLoadExistingTrackByName(
   }
 }
 
+// Without Spotify keys, search YouTube itself: the api ranks plain studio
+// audio first, and picking a result analyzes it under the video's title.
+async function searchYoutubeDirect(query: string) {
+  setSearchMessage(() => i18n.t("search.youtubeSearching"));
+  try {
+    const items = await searchYoutube(query, null);
+    if (items.length === 0) {
+      setSearchMessage(() => i18n.t("search.youtubeNone"));
+      return;
+    }
+    setSearchResults({
+      kind: "youtube",
+      items: items.map((item) => ({
+        item,
+        name: item.title ?? i18n.t("common.untitled"),
+        artist: "",
+      })),
+    });
+  } catch (err) {
+    setSearchMessage(() =>
+      i18n.t("search.youtubeSearchFailed", { error: formatErrorForDisplay(err) }),
+    );
+  }
+}
+
 export async function runSearch(_context: AppContext, _deps: SearchDeps) {
   const query = useAppStore.getState().searchQuery.trim().slice(0, 100);
   if (useAppStore.getState().searchQuery !== query) {
@@ -324,8 +349,12 @@ export async function runSearch(_context: AppContext, _deps: SearchDeps) {
     return;
   }
   trackEvent("search", { search_term: query });
-  setSearchMessage(() => i18n.t("search.spotifySearching"));
   setSearchHint(DEFAULT_SEARCH_HINT);
+  if (useAppStore.getState().appConfig?.spotify_configured === false) {
+    await searchYoutubeDirect(query);
+    return;
+  }
+  setSearchMessage(() => i18n.t("search.spotifySearching"));
   try {
     const items = await searchSpotify(query);
     if (items.length === 0) {

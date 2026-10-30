@@ -31,16 +31,18 @@ web browser.
 
    The first start sets everything up and takes about 5 to 10 minutes. After
    that it starts in seconds.
-3. **Play.** The jukebox opens in your browser. Drag a song file (MP3, M4A,
-   WAV, FLAC and more) onto the page, or paste a YouTube link under
-   **Search**, then **Upload**. Keep the page open while a new song is
-   analyzed; that takes a minute or two. Songs you have played are listed
-   under **Top Tracks** next time.
+3. **Play.** The jukebox opens in your browser. Search for a song under
+   **Search** and pick a result, drag a song file (MP3, M4A, WAV, FLAC and
+   more) onto the page, or paste a YouTube link under **Search**, then
+   **Upload**. Keep the page open while a new song is analyzed; that takes a
+   minute or two. Songs you have played are listed under **Top Tracks** next
+   time.
 
 To stop the jukebox, close its window (the black one Start Jukebox opened).
 Everything stays on your computer; added songs are kept in the `api/storage`
-folder. The Spotify search needs API keys (see Docker below), so add songs by
-file or link instead.
+folder. Search looks on YouTube; for exact title and artist matches, connect
+a free Spotify developer app under **Settings** (the gear), which walks you
+through it.
 
 If you don't have them yet, the installers are at
 [python.org](https://www.python.org/downloads/) and
@@ -126,6 +128,7 @@ Optional:
   point multiple running app instances at the same `jobs.db`.
 - `MAX_TRACK_LENGTH`: optional; when set to a positive number (minutes), rejects jobs over that duration.
 - `MAX_UPLOAD_MB`: optional; defaults to `20` and caps the size of uploaded files.
+- `ALLOW_LOCAL_SETTINGS`: optional; defaults to `false`. Set `true` on a local jukebox to let **Settings** save Spotify keys into `api/.env` (requests from the same computer only). Without Spotify keys, search uses YouTube directly. Start Jukebox turns this on; leave it off on a public instance.
 - `MAX_FAVORITES`: optional; defaults to `150` and controls the maximum favorites sync payload size.
 - `ALLOW_USER_UPLOAD`: optional; defaults to `false`. Set `true` to enable `/api/upload`.
 - `ALLOW_USER_URL`: optional; defaults to `false`. Set `true` to allow user-supplied URL jobs (YouTube, SoundCloud, Bandcamp).

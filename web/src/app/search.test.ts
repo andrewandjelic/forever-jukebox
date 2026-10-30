@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppContext } from "./context";
 import type { SearchDeps } from "./search";
+import type { AppConfig } from "./api";
 import {
+  runSearch,
   selectSpotifyMatch,
   showYoutubeMatches,
   startYoutubeAnalysisFlow,
@@ -12,6 +14,7 @@ import { setWindowUrl } from "./__tests__/test-utils";
 
 vi.mock("./api", () => ({
   fetchJobByTrack: vi.fn(),
+  searchSpotify: vi.fn(),
   searchYoutube: vi.fn(),
   startYoutubeAnalysis: vi.fn(),
 }));
@@ -372,5 +375,47 @@ describe("search flows", () => {
       artist: "Artist",
     });
     expect(deps.pollAnalysis).toHaveBeenCalledWith("job-flow");
+  });
+});
+
+describe("search source", () => {
+  const youtubeItem = {
+    id: "yt-1",
+    title: "Tame Impala - Let It Happen (Official Audio)",
+    duration: 467,
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api = await import("./api");
+    vi.mocked(api.searchYoutube).mockResolvedValue([youtubeItem]);
+    vi.mocked(api.searchSpotify).mockResolvedValue([]);
+  });
+
+  const search = (config: Partial<AppConfig>) => {
+    useAppStore.setState({
+      appConfig: { allow_user_upload: true, allow_user_url: true, ...config },
+      searchQuery: "let it happen",
+    });
+    return runSearch(createContext(), createDeps());
+  };
+
+  it("searches YouTube directly when Spotify is not connected", async () => {
+    await search({ spotify_configured: false });
+
+    expect(api.searchYoutube).toHaveBeenCalledWith("let it happen", null);
+    expect(api.searchSpotify).not.toHaveBeenCalled();
+    expect(useAppStore.getState().searchResults).toEqual({
+      kind: "youtube",
+      items: [{ item: youtubeItem, name: youtubeItem.title, artist: "" }],
+    });
+    expect(useAppStore.getState().searchHint()).toContain("Search YouTube");
+  });
+
+  it("searches Spotify first once it is connected", async () => {
+    await search({ spotify_configured: true });
+
+    expect(api.searchSpotify).toHaveBeenCalledWith("let it happen");
+    expect(api.searchYoutube).not.toHaveBeenCalled();
   });
 });

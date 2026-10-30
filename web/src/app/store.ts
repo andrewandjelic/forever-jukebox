@@ -80,7 +80,11 @@ export type TopSongsListState =
   | { kind: "loaded"; items: TopSongsItem[] };
 
 export const DEFAULT_SEARCH_HINT: LocalizedText = () =>
-  i18n.t("search.hintStep1");
+  i18n.t(
+    useAppStore.getState().appConfig?.spotify_configured === false
+      ? "search.hintYoutube"
+      : "search.hintStep1",
+  );
 export const DEFAULT_SEARCH_RESULTS: SearchResultsState = {
   kind: "message",
   text: () => i18n.t("search.resultsEmpty"),

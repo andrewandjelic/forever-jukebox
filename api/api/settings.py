@@ -27,6 +27,11 @@ def load_settings() -> ApiSettings:
     )
 
 
+def spotify_configured() -> bool:
+    settings = load_settings()
+    return bool(settings.spotify_client_id and settings.spotify_client_secret)
+
+
 def _env_int(key: str, default: int) -> int:
     value = os.environ.get(key)
     if value is None:

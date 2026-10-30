@@ -9,7 +9,9 @@ from ..admin_auth import admin_key_configured
 from ..env import env_flag, env_positive_float, env_string
 from ..favorites_config import max_favorites
 from ..models import AppConfigResponse
+from ..settings import spotify_configured
 from .client_analysis import client_analysis_enabled
+from .local_settings import local_settings_enabled
 from .jobs_runtime import ALLOWED_UPLOAD_EXTS, max_upload_bytes
 
 router = APIRouter()
@@ -27,6 +29,8 @@ def get_app_config() -> JSONResponse:
         allow_favorites_sync=env_flag("ALLOW_FAVORITES_SYNC"),
         allow_track_reports=admin_key_configured(),
         allow_client_analysis=client_analysis_enabled(),
+        allow_local_settings=local_settings_enabled(),
+        spotify_configured=spotify_configured(),
         max_upload_size=max_upload_size,
         allowed_upload_exts=allowed_upload_exts,
         max_track_length=env_positive_float("MAX_TRACK_LENGTH"),
