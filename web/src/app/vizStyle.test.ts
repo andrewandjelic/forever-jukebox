@@ -38,6 +38,15 @@ describe("styleForGenres", () => {
     expect(styleForGenres(g(["Electronic---Dubstep", 0.5]))).toBe("inferno");
   });
 
+  it("gives reggae, dub, drum'n'bass and jungle the Irie sound-system style", () => {
+    expect(styleForGenres(g(["Reggae---Roots Reggae", 0.4], ["Reggae---Dub", 0.2]))).toBe("irie");
+    expect(styleForGenres(g(["Electronic---Drum n Bass", 0.5], ["Electronic---Jungle", 0.2]))).toBe("irie");
+    expect(styleForGenres(g(["Hip Hop---Ragga HipHop", 0.4]))).toBe("irie");
+    // Dub techno stays Doom, dubstep stays Inferno.
+    expect(styleForGenres(g(["Electronic---Dub Techno", 0.5]))).toBe("doom");
+    expect(styleForGenres(g(["Electronic---Dubstep", 0.5]))).toBe("inferno");
+  });
+
   it("adds up related styles, so several weaker matches can beat one stronger", () => {
     // Smuglianka: Opera alone outscores Military, but Military + Marches win.
     expect(styleForGenres(g(["Classical---Opera", 0.21], ["Brass & Military---Military", 0.2], ["Brass & Military---Marches", 0.15]))).toBe("soviet");

@@ -13,6 +13,7 @@ export const VIZ_STYLES = [
   "inferno",
   "doom",
   "moth",
+  "irie",
   "bubblegum",
   "speakeasy",
   "irish",
@@ -30,6 +31,7 @@ export const VIZ_STYLE_LABELS: Record<VizStyle, string> = {
   inferno: "Inferno · Metal / Heavy bass",
   doom: "Doom · Dark techno / Metal / Goth",
   moth: "Moth · Dream pop / Shoegaze / Indie",
+  irie: "Irie · Reggae / Dub / DnB / Jungle",
   bubblegum: "Bubblegum · Pop",
   speakeasy: "Speakeasy · Jazz / Soul",
   irish: "Irish · Celtic / Trad",
@@ -48,15 +50,16 @@ const GENRE_RULES: Array<[RegExp, VizStyle]> = [
   [/Dream Pop|Shoegaze|Ethereal|Indie Rock|Indie Pop|Lo-Fi|Emo/, "moth"],
   [/Psychedelic|Space Rock|Krautrock|Stoner/, "psychedelic"],
   [/Happy Hardcore|Dance-pop|Bubblegum|Europop|K-pop|J-pop|Teen Pop|Synth-pop|Eurodance/, "bubblegum"],
+  [/^Reggae|Ragga|Electronic---Dub$|Drum n Bass|Jungle|Bassline|UK Garage|Speed Garage/, "irie"],
   [/^Hip Hop|Grime|Trap|Drill/, "street"],
   [/Techno|Industrial|EBM|Power Electronics|Rhythmic Noise|Darkwave|Coldwave|Goth|Deathrock|Dark Ambient|Black Metal|Doom Metal|Death Metal|Deathcore|Sludge Metal|Post-Metal/, "doom"],
-  [/Metal|Dubstep|Grindcore|Industrial|Drum n Bass|Breakcore|Noise|Hard Rock|Punk|Gabber|Speedcore/, "inferno"],
+  [/Metal|Dubstep|Grindcore|Industrial|Breakcore|Noise|Hard Rock|Punk|Gabber|Speedcore/, "inferno"],
   [/Ambient|Downtempo|New Age|Drone|^Classical|Score|Soundtrack|Post-Rock/, "celestial"],
   [/^Folk, World, & Country|Country|Bluegrass|Folk Rock|Americana/, "rustic"],
   [/^Jazz|^Funk \/ Soul|^Blues|Swing|Lounge/, "speakeasy"],
   [/^Rock/, "psychedelic"],
   [/^Electronic/, "cyberpunk"],
-  [/^Pop|^Latin|^Reggae/, "bubblegum"],
+  [/^Pop|^Latin/, "bubblegum"],
 ];
 
 // Unmistakable names in the title/artist beat the audio's genre (a trap remix
@@ -131,10 +134,12 @@ export function saveTrackStyle(trackId: string | null, style: VizStyle) {
 }
 
 // Styles whose visualizer pulses on the beat (see beatPound.ts), and how long
-// each pulse takes to fade: a hard pound for Doom, a slow bloom for Moth.
+// each pulse takes to fade: a hard pound for Doom, a slow bloom for Moth, a
+// sound-system bass thump for Irie.
 const BEAT_PULSE_DECAY: Partial<Record<VizStyle, number>> = {
   doom: 0.12,
   moth: 0.45,
+  irie: 0.2,
 };
 
 export function applyStyle(style: VizStyle) {

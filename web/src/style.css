@@ -4469,6 +4469,157 @@ body[data-style="moth"]:not(.theme-light) .viz-layer {
   }
 }
 
+/* ===== Irie skin: a sound system in a smoky yard, for reggae, dub, dancehall,
+   drum'n'bass and jungle. Red, gold and green on smoky black; strands leave
+   dub-echo trails; leaves and smoke drift behind the arcs; the speaker cone
+   rings push out with the bass (beatPound.ts, 0.2 s decay). ===== */
+body[data-style="irie"]:not(.theme-light) {
+  --bg: #0A0D09;
+  --text: #F4EFD8;
+  --text-rgb: 244, 239, 216;
+  --muted: #B9C2A6;
+  --accent: #FCD116;
+  --title-accent: #FCD116;
+  --title-glow: rgba(252, 209, 22, 0.4);
+  --surface-panel: rgba(14, 18, 12, 0.88);
+  --surface-hero: rgba(16, 21, 14, 0.9);
+  --surface-control: #18200F;
+  --surface-control-hover: #24301A;
+  --border-panel: rgba(252, 209, 22, 0.2);
+  --border-hero: rgba(252, 209, 22, 0.32);
+  --border-control: rgba(252, 209, 22, 0.28);
+  /* One layer only: the tricolour border below paints underneath it. */
+  --viz-bg: radial-gradient(ellipse at 50% 48%, #1C2617 0%, #0D120B 58%, #050705 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.8);
+  --edge-selected: #FCD116;
+  --beat-highlight: #FFFFFF;
+  --wave-1: #2FB44B;
+  --wave-2: #F7C948;
+  --wave-3: #E8392B;
+  --beat-colors: #2FB44B, #9BCB3B, #F7C948, #F08A24, #E8392B;
+  --beat-spread: even;
+  /* Dub echo. */
+  --viz-trails: 0.55;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(47, 180, 75, 0.18), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 57, 43, 0.16), transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(252, 209, 22, 0.1), transparent 55%),
+    #0A0D09;
+  background-attachment: fixed;
+}
+
+body[data-style="irie"]:not(.theme-light) .hero,
+body[data-style="irie"]:not(.theme-light) .panel {
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+body[data-style="irie"]:not(.theme-light) .hero-title {
+  border: 2px solid #FCD116;
+  border-radius: 12px;
+  box-shadow: 0 0 16px rgba(252, 209, 22, 0.3), inset 0 0 12px rgba(47, 180, 75, 0.25);
+}
+
+/* Chunky sound-system lettering striped green, gold and red. */
+body[data-style="irie"]:not(.theme-light) .hero-title-neon,
+body[data-style="irie"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Bungee", sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #3FCB5A 0 34%, #FCD116 34% 67%, #E8392B 67%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(252, 209, 22, 0.35));
+  animation: none;
+}
+
+body[data-style="irie"]:not(.theme-light) button,
+body[data-style="irie"]:not(.theme-light) .tab-btn {
+  border-radius: 10px;
+}
+
+body[data-style="irie"]:not(.theme-light) button:hover,
+body[data-style="irie"]:not(.theme-light) .tab-btn:hover {
+  border-color: #FCD116;
+  box-shadow: 0 0 14px rgba(252, 209, 22, 0.4);
+}
+
+body[data-style="irie"]:not(.theme-light) .tab-btn.active {
+  background: #1F7A35;
+  border-color: #FCD116;
+}
+
+/* Red, gold and green frame. */
+body[data-style="irie"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background:
+    var(--viz-bg) padding-box,
+    linear-gradient(90deg, #2FB44B, #F7C948 50%, #E8392B) border-box;
+  box-shadow: 0 0 30px rgba(47, 180, 75, 0.15), inset 0 0 80px rgba(0, 0, 0, 0.6);
+}
+
+/* Smoke and leaves drifting behind the arcs. */
+body[data-style="irie"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 38% 26% at 30% 40%, rgba(200, 214, 190, 0.07), transparent 70%),
+    radial-gradient(ellipse 30% 22% at 72% 62%, rgba(200, 214, 190, 0.06), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='240' viewBox='0 0 220 240'%3E%3Cg fill='%232FB44B' fill-opacity='0.13'%3E%3Cg transform='translate(14 18) rotate(-14 50 90) scale(0.62)'%3E%3Cg%3E%3Cellipse cx='50' cy='50' rx='5.5' ry='40'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(-28 50 90)'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(28 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(-56 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(56 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(-84 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(84 50 90)'/%3E%3Crect x='49' y='88' width='2' height='14' rx='1'/%3E%3C/g%3E%3C/g%3E%3Cg transform='translate(122 120) rotate(18 50 90) scale(0.48)'%3E%3Cg%3E%3Cellipse cx='50' cy='50' rx='5.5' ry='40'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(-28 50 90)'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(28 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(-56 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(56 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(-84 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(84 50 90)'/%3E%3Crect x='49' y='88' width='2' height='14' rx='1'/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 220px 240px;
+  animation: irie-drift 46s linear infinite;
+}
+
+@keyframes irie-drift {
+  0% { background-position: -6% 0, 6% 0, 0 0; }
+  50% { background-position: 8% -3%, -6% 4%, 30px -240px; }
+  100% { background-position: -6% 0, 6% 0, 60px -480px; }
+}
+
+/* Speaker cone rings that push out with the bass. */
+body[data-style="irie"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0 22%,
+    rgba(252, 209, 22, 0.12) 22.4% 23.4%,
+    transparent 23.8% 33%,
+    rgba(47, 180, 75, 0.12) 33.4% 34.4%,
+    transparent 34.8% 46%,
+    rgba(232, 57, 43, 0.14) 46.4% 47.4%,
+    transparent 47.8%
+  );
+  mix-blend-mode: screen;
+  opacity: calc(0.35 + var(--pound, 0) * 0.65);
+  transform: scale(calc(1 + var(--pound, 0) * 0.025 + var(--pound-bar, 0) * 0.05));
+}
+
+/* The arcs thump with the bass. */
+body[data-style="irie"]:not(.theme-light) .viz-layer {
+  transform: scale(calc(1 + var(--pound, 0) * 0.015));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="irie"]:not(.theme-light) .viz::before {
+    animation: none;
+  }
+  body[data-style="irie"]:not(.theme-light) .viz::after,
+  body[data-style="irie"]:not(.theme-light) .viz-layer {
+    transform: none;
+  }
+}
+
 /* ===== Jay-Z head-bob button (JayZBob.tsx) ===== */
 /* Room to scroll page content clear of the floating button. */
 #app {
