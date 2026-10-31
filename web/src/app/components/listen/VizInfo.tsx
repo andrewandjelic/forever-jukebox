@@ -3,10 +3,40 @@ import {
   AUTOCANONIZER_MAIN_COLOR,
   AUTOCANONIZER_OTHER_COLOR,
 } from "@forever-jukebox/shared/autocanonizer/AutocanonizerViz";
-import { formatCursorTime, formatPlaybackTitle } from "../../format";
+import {
+  formatCursorTime,
+  formatListenMultiplier,
+  formatPlaybackTitle,
+} from "../../format";
 import { useMarquee } from "../../hooks/useMarquee";
 import { useAppStore } from "../../store";
 import { useTranslation } from "react-i18next";
+
+// "4.2× original": listen time as a multiple of the song's length. It changes
+// only once per tenth of a play-through, so unlike the counters above it can
+// render through React, in its own component so VizInfo doesn't re-render.
+// Keying the value on it replays its highlight on every tick.
+function ListenMultiplier({ hidden }: { hidden: boolean }) {
+  const { t, i18n } = useTranslation();
+  const tenths = useAppStore((s) => s.listenMultiplierTenths);
+  if (hidden || tenths === null) {
+    return null;
+  }
+  const value = formatListenMultiplier(tenths, i18n.language);
+  return (
+    <>
+      <span className="viz-divider">·</span>
+      <span
+        key={tenths}
+        id="listen-multiplier"
+        className="listen-multiplier"
+        title={t("playback.listenMultiplierHint", { value })}
+      >
+        {t("playback.listenMultiplier", { value })}
+      </span>
+    </>
+  );
+}
 
 // Viz-bottom track info: marquee title, listen time and beat counters.
 // Rendered into the .viz-info container.
@@ -159,6 +189,7 @@ export function VizInfo() {
         <span className="viz-meta-stats">
           <span>{t("playback.listenTime")}</span>
           <span id="listen-time" ref={listenTimeRef}></span>
+          <ListenMultiplier hidden={hideBeats} />
           <span
             id="viz-beats-divider"
             className={hideBeats ? "viz-divider is-hidden" : "viz-divider"}

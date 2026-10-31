@@ -2611,6 +2611,24 @@ body.listen-active #viz-panel .viz {
   color: var(--muted);
 }
 
+/* Flashes the accent colour each time the multiplier ticks up a tenth. */
+.listen-multiplier {
+  font-variant-numeric: tabular-nums;
+  animation: listen-multiplier-tick 1.5s ease-out;
+}
+
+@keyframes listen-multiplier-tick {
+  from {
+    color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listen-multiplier {
+    animation: none;
+  }
+}
+
 .viz-controls {
   display: inline-flex;
   align-items: center;

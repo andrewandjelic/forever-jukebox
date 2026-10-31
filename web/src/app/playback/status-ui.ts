@@ -1,19 +1,30 @@
 import type { AppContext } from "../context";
-import { formatDuration } from "../format";
+import { formatDuration, listenMultiplierTenths } from "../format";
 import { useAppStore } from "../store";
 
 export type TuningModalTab = "tuning" | "extras";
 
 export function updateListenTimeDisplay() {
-  const { playTimerMs, lastPlayStamp } = useAppStore.getState();
+  const state = useAppStore.getState();
+  const { playTimerMs, lastPlayStamp } = state;
   const now = performance.now();
   const totalMs = playTimerMs + (lastPlayStamp !== null ? now - lastPlayStamp : 0);
-  // Polled ~5Hz but the displayed value only changes per second; skip the
-  // redundant writes so subscribers aren't woken four times a second for the
-  // same string.
+  // Polled ~5Hz but the displayed values only change per second (and per
+  // tenth of a play-through); skip the redundant writes so subscribers aren't
+  // woken four times a second for the same values.
   const listenTimeText = formatDuration(totalMs / 1000);
-  if (useAppStore.getState().listenTimeText !== listenTimeText) {
-    useAppStore.setState({ listenTimeText });
+  const multiplierTenths = listenMultiplierTenths(
+    totalMs / 1000,
+    state.trackDurationSec,
+  );
+  if (
+    state.listenTimeText !== listenTimeText ||
+    state.listenMultiplierTenths !== multiplierTenths
+  ) {
+    useAppStore.setState({
+      listenTimeText,
+      listenMultiplierTenths: multiplierTenths,
+    });
   }
 }
 

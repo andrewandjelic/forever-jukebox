@@ -344,6 +344,8 @@ export function applyAnalysisResult(
         ? track.duration
         : null,
   });
+  // Show the multiplier (0.0x) as soon as the song's length is known.
+  updateListenTimeDisplay();
   updateTrackInfo(context);
   syncActivePlaylistTrackFromLoaded();
   savePlaylist(useAppStore.getState().playlist);
