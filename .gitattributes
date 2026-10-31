@@ -2,3 +2,6 @@
 # CRLF line endings break them.
 *.sh text eol=lf
 *.command text eol=lf
+# Batch files get CRLF everywhere, including GitHub's Download ZIP, since
+# cmd.exe can misread LF-only batch files.
+*.cmd text eol=crlf
