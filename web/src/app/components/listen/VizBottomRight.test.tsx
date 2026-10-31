@@ -65,6 +65,40 @@ describe("VizBottomRight", () => {
     expect(panel.classList.contains("is-hidden")).toBe(true);
   });
 
+  it("turns the volume with the mouse wheel over the player", () => {
+    render(
+      <div id="viz-panel">
+        <VizBottomRight />
+      </div>,
+    );
+    const player = document.getElementById("viz-panel")!;
+    const panel = document.getElementById("volume-control-panel")!;
+    const wheel = (init: WheelEventInit) => {
+      const event = new WheelEvent("wheel", { cancelable: true, ...init });
+      act(() => {
+        player.dispatchEvent(event);
+      });
+      return event;
+    };
+
+    const up = wheel({ deltaY: -100 });
+    expect(up.defaultPrevented).toBe(true);
+    expect(useAppStore.getState().volumePct).toBe(55);
+    expect(panel.classList.contains("is-hidden")).toBe(false);
+    wheel({ deltaY: 200 });
+    expect(useAppStore.getState().volumePct).toBe(45);
+    // A trackpad's small deltas add up before a step.
+    wheel({ deltaY: -60 });
+    expect(useAppStore.getState().volumePct).toBe(45);
+    wheel({ deltaY: -60 });
+    expect(useAppStore.getState().volumePct).toBe(50);
+    // Ctrl+wheel is left to the browser's zoom.
+    const zoom = wheel({ deltaY: -100, ctrlKey: true });
+    expect(zoom.defaultPrevented).toBe(false);
+    expect(useAppStore.getState().volumePct).toBe(50);
+    expect(h.setMasterVolume).toHaveBeenLastCalledWith(expect.anything(), 50);
+  });
+
   it("reflects external volume sync from the store", () => {
     render(<VizBottomRight />);
     act(() => {

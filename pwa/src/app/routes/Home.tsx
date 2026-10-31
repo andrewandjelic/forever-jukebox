@@ -5,10 +5,13 @@ import {
   deleteCachedAnalysis,
   listCachedAnalysisTracks,
 } from "@/core/infrastructure/cache/analysisCache";
+import type { LibrarySong } from "@/core/infrastructure/library/musicLibrary";
 import { formatDuration } from "@/shared/utils/format";
 import { DropZone } from "@/ui/components/DropZone";
 import { SymbolIcon } from "@/ui/components/SymbolIcon";
+import { useMusicLibrary } from "../hooks/useMusicLibrary";
 import { useAppState } from "../state/AppState";
+import { LibrarySection } from "./home/LibrarySection";
 import { useTranslation } from "react-i18next";
 
 export function Home() {
@@ -16,14 +19,35 @@ export function Home() {
   const location = useLocation();
   const navigate = useNavigate();
   const { setFile } = useAppState();
+  const library = useMusicLibrary(location.pathname === "/");
   const [cachedTracks, setCachedTracks] = useState<CachedAnalysisTrack[]>([]);
   const [isLoadingCachedTracks, setIsLoadingCachedTracks] = useState(false);
   const [deletingFingerprint, setDeletingFingerprint] = useState<string | null>(null);
   const [cachedTrackError, setCachedTrackError] = useState<string | null>(null);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
 
+  // With a music folder connected, a dropped song is added to it (audio and
+  // analysis) once analyzed.
   const handleFile = (file: File) => {
-    setFile(file);
+    const target = library.folder && library.isGranted
+      ? { dir: library.folder, audioName: file.name, copyAudio: true }
+      : null;
+    setFile(file, target);
     navigate("/listen");
+  };
+
+  const handlePlaySong = (song: LibrarySong) => {
+    setLibraryError(null);
+    song.fileHandle
+      .getFile()
+      .then((file) => {
+        setFile(file, { dir: song.dir, audioName: song.name, copyAudio: false });
+        navigate("/listen");
+      })
+      .catch((err) => {
+        console.warn(`Failed to open library song: ${String(err)}`);
+        setLibraryError(t("library.openFailed", { name: song.title }));
+      });
   };
 
   const refreshCachedTracks = useCallback(async () => {
@@ -74,6 +98,9 @@ export function Home() {
   return (
     <section className="panel home-panel">
       <DropZone onFile={handleFile} />
+      {library.supported ? (
+        <LibrarySection library={library} onPlay={handlePlaySong} error={libraryError} />
+      ) : null}
       <div className="cached-tracks">
         <h2 className="cached-tracks__title">
           <span>{t("home.cachedAnalysis")}</span>

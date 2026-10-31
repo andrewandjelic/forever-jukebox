@@ -27,17 +27,21 @@ logger = logging.getLogger(__name__)
 
 from .routes.config import router as config_router
 from .routes.admin import router as admin_router
+from .routes.client_analysis import router as client_analysis_router
 from .routes.favorites import router as favorites_router
 from .routes.jobs import router as jobs_router
+from .routes.local_settings import router as local_settings_router
 from .routes.media import router as media_router
 from .routes.search import router as search_router
 
 app = FastAPI(title="Forever Jukebox Analysis API")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(admin_router)
+app.include_router(client_analysis_router)
 app.include_router(config_router)
 app.include_router(favorites_router)
 app.include_router(jobs_router)
+app.include_router(local_settings_router)
 app.include_router(media_router)
 app.include_router(search_router)
 

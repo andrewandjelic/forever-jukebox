@@ -7,6 +7,7 @@ import {
   createAnalysisCache,
   trimRenderedTracks,
 } from "@/core/infrastructure/cache/analysisCache";
+import { LibraryAnalysisCache } from "@/core/infrastructure/library/musicLibrary";
 import {
   loadTuning,
   removeTuning,
@@ -126,6 +127,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
   const { t } = useTranslation();
   const {
     file,
+    libraryTarget,
     setIsListenLoading,
     isSettingsOpen,
     setIsSettingsOpen,
@@ -597,7 +599,9 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     let cancelled = false;
 
     const analysisPort = new AnalysisWorkerClient();
-    const cache = createAnalysisCache();
+    const cache = libraryTarget
+      ? new LibraryAnalysisCache(createAnalysisCache(), libraryTarget, file)
+      : createAnalysisCache();
     const decoder = new AudioDecoder(playerRef.current.getContext());
     const usecase = new AnalyzeAudioUseCase(analysisPort, cache, decoder);
 
@@ -690,7 +694,7 @@ export function Listen({ isActive = true }: { isActive?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [file, t]);
+  }, [file, libraryTarget, t]);
 
   React.useEffect(() => {
     const id = window.setInterval(() => {

@@ -9,6 +9,45 @@ also includes an installable offline PWA.
 It replaces reliance on the deprecated Spotify Audio Analysis engine by
 generating similar beat/segment/section data locally.
 
+## Get started (Windows and Mac)
+
+No coding needed. The jukebox runs on your own computer and opens in your
+web browser.
+
+1. **Download it.** At the top of this page, click the green **Code** button,
+   then **Download ZIP**. Extract the ZIP (on Windows: right-click it, then
+   **Extract All**) and put the `forever-jukebox-main` folder somewhere handy,
+   such as Documents.
+2. **Start it.** Open the folder and double-click **Start Jukebox**.
+   - **Windows:** if Windows warns that the file came from the internet or
+     says "Windows protected your PC", click **More info**, then **Run** or
+     **Run anyway**. The first time, it installs Python and Node.js for you:
+     click **Yes** when Windows asks for permission.
+   - **Mac:** if your Mac says Start Jukebox can't be opened, open **System
+     Settings**, then **Privacy & Security**, scroll down and click **Open
+     Anyway**. If Python or Node.js is missing, their download pages open:
+     install both with the default settings, then double-click Start Jukebox
+     again.
+
+   The first start sets everything up and takes about 5 to 10 minutes. After
+   that it starts in seconds.
+3. **Play.** The jukebox opens in your browser. Search for a song under
+   **Search** and pick a result, drag a song file (MP3, M4A, WAV, FLAC and
+   more) onto the page, or paste a YouTube link under **Search**, then
+   **Upload**. Keep the page open while a new song is analyzed; that takes a
+   minute or two. Songs you have played are listed under **Top Tracks** next
+   time.
+
+To stop the jukebox, close its window (the black one Start Jukebox opened).
+Everything stays on your computer; added songs are kept in the `api/storage`
+folder. Search looks on YouTube; for exact title and artist matches, connect
+a free Spotify developer app under **Settings** (the gear), which walks you
+through it.
+
+If you don't have them yet, the installers are at
+[python.org](https://www.python.org/downloads/) and
+[nodejs.org](https://nodejs.org/en/download) (choose the LTS version).
+
 ## What's new in this fork
 
 - **Smoother jumps:** an 80 ms crossfade on every jump instead of a hard cut,
@@ -41,7 +80,11 @@ generating similar beat/segment/section data locally.
   both `web/` and `pwa/` (npm workspace package `@forever-jukebox/shared`).
 - `schema.json` — JSON schema reference for analysis output.
 
-## Quick Start
+## Developer setup
+
+`Start Jukebox` (above) builds the apps and serves them from the API with
+browser analysis. For development with the full analysis engine and hot
+reload, on macOS or Linux:
 
 Prereqs: Python 3.11, npm (Node.js), ffmpeg.
 
@@ -84,10 +127,13 @@ Optional:
   instance on a local/container volume supports modest concurrency such as `6`; do not
   point multiple running app instances at the same `jobs.db`.
 - `MAX_TRACK_LENGTH`: optional; when set to a positive number (minutes), rejects jobs over that duration.
+- `MAX_UPLOAD_MB`: optional; defaults to `20` and caps the size of uploaded files.
+- `ALLOW_LOCAL_SETTINGS`: optional; defaults to `false`. Set `true` on a local jukebox to let **Settings** save Spotify keys into `api/.env` (requests from the same computer only). Without Spotify keys, search uses YouTube directly. Start Jukebox turns this on; leave it off on a public instance.
 - `MAX_FAVORITES`: optional; defaults to `150` and controls the maximum favorites sync payload size.
 - `ALLOW_USER_UPLOAD`: optional; defaults to `false`. Set `true` to enable `/api/upload`.
 - `ALLOW_USER_URL`: optional; defaults to `false`. Set `true` to allow user-supplied URL jobs (YouTube, SoundCloud, Bandcamp).
 - `ALLOW_FAVORITES_SYNC`: optional; defaults to `false`. Set `true` to enable favorites sync endpoints.
+- `ALLOW_CLIENT_ANALYSIS`: optional; defaults to `false`. Set `true` on a local setup with no analysis worker (for example Windows without WSL): the web app then analyzes queued songs in the browser, with the offline app's engine, and the server stores the result as sent. Leave it off on a public instance.
 - `HOSTED_BY_NAME`: optional; shows an instance host credit in the web footer.
 - `HOSTED_BY_URL`: optional; links the host credit when `HOSTED_BY_NAME` is set.
 - `PORT`: optional; defaults to `8000`.

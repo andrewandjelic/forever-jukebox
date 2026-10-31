@@ -14,7 +14,6 @@ from ..spotify import search_spotify_tracks
 from ..youtube import search_youtube_api, search_youtube_ytdlp
 
 router = APIRouter()
-settings = load_settings()
 MAX_SEARCH_QUERY_CHARS = 100
 
 
@@ -32,6 +31,7 @@ def search_youtube(
     target_duration: float | None = Query(None, ge=0),
 ) -> JSONResponse:
     query = _normalize_search_query(q)
+    settings = load_settings()
     try:
         items = search_youtube_ytdlp(query, settings.youtube_search_limit, target_duration)
         payload = SearchResponse(items=items)
@@ -55,6 +55,8 @@ def search_youtube(
 @router.get("/api/search/spotify", responses=error_responses(400, 502))
 def search_spotify(q: str = Query(..., min_length=1)) -> JSONResponse:
     query = _normalize_search_query(q)
+    # Read per request: the keys can be added from Settings while running.
+    settings = load_settings()
     try:
         items = search_spotify_tracks(query, settings, settings.search_limit)
     except Exception as exc:

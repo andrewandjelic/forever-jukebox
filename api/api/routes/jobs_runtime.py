@@ -56,10 +56,16 @@ ERROR_CODE_YOUTUBE_LIVE = "youtube_live"
 ANALYSIS_MISSING_MESSAGE = "Analysis missing"
 NTFY_TOPIC_ENV = "NTFY_TOPIC_KEY"
 
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+DEFAULT_MAX_UPLOAD_MB = 20.0
 ALLOWED_UPLOAD_EXTS = {".m4a", ".webm", ".mp3", ".wav", ".flac", ".ogg", ".aac", ".opus", ".aiff"}
 
 logger = get_logger()
+
+
+def max_upload_bytes() -> int:
+    """Upload size cap: MAX_UPLOAD_MB when set, else 20 MB."""
+    megabytes = env_positive_float("MAX_UPLOAD_MB") or DEFAULT_MAX_UPLOAD_MB
+    return int(megabytes * 1024 * 1024)
 YOUTUBE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{11}$")
 SOURCE_HOST_PROVIDER = (
     ("youtu.be", "youtube"),

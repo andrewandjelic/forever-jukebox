@@ -1,7 +1,53 @@
+import { cpSync, createReadStream, existsSync, statSync } from "node:fs";
+import { extname, join, normalize, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import legacy from "@vitejs/plugin-legacy";
 import react from "@vitejs/plugin-react";
+import { normalizePath, type Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import pkg from "./package.json";
+
+// Browser analysis (src/app/browser-analysis.ts) reuses the offline app's
+// engine straight from its source.
+const PWA_SRC = normalizePath(fileURLToPath(new URL("../pwa/src", import.meta.url)));
+const PWA_PUBLIC = fileURLToPath(new URL("../pwa/public", import.meta.url));
+const MADMOM_DIR = join(PWA_PUBLIC, "madmom");
+const MADMOM_TYPES: Record<string, string> = {
+  ".js": "text/javascript",
+  ".json": "application/json",
+  ".wasm": "application/wasm",
+};
+// ffmpeg.wasm's raw class worker, emitted into assets/, imports these two
+// siblings; the offline app ships them in public/assets/ for that reason.
+const FFMPEG_WORKER_SIBLINGS = ["const.js", "errors.js"];
+
+// That engine's beat-detection worker loads /madmom/* from the offline app's
+// public folder: serve it in dev and copy it into the build, along with the
+// ffmpeg worker's siblings (only a build needs those).
+function madmomAssets(): Plugin {
+  return {
+    name: "madmom-assets",
+    configureServer(server) {
+      server.middlewares.use("/madmom", (req, res, next) => {
+        const relative = decodeURIComponent((req.url ?? "/").split("?")[0]);
+        const path = normalize(join(MADMOM_DIR, relative));
+        if (!path.startsWith(MADMOM_DIR + sep) || !existsSync(path) || !statSync(path).isFile()) {
+          next();
+          return;
+        }
+        res.setHeader("Content-Type", MADMOM_TYPES[extname(path)] ?? "application/octet-stream");
+        createReadStream(path).pipe(res);
+      });
+    },
+    writeBundle(options) {
+      const outDir = options.dir ?? "dist";
+      cpSync(MADMOM_DIR, join(outDir, "madmom"), { recursive: true });
+      for (const name of FFMPEG_WORKER_SIBLINGS) {
+        cpSync(join(PWA_PUBLIC, "assets", name), join(outDir, "assets", name));
+      }
+    },
+  };
+}
 
 export default defineConfig(() => {
   const enableLan = process.env.VITE_LAN === "1";
@@ -19,7 +65,23 @@ export default defineConfig(() => {
         targets: ["chrome 63"],
         additionalLegacyPolyfills: ["regenerator-runtime/runtime"],
       }),
+      madmomAssets(),
     ],
+    optimizeDeps: {
+      // Only reached from inside the analysis worker, so the dev server would
+      // find them mid-analysis and reload the page; bundle them up front.
+      include: [
+        "essentia.js/dist/essentia.js-core.es.js",
+        "essentia.js/dist/essentia-wasm.es.js",
+      ],
+    },
+    resolve: {
+      alias: [
+        { find: /^@pwa\//, replacement: `${PWA_SRC}/` },
+        // The offline app's modules import one another as "@/...".
+        { find: /^@\//, replacement: `${PWA_SRC}/` },
+      ],
+    },
     server: {
       port: 5173,
       host: enableLan ? true : "localhost",

@@ -58,7 +58,7 @@ from .jobs_runtime import (
     ALLOWED_UPLOAD_EXTS,
     ANALYSIS_MISSING_MESSAGE,
     ERROR_GENERIC,
-    MAX_UPLOAD_BYTES,
+    max_upload_bytes,
     delete_job_artifacts,
     download_source_audio,
     error_code_for,
@@ -595,6 +595,7 @@ async def upload_audio(file: UploadFile = File(...)) -> JSONResponse:
     target_path = (STORAGE_ROOT / relative_path).resolve()
 
     total = 0
+    limit = max_upload_bytes()
     try:
         with target_path.open("wb") as handle:
             while True:
@@ -602,7 +603,7 @@ async def upload_audio(file: UploadFile = File(...)) -> JSONResponse:
                 if not chunk:
                     break
                 total += len(chunk)
-                if total > MAX_UPLOAD_BYTES:
+                if total > limit:
                     raise HTTPException(status_code=413, detail="File too large")
                 handle.write(chunk)
     except HTTPException:

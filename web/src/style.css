@@ -1009,10 +1009,14 @@ button.is-loading::after {
 
 .settings-panel {
   width: min(460px, 90vw);
+  /* Taller than short windows with the Spotify setup open: scroll inside. */
+  max-height: calc(100vh - 32px);
 }
 
 .settings-body {
   gap: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .settings-section {
@@ -1035,6 +1039,21 @@ button.is-loading::after {
 .settings-fieldset {
   display: grid;
   gap: 6px;
+}
+
+/* Settings > Spotify search: the numbered setup steps. */
+.settings-steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.settings-steps a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
 }
 
 .settings-fieldset {
@@ -2039,6 +2058,21 @@ body.playlist-add-enabled .favorite-row:focus-within .playlist-add-button {
   gap: 8px;
 }
 
+.search-autopick-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search-autopick-badge {
+  color: var(--accent);
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .saved-playlist-button {
   border-radius: 8px;
   padding: 8px 10px;
@@ -2264,6 +2298,25 @@ body.playlist-add-enabled .favorite-row:focus-within .playlist-add-button {
   user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+}
+
+/* On the Listen tab the player fills the window: the page drops its width
+   cap and the viz takes whatever height the header and footer leave. */
+body.listen-active #app {
+  max-width: none;
+}
+
+body.listen-active [data-tab-panel="play"]:not(.hidden),
+body.listen-active #viz-panel:not(.hidden) {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+body.listen-active #viz-panel .viz {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 360px;
 }
 
 #jukebox-viz.is-canonizer {
@@ -3434,6 +3487,11 @@ body.is-file-dragging::after {
   font-size: clamp(1.4rem, 3vw, 2.2rem);
   letter-spacing: 0.04em;
   pointer-events: none;
+}
+
+/* While a song plays, drops go to the playlist instead of interrupting it. */
+body.is-file-dragging.is-file-queueing::after {
+  content: "Drop songs to add them to the playlist";
 }
 
 /* Shared: styles that paint layers behind the arcs need .viz to isolate them. */

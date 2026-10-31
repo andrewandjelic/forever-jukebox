@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppContext } from "./context";
 import type { SearchDeps } from "./search";
+import type { AppConfig } from "./api";
 import {
+  runSearch,
+  selectSpotifyMatch,
   showYoutubeMatches,
   startYoutubeAnalysisFlow,
   tryLoadExistingTrackByName,
@@ -11,6 +14,7 @@ import { setWindowUrl } from "./__tests__/test-utils";
 
 vi.mock("./api", () => ({
   fetchJobByTrack: vi.fn(),
+  searchSpotify: vi.fn(),
   searchYoutube: vi.fn(),
   startYoutubeAnalysis: vi.fn(),
 }));
@@ -296,5 +300,122 @@ describe("search flows", () => {
         },
       ],
     });
+  });
+
+  it("auto-picks the top match, starts it, and keeps the list as the override", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "yt-plain", title: "Official Audio", duration: 123 },
+      { id: "yt-video", title: "Official Video", duration: 123 },
+    ]);
+    (api.startYoutubeAnalysis as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "job-auto",
+      status: "queued",
+    });
+
+    await showYoutubeMatches(context, deps, "Song", "Artist", 123, true);
+    // the flow runs fire-and-forget; one macrotask tick drains its awaits
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.startYoutubeAnalysis).toHaveBeenCalledWith({
+      youtube_id: "yt-plain",
+      title: "Song",
+      artist: "Artist",
+    });
+    expect(deps.pollAnalysis).toHaveBeenCalledWith("job-auto");
+    const results = useAppStore.getState().searchResults;
+    expect(results.kind).toBe("youtube");
+    if (results.kind === "youtube") {
+      expect(results.autoPickedId).toBe("yt-plain");
+      expect(results.items).toHaveLength(2);
+    }
+  });
+
+  it("does not auto-pick when no candidate has an id", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { title: "No id", duration: 123 },
+    ]);
+
+    await showYoutubeMatches(context, deps, "Song", "Artist", 123, true);
+
+    expect(api.startYoutubeAnalysis).not.toHaveBeenCalled();
+    const results = useAppStore.getState().searchResults;
+    expect(results.kind).toBe("youtube");
+    if (results.kind === "youtube") {
+      expect(results.autoPickedId).toBeUndefined();
+    }
+  });
+
+  it("spotify selection auto-starts the top-ranked match when no analysis exists", async () => {
+    const context = createContext();
+    const deps = createDeps();
+    (api.fetchJobByTrack as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (api.searchYoutube as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "yt-plain", title: "Topic Upload", duration: 200 },
+    ]);
+    (api.startYoutubeAnalysis as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "job-flow",
+      status: "queued",
+    });
+
+    await selectSpotifyMatch(context, deps, {
+      name: "Song",
+      artist: "Artist",
+      duration: 200,
+    });
+    // selectSpotifyMatch chains fire-and-forget promises internally
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.startYoutubeAnalysis).toHaveBeenCalledWith({
+      youtube_id: "yt-plain",
+      title: "Song",
+      artist: "Artist",
+    });
+    expect(deps.pollAnalysis).toHaveBeenCalledWith("job-flow");
+  });
+});
+
+describe("search source", () => {
+  const youtubeItem = {
+    id: "yt-1",
+    title: "Tame Impala - Let It Happen (Official Audio)",
+    duration: 467,
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api = await import("./api");
+    vi.mocked(api.searchYoutube).mockResolvedValue([youtubeItem]);
+    vi.mocked(api.searchSpotify).mockResolvedValue([]);
+  });
+
+  const search = (config: Partial<AppConfig>) => {
+    useAppStore.setState({
+      appConfig: { allow_user_upload: true, allow_user_url: true, ...config },
+      searchQuery: "let it happen",
+    });
+    return runSearch(createContext(), createDeps());
+  };
+
+  it("searches YouTube directly when Spotify is not connected", async () => {
+    await search({ spotify_configured: false });
+
+    expect(api.searchYoutube).toHaveBeenCalledWith("let it happen", null);
+    expect(api.searchSpotify).not.toHaveBeenCalled();
+    expect(useAppStore.getState().searchResults).toEqual({
+      kind: "youtube",
+      items: [{ item: youtubeItem, name: youtubeItem.title, artist: "" }],
+    });
+    expect(useAppStore.getState().searchHint()).toContain("Search YouTube");
+  });
+
+  it("searches Spotify first once it is connected", async () => {
+    await search({ spotify_configured: true });
+
+    expect(api.searchSpotify).toHaveBeenCalledWith("let it happen");
+    expect(api.searchYoutube).not.toHaveBeenCalled();
   });
 });

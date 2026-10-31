@@ -16,6 +16,14 @@ class AppConfigTests(unittest.TestCase):
         payload = json.loads(response.body)
         self.assertEqual(payload["max_favorites"], 150)
 
+    def test_upload_size_defaults_to_20_mb_and_follows_max_upload_mb(self) -> None:
+        sizes = []
+        for env in ({}, {"MAX_UPLOAD_MB": "200"}, {"MAX_UPLOAD_MB": "nonsense"}):
+            with patch.dict(os.environ, {"ALLOW_USER_UPLOAD": "true", **env}, clear=True):
+                sizes.append(json.loads(get_app_config().body)["max_upload_size"])
+
+        self.assertEqual(sizes, [20 * 1024 * 1024, 200 * 1024 * 1024, 20 * 1024 * 1024])
+
     def test_app_config_includes_configured_max_favorites(self) -> None:
         with patch.dict(os.environ, {"MAX_FAVORITES": "25"}, clear=True):
             response = get_app_config()

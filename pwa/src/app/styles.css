@@ -513,6 +513,53 @@ textarea:focus-visible {
   height: 14px;
 }
 
+.library__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+
+.library__header .cached-tracks__title {
+  flex: 1 1 260px;
+}
+
+.library__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.library__prompt {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.library__list {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.library__song {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.library__song:hover {
+  background: var(--surface-control-hover);
+  border-color: var(--accent);
+}
+
+.library__analyzed {
+  color: var(--accent);
+}
+
 .listen-page {
   display: grid;
   gap: 10px;

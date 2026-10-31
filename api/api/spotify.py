@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import base64
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 
 from .http_client import get_client
-from .settings import ApiSettings
+from .settings import ApiSettings, load_settings
 
 
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
@@ -44,6 +44,19 @@ def _fetch_token(settings: ApiSettings) -> tuple[str, float]:
     if not token:
         raise RuntimeError("Spotify token missing")
     return token, time.time() + max(0, int(expires_in) - 30)
+
+
+def check_credentials(client_id: str, client_secret: str) -> None:
+    """Ask Spotify for a token with these keys; raises httpx.HTTPError if it refuses."""
+    _fetch_token(
+        replace(load_settings(), spotify_client_id=client_id, spotify_client_secret=client_secret)
+    )
+
+
+def reset_token_cache() -> None:
+    """Forget the cached token, e.g. after the keys change."""
+    _token_cache.token = None
+    _token_cache.expires_at = 0.0
 
 
 def _get_token(settings: ApiSettings, force_refresh: bool = False) -> str:

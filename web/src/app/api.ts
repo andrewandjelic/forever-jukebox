@@ -81,6 +81,11 @@ export type AppConfig = {
   allow_user_url: boolean;
   allow_favorites_sync?: boolean;
   allow_track_reports?: boolean;
+  // The server lets this browser analyze queued jobs (no analysis worker).
+  allow_client_analysis?: boolean;
+  // A local jukebox: Settings may save the Spotify keys.
+  allow_local_settings?: boolean;
+  spotify_configured?: boolean;
   max_upload_size?: number | null;
   allowed_upload_exts?: string[] | null;
   max_track_length?: number | null;
@@ -255,6 +260,39 @@ export async function fetchAudio(jobId: string, signal?: AbortSignal) {
   return response.arrayBuffer();
 }
 
+function clientAnalysisUrl(jobId: string, action: string) {
+  return `/api/analysis/${encodeURIComponent(jobId)}/client/${action}`;
+}
+
+export async function claimClientAnalysis(jobId: string): Promise<boolean> {
+  const data = await fetchJson(clientAnalysisUrl(jobId, "claim"), { method: "POST" });
+  return isRecord(data) && data.claimed === true;
+}
+
+export async function reportClientAnalysisProgress(jobId: string, progress: number) {
+  await fetchJson(clientAnalysisUrl(jobId, "progress"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ progress: Math.round(progress) }),
+  });
+}
+
+export async function submitClientAnalysis(jobId: string, analysis: unknown) {
+  await fetchJson(clientAnalysisUrl(jobId, "result"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(analysis),
+  });
+}
+
+export async function failClientAnalysis(jobId: string, error: string) {
+  await fetchJson(clientAnalysisUrl(jobId, "fail"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ error: error.slice(0, 500) }),
+  });
+}
+
 export async function startYoutubeAnalysis(payload: {
   youtube_id: string;
   title?: string;
@@ -295,13 +333,26 @@ export async function searchSpotify(query: string) {
   return Array.isArray(data?.items) ? (data.items as SpotifySearchItem[]) : [];
 }
 
-export async function searchYoutube(query: string, duration: number) {
+// duration: the length of the track being matched; null for a free search.
+export async function searchYoutube(query: string, duration: number | null) {
+  const target =
+    duration === null ? "" : `&target_duration=${encodeURIComponent(duration)}`;
   const data = await fetchJson(
-    `/api/search/youtube?q=${encodeURIComponent(
-      query
-    )}&target_duration=${encodeURIComponent(duration)}`
+    `/api/search/youtube?q=${encodeURIComponent(query)}${target}`
   );
   return Array.isArray(data?.items) ? (data.items as YoutubeSearchItem[]) : [];
+}
+
+export async function connectSpotify(clientId: string, clientSecret: string) {
+  await fetchJson("/api/settings/spotify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret }),
+  });
+}
+
+export async function disconnectSpotify() {
+  await fetchJson("/api/settings/spotify", { method: "DELETE" });
 }
 
 export async function fetchTopSongs(limit: number) {
