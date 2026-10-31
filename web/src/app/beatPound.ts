@@ -2,14 +2,16 @@ import type { QuantumBase } from "@forever-jukebox/shared/types";
 import { getAppContext } from "./runtime";
 import { useAppStore } from "./store";
 
-// Beat "pound" for styles that throb with the music (Doom). While a song plays
-// in Jukebox mode it writes two CSS variables on #jukebox-viz, both 0..1:
+// Beat "pound" for styles that throb with the music (Doom pounds, Moth blooms).
+// While a song plays in Jukebox mode it writes two CSS variables on
+// #jukebox-viz, both 0..1:
 // --pound kicks on every beat and dies away within a fraction of it, harder on
 // louder beats; --pound-bar does the same on the first beat of each bar only.
-// The style's CSS turns them into a punch, a drop and a red flash.
+// The style's CSS decides what they do (Doom: a punch, a drop and a red flash).
 
-// How fast a pound dies away: down to a third after this many seconds.
-const DECAY_SECONDS = 0.12;
+// How fast a pound dies away by default: down to a third after this many
+// seconds. Styles can pass a slower decay for a softer swell.
+export const DEFAULT_DECAY_SECONDS = 0.12;
 
 // Louder beats pound harder: a beat's peak loudness from a quiet -30 dB (a
 // light tap) up to a mastered -4 dB (full force). Unknown loudness pounds at
@@ -22,8 +24,12 @@ export function beatStrength(loudnessDb: number | null) {
 }
 
 // The pound `seconds` after a beat that hit with `strength`.
-export function poundEnvelope(seconds: number, strength: number) {
-  return seconds < 0 ? 0 : strength * Math.exp(-seconds / DECAY_SECONDS);
+export function poundEnvelope(
+  seconds: number,
+  strength: number,
+  decaySeconds = DEFAULT_DECAY_SECONDS,
+) {
+  return seconds < 0 ? 0 : strength * Math.exp(-seconds / decaySeconds);
 }
 
 export function beatLoudness(beat: QuantumBase): number | null {
@@ -47,11 +53,12 @@ function currentPound(): { pound: number; bar: number } {
     return { pound: 0, bar: 0 };
   }
   const seconds = (time - beat.start) / player.getPlaybackRate();
-  const pound = poundEnvelope(seconds, beatStrength(beatLoudness(beat)));
+  const pound = poundEnvelope(seconds, beatStrength(beatLoudness(beat)), decay);
   return { pound, bar: beat.indexInParent === 0 ? pound : 0 };
 }
 
 let rafId = 0;
+let decay = DEFAULT_DECAY_SECONDS;
 let written = { target: null as HTMLElement | null, pound: -1, bar: -1 };
 
 function write(target: HTMLElement, pound: number, bar: number) {
@@ -78,7 +85,8 @@ function frame() {
   }
 }
 
-export function startBeatPound() {
+export function startBeatPound(decaySeconds = DEFAULT_DECAY_SECONDS) {
+  decay = decaySeconds;
   if (!rafId) {
     rafId = requestAnimationFrame(frame);
   }

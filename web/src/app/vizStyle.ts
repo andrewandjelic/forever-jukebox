@@ -12,6 +12,7 @@ export const VIZ_STYLES = [
   "celestial",
   "inferno",
   "doom",
+  "moth",
   "bubblegum",
   "speakeasy",
   "irish",
@@ -28,6 +29,7 @@ export const VIZ_STYLE_LABELS: Record<VizStyle, string> = {
   celestial: "Celestial · Ambient / Classical",
   inferno: "Inferno · Metal / Heavy bass",
   doom: "Doom · Dark techno / Metal / Goth",
+  moth: "Moth · Dream pop / Shoegaze / Indie",
   bubblegum: "Bubblegum · Pop",
   speakeasy: "Speakeasy · Jazz / Soul",
   irish: "Irish · Celtic / Trad",
@@ -43,7 +45,8 @@ export type TrackGenre = { label: string; score: number };
 const GENRE_RULES: Array<[RegExp, VizStyle]> = [
   [/Celtic|Irish|Gaelic/, "irish"],
   [/Brass & Military|Marches|Military|Choral/, "soviet"],
-  [/Psychedelic|Shoegaze|Dream Pop|Space Rock|Krautrock|Stoner|Ethereal/, "psychedelic"],
+  [/Dream Pop|Shoegaze|Ethereal|Indie Rock|Indie Pop|Lo-Fi|Emo/, "moth"],
+  [/Psychedelic|Space Rock|Krautrock|Stoner/, "psychedelic"],
   [/Happy Hardcore|Dance-pop|Bubblegum|Europop|K-pop|J-pop|Teen Pop|Synth-pop|Eurodance/, "bubblegum"],
   [/^Hip Hop|Grime|Trap|Drill/, "street"],
   [/Techno|Industrial|EBM|Power Electronics|Rhythmic Noise|Darkwave|Coldwave|Goth|Deathrock|Dark Ambient|Black Metal|Doom Metal|Death Metal|Deathcore|Sludge Metal|Post-Metal/, "doom"],
@@ -127,13 +130,18 @@ export function saveTrackStyle(trackId: string | null, style: VizStyle) {
   }
 }
 
-// Styles whose visualizer pounds on the beat (see beatPound.ts).
-const POUNDING_STYLES: ReadonlySet<VizStyle> = new Set(["doom"]);
+// Styles whose visualizer pulses on the beat (see beatPound.ts), and how long
+// each pulse takes to fade: a hard pound for Doom, a slow bloom for Moth.
+const BEAT_PULSE_DECAY: Partial<Record<VizStyle, number>> = {
+  doom: 0.12,
+  moth: 0.45,
+};
 
 export function applyStyle(style: VizStyle) {
   document.body.dataset.style = style;
-  if (POUNDING_STYLES.has(style)) {
-    startBeatPound();
+  const decay = BEAT_PULSE_DECAY[style];
+  if (decay !== undefined) {
+    startBeatPound(decay);
   } else {
     stopBeatPound();
   }

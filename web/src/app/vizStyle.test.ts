@@ -18,7 +18,9 @@ describe("styleForGenres", () => {
   it("maps the analyzed songs' top styles to fitting visuals", () => {
     expect(styleForGenres(g(["Folk, World, & Country---Folk", 0.28], ["Folk, World, & Country---Country", 0.21], ["Pop---Ballad", 0.07]))).toBe("rustic");
     expect(styleForGenres(g(["Hip Hop---Cloud Rap", 0.65], ["Hip Hop---Trap", 0.19]))).toBe("street");
-    expect(styleForGenres(g(["Rock---Shoegaze", 0.16], ["Rock---Dream Pop", 0.09], ["Rock---Post-Punk", 0.08]))).toBe("psychedelic");
+    expect(styleForGenres(g(["Rock---Shoegaze", 0.16], ["Rock---Dream Pop", 0.09], ["Rock---Post-Punk", 0.08]))).toBe("moth");
+    expect(styleForGenres(g(["Rock---Indie Rock", 0.3], ["Pop---Indie Pop", 0.1]))).toBe("moth");
+    expect(styleForGenres(g(["Rock---Psychedelic Rock", 0.4], ["Rock---Space Rock", 0.1]))).toBe("psychedelic");
     expect(styleForGenres(g(["Electronic---Trance", 0.57], ["Electronic---Euro House", 0.26]))).toBe("cyberpunk");
     expect(styleForGenres(g(["Electronic---Ambient", 0.18], ["Classical---Contemporary", 0.07]))).toBe("celestial");
     expect(styleForGenres(g(["Electronic---Happy Hardcore", 0.3], ["Electronic---Dance-pop", 0.17], ["Electronic---Hardcore", 0.13]))).toBe("bubblegum");
@@ -57,13 +59,16 @@ describe("styleForTitle", () => {
 });
 
 describe("applyStyle", () => {
-  it("pounds on the beat only while the Doom style is on", () => {
+  it("pulses on the beat only in styles that ask for it, at their own pace", () => {
     applyStyle("doom");
     expect(document.body.dataset.style).toBe("doom");
-    expect(startBeatPound).toHaveBeenCalledTimes(1);
+    expect(startBeatPound).toHaveBeenLastCalledWith(0.12);
+
+    applyStyle("moth");
+    expect(startBeatPound).toHaveBeenLastCalledWith(0.45);
 
     applyStyle("cyberpunk");
     expect(stopBeatPound).toHaveBeenCalledTimes(1);
-    expect(startBeatPound).toHaveBeenCalledTimes(1);
+    expect(startBeatPound).toHaveBeenCalledTimes(2);
   });
 });

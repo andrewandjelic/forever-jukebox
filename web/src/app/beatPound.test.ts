@@ -17,6 +17,9 @@ describe("beat pound", () => {
     expect(poundEnvelope(0.12, 1)).toBeCloseTo(Math.exp(-1));
     expect(poundEnvelope(0.5, 1)).toBeLessThan(0.02);
     expect(poundEnvelope(-0.01, 1)).toBe(0);
+    // A slower decay (Moth's bloom) lingers longer.
+    expect(poundEnvelope(0.45, 1, 0.45)).toBeCloseTo(Math.exp(-1));
+    expect(poundEnvelope(0.3, 1, 0.45)).toBeGreaterThan(poundEnvelope(0.3, 1));
   });
 
   it("takes a beat's loudness from its loudest segment", () => {
