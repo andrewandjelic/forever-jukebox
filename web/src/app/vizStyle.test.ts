@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { styleForGenres, styleForTitle } from "./vizStyle";
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from "vitest";
+import { startBeatPound, stopBeatPound } from "./beatPound";
+import { applyStyle, styleForGenres, styleForTitle } from "./vizStyle";
+
+vi.mock("./beatPound", () => ({
+  startBeatPound: vi.fn(),
+  stopBeatPound: vi.fn(),
+}));
+vi.mock("./runtime", () => ({
+  getAppContext: () => ({ jukebox: { refresh: vi.fn() } }),
+}));
 
 const g = (...pairs: Array<[string, number]>) =>
   pairs.map(([label, score]) => ({ label, score }));
@@ -12,6 +22,18 @@ describe("styleForGenres", () => {
     expect(styleForGenres(g(["Electronic---Trance", 0.57], ["Electronic---Euro House", 0.26]))).toBe("cyberpunk");
     expect(styleForGenres(g(["Electronic---Ambient", 0.18], ["Classical---Contemporary", 0.07]))).toBe("celestial");
     expect(styleForGenres(g(["Electronic---Happy Hardcore", 0.3], ["Electronic---Dance-pop", 0.17], ["Electronic---Hardcore", 0.13]))).toBe("bubblegum");
+  });
+
+  it("gives dark techno, extreme metal and goth the pounding Doom style", () => {
+    expect(styleForGenres(g(["Electronic---Techno", 0.4], ["Electronic---Hard Techno", 0.2]))).toBe("doom");
+    expect(styleForGenres(g(["Electronic---Industrial", 0.3], ["Electronic---EBM", 0.2]))).toBe("doom");
+    expect(styleForGenres(g(["Rock---Black Metal", 0.5], ["Rock---Heavy Metal", 0.1]))).toBe("doom");
+    expect(styleForGenres(g(["Rock---Goth Rock", 0.3], ["Electronic---Darkwave", 0.2]))).toBe("doom");
+    // Dark Ambient is doom, plain Ambient stays celestial.
+    expect(styleForGenres(g(["Electronic---Dark Ambient", 0.4]))).toBe("doom");
+    // Classic heavy metal and heavy bass keep Inferno.
+    expect(styleForGenres(g(["Rock---Heavy Metal", 0.5], ["Rock---Thrash", 0.2]))).toBe("inferno");
+    expect(styleForGenres(g(["Electronic---Dubstep", 0.5]))).toBe("inferno");
   });
 
   it("adds up related styles, so several weaker matches can beat one stronger", () => {
@@ -31,5 +53,17 @@ describe("styleForTitle", () => {
     expect(styleForTitle("Red Army Choir Smuglianka")).toBe("soviet");
     expect(styleForTitle("Darude - Sandstorm")).toBeNull();
     expect(styleForTitle(null)).toBeNull();
+  });
+});
+
+describe("applyStyle", () => {
+  it("pounds on the beat only while the Doom style is on", () => {
+    applyStyle("doom");
+    expect(document.body.dataset.style).toBe("doom");
+    expect(startBeatPound).toHaveBeenCalledTimes(1);
+
+    applyStyle("cyberpunk");
+    expect(stopBeatPound).toHaveBeenCalledTimes(1);
+    expect(startBeatPound).toHaveBeenCalledTimes(1);
   });
 });

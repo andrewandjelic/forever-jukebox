@@ -4158,6 +4158,142 @@ body[data-style="irish"]:not(.theme-light) .viz::before {
   }
 }
 
+/* ===== Doom skin: a black-and-bone engraving with blood-red condensed
+   lettering, for dark techno, metal and goth. The visualizer pounds on the
+   beat: beatPound.ts sets --pound (every beat, by loudness) and --pound-bar
+   (first beat of each bar) on #jukebox-viz. ===== */
+body[data-style="doom"]:not(.theme-light) {
+  --bg: #050505;
+  --text: #E9E4D8;
+  --text-rgb: 233, 228, 216;
+  --muted: #9A948A;
+  --accent: #D02B20;
+  --title-accent: #C42A20;
+  --title-glow: rgba(196, 42, 32, 0.4);
+  --surface-panel: rgba(6, 6, 6, 0.94);
+  --surface-hero: rgba(4, 4, 4, 0.96);
+  --surface-control: #0E0E0E;
+  --surface-control-hover: #1C1A19;
+  --border-panel: rgba(233, 228, 216, 0.22);
+  --border-hero: rgba(233, 228, 216, 0.4);
+  --border-control: rgba(233, 228, 216, 0.3);
+  --viz-bg: radial-gradient(ellipse at 50% 45%, #1C1B19 0%, #0B0B0A 55%, #000 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.9);
+  --edge-selected: #FF3B2E;
+  --beat-highlight: #F4EFE4;
+  --wave-1: #7A0F0A;
+  --wave-2: #C42A20;
+  --wave-3: #E9E4D8;
+  /* Ash-to-bone beats with only a trace of red, like inked lines. */
+  --beat-hue-start: 0;
+  --beat-hue-range: 12;
+  --beat-sat: 14%;
+  background:
+    radial-gradient(ellipse at 50% 35%, transparent 0 35%, rgba(0, 0, 0, 0.9) 100%),
+    repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.035) 0 1px, transparent 1px 4px),
+    #050505;
+  background-attachment: fixed;
+}
+
+/* Square plates with a thin double rule, like the frame of a print. */
+body[data-style="doom"]:not(.theme-light) .hero,
+body[data-style="doom"]:not(.theme-light) .panel {
+  border-radius: 0;
+  box-shadow: none;
+  outline: 1px solid rgba(233, 228, 216, 0.1);
+  outline-offset: 3px;
+}
+
+body[data-style="doom"]:not(.theme-light) .hero-title {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 4px;
+}
+
+body[data-style="doom"]:not(.theme-light) .hero-title-neon,
+body[data-style="doom"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Imbue", serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(2.4rem, 4.6vw, 3.8rem);
+  line-height: 0.85;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--title-accent);
+  text-shadow: none;
+  animation: none;
+}
+
+body[data-style="doom"]:not(.theme-light) button,
+body[data-style="doom"]:not(.theme-light) .tab-btn {
+  border-radius: 0;
+}
+
+body[data-style="doom"]:not(.theme-light) button:hover,
+body[data-style="doom"]:not(.theme-light) .tab-btn:hover {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+body[data-style="doom"]:not(.theme-light) .tab-btn.active {
+  background: #7E140E;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+body[data-style="doom"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border-radius: 0;
+  border: 1px solid rgba(233, 228, 216, 0.55);
+  outline: 1px solid rgba(233, 228, 216, 0.16);
+  outline-offset: -7px;
+}
+
+/* The engraving: fine crosshatching, densest toward the edges like etched
+   shading. It surges outward on the first beat of each bar. */
+body[data-style="doom"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(233, 228, 216, 0.09) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.06) 0 1px, transparent 1px 7px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent 25%, #000 85%);
+  mask-image: radial-gradient(ellipse at 50% 50%, transparent 25%, #000 85%);
+  transform: scale(calc(1 + var(--pound-bar, 0) * 0.05));
+}
+
+/* A blood-red vignette: a flicker on each beat, a full flash only on the bar,
+   which keeps red flashes well under three a second even at 180 BPM. */
+body[data-style="doom"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(196, 30, 20, 0.6) 100%);
+  opacity: calc(var(--pound, 0) * 0.2 + var(--pound-bar, 0) * 0.6);
+}
+
+/* The arcs punch toward you on each beat and drop on the bar. */
+body[data-style="doom"]:not(.theme-light) .viz-layer {
+  transform:
+    scale(calc(1 + var(--pound, 0) * 0.02))
+    translateY(calc(var(--pound-bar, 0) * 4px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="doom"]:not(.theme-light) .viz::before,
+  body[data-style="doom"]:not(.theme-light) .viz-layer {
+    transform: none;
+  }
+  body[data-style="doom"]:not(.theme-light) .viz::after {
+    opacity: 0;
+  }
+}
+
 /* ===== Jay-Z head-bob button (JayZBob.tsx) ===== */
 /* Room to scroll page content clear of the floating button. */
 #app {

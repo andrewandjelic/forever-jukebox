@@ -1,3 +1,4 @@
+import { startBeatPound, stopBeatPound } from "./beatPound";
 import { getAppContext } from "./runtime";
 
 // Per-song visual styles. Each is a set of CSS overrides keyed on
@@ -10,6 +11,7 @@ export const VIZ_STYLES = [
   "street",
   "celestial",
   "inferno",
+  "doom",
   "bubblegum",
   "speakeasy",
   "irish",
@@ -25,6 +27,7 @@ export const VIZ_STYLE_LABELS: Record<VizStyle, string> = {
   street: "Street · Hip-hop",
   celestial: "Celestial · Ambient / Classical",
   inferno: "Inferno · Metal / Heavy bass",
+  doom: "Doom · Dark techno / Metal / Goth",
   bubblegum: "Bubblegum · Pop",
   speakeasy: "Speakeasy · Jazz / Soul",
   irish: "Irish · Celtic / Trad",
@@ -43,6 +46,7 @@ const GENRE_RULES: Array<[RegExp, VizStyle]> = [
   [/Psychedelic|Shoegaze|Dream Pop|Space Rock|Krautrock|Stoner|Ethereal/, "psychedelic"],
   [/Happy Hardcore|Dance-pop|Bubblegum|Europop|K-pop|J-pop|Teen Pop|Synth-pop|Eurodance/, "bubblegum"],
   [/^Hip Hop|Grime|Trap|Drill/, "street"],
+  [/Techno|Industrial|EBM|Power Electronics|Rhythmic Noise|Darkwave|Coldwave|Goth|Deathrock|Dark Ambient|Black Metal|Doom Metal|Death Metal|Deathcore|Sludge Metal|Post-Metal/, "doom"],
   [/Metal|Dubstep|Grindcore|Industrial|Drum n Bass|Breakcore|Noise|Hard Rock|Punk|Gabber|Speedcore/, "inferno"],
   [/Ambient|Downtempo|New Age|Drone|^Classical|Score|Soundtrack|Post-Rock/, "celestial"],
   [/^Folk, World, & Country|Country|Bluegrass|Folk Rock|Americana/, "rustic"],
@@ -123,8 +127,16 @@ export function saveTrackStyle(trackId: string | null, style: VizStyle) {
   }
 }
 
+// Styles whose visualizer pounds on the beat (see beatPound.ts).
+const POUNDING_STYLES: ReadonlySet<VizStyle> = new Set(["doom"]);
+
 export function applyStyle(style: VizStyle) {
   document.body.dataset.style = style;
+  if (POUNDING_STYLES.has(style)) {
+    startBeatPound();
+  } else {
+    stopBeatPound();
+  }
   // The canvas viz reads its colors from CSS variables; repaint with them.
   getAppContext().jukebox?.refresh();
 }
