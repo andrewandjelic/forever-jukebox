@@ -687,6 +687,8 @@ class CanvasViz {
     intensity: 1,
     // One color for every live arc instead of each beat's color ("" = off).
     arcColor: "",
+    // Scales the live arcs' line width (thinner strands below 1).
+    arcWidth: 1,
     // A halo drawn around each live arc in plain (not additive) blending, so
     // strands stay apart where they cross: a dark halo gives a "neon black"
     // look ("" = off, arcs glow additively as usual).
@@ -1018,6 +1020,7 @@ class CanvasViz {
     this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
     this.theme.arcColor = styles.getPropertyValue("--arc-color").trim();
+    this.theme.arcWidth = Math.min(3, Math.max(0.3, cssNumber("--arc-width", 1)));
     this.theme.arcHalo = styles.getPropertyValue("--arc-halo").trim();
   }
 
@@ -1271,11 +1274,11 @@ class CanvasViz {
         }
         const bandAlpha = arcAlpha * ARC_DEPTH_BANDS[band].alpha;
         ctx.globalAlpha = halo ? Math.min(1, bandAlpha * HALO_ARC_BOOST) : bandAlpha;
-        ctx.lineWidth = arcWidth * ARC_DEPTH_BANDS[band].width;
+        ctx.lineWidth = arcWidth * ARC_DEPTH_BANDS[band].width * this.theme.arcWidth;
         if (this.riding()) {
           const buckets: StrokeBuckets = new Map();
           const haloBuckets: StrokeBuckets = new Map();
-          const width = RIDE_ARC_WIDTH * ARC_DEPTH_BANDS[band].width;
+          const width = RIDE_ARC_WIDTH * ARC_DEPTH_BANDS[band].width * this.theme.arcWidth;
           ctx.globalAlpha *= RIDE_ARC_DIM;
           for (const edge of edges) {
             const points = this.arcPoints3D(edge, shaped);

@@ -4185,14 +4185,14 @@ body[data-style="doom"]:not(.theme-light) {
   --wave-1: #8E0F0A;
   --wave-2: #E8241A;
   --wave-3: #F4EFE4;
-  /* Only reds and bone white on black: the ring's beats step from blood red
-     to white by timbre, spread evenly. */
+  /* Only reds and bone white on black: beats and strands step from blood
+     red to white by timbre, spread evenly. */
   --beat-colors: #A3110B, #D41A12, #FF2E1F, #FF5A2E, #F4EFE4;
   --beat-spread: even;
-  /* "Neon black": bone-white strands, each with a black glow that cuts a gap
-     where it crosses the strands beneath. */
-  --arc-color: #F4EFE4;
+  /* "Neon black": thin strands, each with a black glow that cuts a gap where
+     it crosses the strands beneath. */
   --arc-halo: rgba(0, 0, 0, 0.85);
+  --arc-width: 0.65;
   background:
     radial-gradient(ellipse at 50% 35%, transparent 0 35%, rgba(0, 0, 0, 0.9) 100%),
     repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.035) 0 1px, transparent 1px 4px),
