@@ -418,4 +418,23 @@ describe("search source", () => {
     expect(api.searchSpotify).toHaveBeenCalledWith("let it happen");
     expect(api.searchYoutube).not.toHaveBeenCalled();
   });
+
+  it("falls back to YouTube when the Spotify search fails", async () => {
+    vi.mocked(api.searchSpotify).mockRejectedValue(
+      new Error("Spotify credentials missing"),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    // A config without spotify_configured (cached by an older build) still
+    // tries Spotify first.
+    await search({});
+
+    expect(api.searchSpotify).toHaveBeenCalledWith("let it happen");
+    expect(api.searchYoutube).toHaveBeenCalledWith("let it happen", null);
+    expect(useAppStore.getState().searchResults).toEqual({
+      kind: "youtube",
+      items: [{ item: youtubeItem, name: youtubeItem.title, artist: "" }],
+    });
+    warn.mockRestore();
+  });
 });

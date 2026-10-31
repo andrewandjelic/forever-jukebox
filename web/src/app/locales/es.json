@@ -62,7 +62,6 @@
     "autoPickedNote": "Se eligió automáticamente la mejor coincidencia por ranking de audio — elige otra para cambiar.",
     "checkingExisting": "Comprobando si ya existe un análisis...",
     "enterQuery": "Escribe una búsqueda.",
-    "searchFailed": "La búsqueda falló: {{error}}",
     "youtubeSearchFailed": "La búsqueda en YouTube falló: {{error}}",
     "lookupFailed": "La consulta falló: {{error}}",
     "openYoutube": "Abrir en YouTube",

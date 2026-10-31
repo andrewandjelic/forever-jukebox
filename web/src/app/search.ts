@@ -363,9 +363,10 @@ export async function runSearch(_context: AppContext, _deps: SearchDeps) {
     }
     setSearchResults({ kind: "spotify", items });
   } catch (err) {
-    setSearchMessage(() =>
-      i18n.t("search.searchFailed", { error: formatErrorForDisplay(err) }),
-    );
+    // Spotify isn't usable (keys missing or rejected, or Spotify is down):
+    // search YouTube directly rather than leave search dead.
+    console.warn(`Spotify search failed, searching YouTube: ${String(err)}`);
+    await searchYoutubeDirect(query);
   }
 }
 

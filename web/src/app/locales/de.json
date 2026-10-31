@@ -62,7 +62,6 @@
     "autoPickedNote": "Der beste Treffer wurde automatisch über die Audio-Rangfolge gewählt — wähle einen anderen, um zu wechseln.",
     "checkingExisting": "Vorhandene Analyse wird geprüft...",
     "enterQuery": "Gib einen Suchbegriff ein.",
-    "searchFailed": "Suche fehlgeschlagen: {{error}}",
     "youtubeSearchFailed": "YouTube-Suche fehlgeschlagen: {{error}}",
     "lookupFailed": "Abfrage fehlgeschlagen: {{error}}",
     "openYoutube": "In YouTube öffnen",

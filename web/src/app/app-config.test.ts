@@ -5,7 +5,8 @@ import {
 } from "./favorites-actions";
 import { configureMaxFavorites, maxFavorites } from "./favorites";
 import { useAppStore } from "./store";
-import { applyAppConfig } from "./app-config";
+import type { AppConfig } from "./api";
+import { applyAppConfig, bootstrapAppConfig } from "./app-config";
 
 vi.mock("./favorites-actions", () => ({
   hydrateFavoritesFromSync: vi.fn(),
@@ -110,5 +111,68 @@ describe("applyAppConfig", () => {
     );
 
     expect(hydrateFavoritesFromSync).not.toHaveBeenCalled();
+  });
+});
+
+describe("bootstrapAppConfig", () => {
+  const cachedConfig = { max_favorites: 150 } as AppConfig;
+  const freshConfig = {
+    max_favorites: 150,
+    spotify_configured: false,
+  } as AppConfig;
+
+  beforeEach(() => {
+    useAppStore.setState(initialStoreState, true);
+  });
+
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((done) => (resolve = done));
+    return { promise, resolve };
+  }
+
+  it("keeps the fresh config when the cached read finishes last", async () => {
+    const cached = deferred<unknown>();
+    const save = vi.fn(async () => {});
+    const done = bootstrapAppConfig(
+      () => cached.promise,
+      async () => freshConfig,
+      save,
+    );
+    await vi.waitFor(() => expect(save).toHaveBeenCalledWith(freshConfig));
+    cached.resolve(cachedConfig);
+    await done;
+
+    expect(useAppStore.getState().appConfig).toBe(freshConfig);
+  });
+
+  it("uses the cached config until the fresh one arrives", async () => {
+    const fresh = deferred<AppConfig>();
+    const done = bootstrapAppConfig(
+      async () => cachedConfig,
+      () => fresh.promise,
+      async () => {},
+    );
+    await vi.waitFor(() =>
+      expect(useAppStore.getState().appConfig).toBe(cachedConfig),
+    );
+    fresh.resolve(freshConfig);
+    await done;
+
+    expect(useAppStore.getState().appConfig).toBe(freshConfig);
+  });
+
+  it("keeps the cached config when the server is unreachable", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await bootstrapAppConfig(
+      async () => cachedConfig,
+      async () => {
+        throw new Error("offline");
+      },
+      async () => {},
+    );
+
+    expect(useAppStore.getState().appConfig).toBe(cachedConfig);
+    warn.mockRestore();
   });
 });

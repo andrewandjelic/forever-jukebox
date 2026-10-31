@@ -101,6 +101,7 @@ test.describe("search panel", () => {
   });
 
   test("search failure renders the error text", async ({ page }) => {
+    // Spotify and its YouTube fallback both fail.
     await page.route("**/api/search/**", (route) =>
       route.fulfill({ status: 500, body: "boom" }),
     );
@@ -108,7 +109,7 @@ test.describe("search panel", () => {
     await page.locator("#search-input").fill("whatever");
     await page.locator("#search-button").click();
     await expect(page.locator("#search-results")).toContainText(
-      "Search failed:",
+      "YouTube search failed:",
     );
   });
 });
