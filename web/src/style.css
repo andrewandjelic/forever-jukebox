@@ -4189,10 +4189,12 @@ body[data-style="doom"]:not(.theme-light) {
      red to white by timbre, spread evenly. */
   --beat-colors: #A3110B, #D41A12, #FF2E1F, #FF5A2E, #F4EFE4;
   --beat-spread: even;
-  /* "Neon black": thin strands, each with a black glow that cuts a gap where
-     it crosses the strands beneath. */
+  /* The red strands glow additively; the white ones are "neon black": thin,
+     with a black glow that cuts a gap where they cross the strands beneath. */
   --arc-halo: rgba(0, 0, 0, 0.85);
-  --arc-width: 0.65;
+  --arc-halo-colors: #F4EFE4;
+  --arc-width: 0.5;
+  --arc-glow: 0.35;
   background:
     radial-gradient(ellipse at 50% 35%, transparent 0 35%, rgba(0, 0, 0, 0.9) 100%),
     repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.035) 0 1px, transparent 1px 4px),

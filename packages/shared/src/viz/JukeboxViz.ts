@@ -281,7 +281,9 @@ const RIDE_LINE_REF = 0.35;
 const RIDE_ARC_WIDTH = 0.9;
 // Haloed arcs ("neon black"): extra halo width around each strand, in px,
 // and how much brighter the opaque strands draw than additive ones.
-const HALO_WIDTH = 4;
+const HALO_WIDTH = 2.5;
+const GLOW_WIDTH = 1.5;
+const OUTER_GLOW_SHARE = 0.45;
 const HALO_ARC_BOOST = 1.6;
 const RIDE_ARC_DIM = 0.75;
 const RIDE_RING_WIDTH = 1.6;
@@ -687,8 +689,13 @@ class CanvasViz {
     intensity: 1,
     // One color for every live arc instead of each beat's color ("" = off).
     arcColor: "",
-    // Scales the live arcs' line width (thinner strands below 1).
+    // Scales the haloed arcs' line width (thinner strands below 1).
     arcWidth: 1,
+    // With a halo: opacity of a soft glow in each strand's own color, between
+    // the line and its halo (0 = none).
+    arcGlow: 0,
+    // Lowercased colors whose arcs get the halo; empty means all of them.
+    arcHaloColors: [] as string[],
     // A halo drawn around each live arc in plain (not additive) blending, so
     // strands stay apart where they cross: a dark halo gives a "neon black"
     // look ("" = off, arcs glow additively as usual).
@@ -1021,7 +1028,13 @@ class CanvasViz {
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
     this.theme.arcColor = styles.getPropertyValue("--arc-color").trim();
     this.theme.arcWidth = Math.min(3, Math.max(0.3, cssNumber("--arc-width", 1)));
+    this.theme.arcGlow = Math.min(1, Math.max(0, cssNumber("--arc-glow", 0)));
     this.theme.arcHalo = styles.getPropertyValue("--arc-halo").trim();
+    this.theme.arcHaloColors = styles
+      .getPropertyValue("--arc-halo-colors")
+      .split(",")
+      .map((color) => color.trim().toLowerCase())
+      .filter(Boolean);
   }
 
   private parseThemeColor(color: string) {
@@ -1240,7 +1253,7 @@ class CanvasViz {
     gradient.addColorStop(1, c3);
 
     ctx.save();
-    const halo = this.theme.arcHalo;
+    const arcHalo = this.theme.arcHalo;
     ctx.globalCompositeOperation = "lighter";
     ctx.lineJoin = "round";
 
@@ -1254,9 +1267,22 @@ class CanvasViz {
     const arcWidth = flat ? 1 + energy : 1.2 + energy * 2;
     const playhead = this.world[this.currentIndex];
     const unit = Math.min(width, height);
-    // Haloed arcs are opaque strokes drawn over one another, not light.
-    ctx.globalCompositeOperation = halo ? "source-over" : "lighter";
-    for (const [color, colorEdges] of this.edgesByColor) {
+    // Haloed arcs are opaque strokes drawn over one another, not light. A
+    // glow sits between the line and the halo, so the halo widens to fit it.
+    // Only the colors in --arc-halo-colors get the halo (all when unset); they
+    // draw last, over the additive glow of the rest.
+    const glow = this.theme.arcGlow;
+    const haloExtra = HALO_WIDTH + (glow > 0 ? GLOW_WIDTH * 2 : 0);
+    const haloFor = (color: string) =>
+      arcHalo !== "" &&
+      (this.theme.arcHaloColors.length === 0 ||
+        this.theme.arcHaloColors.includes(color.toLowerCase()));
+    const groups = [...this.edgesByColor].sort(
+      ([a], [b]) => Number(haloFor(a)) - Number(haloFor(b)),
+    );
+    for (const [color, colorEdges] of groups) {
+      const halo = haloFor(color) ? arcHalo : "";
+      ctx.globalCompositeOperation = halo ? "source-over" : "lighter";
       const style = this.theme.arcColor || color || gradient;
       ctx.strokeStyle = style;
       // Group by distance band so each band strokes in one go.
@@ -1274,36 +1300,60 @@ class CanvasViz {
         }
         const bandAlpha = arcAlpha * ARC_DEPTH_BANDS[band].alpha;
         ctx.globalAlpha = halo ? Math.min(1, bandAlpha * HALO_ARC_BOOST) : bandAlpha;
-        ctx.lineWidth = arcWidth * ARC_DEPTH_BANDS[band].width * this.theme.arcWidth;
+        const widthScale = halo ? this.theme.arcWidth : 1;
+        ctx.lineWidth = arcWidth * ARC_DEPTH_BANDS[band].width * widthScale;
         if (this.riding()) {
           const buckets: StrokeBuckets = new Map();
           const haloBuckets: StrokeBuckets = new Map();
-          const width = RIDE_ARC_WIDTH * ARC_DEPTH_BANDS[band].width * this.theme.arcWidth;
+          const glowBuckets: StrokeBuckets = new Map();
+          const outerGlowBuckets: StrokeBuckets = new Map();
+          const width = RIDE_ARC_WIDTH * ARC_DEPTH_BANDS[band].width * widthScale;
           ctx.globalAlpha *= RIDE_ARC_DIM;
           for (const edge of edges) {
             const points = this.arcPoints3D(edge, shaped);
             if (halo) {
-              addScaledLine(haloBuckets, points, width + HALO_WIDTH, () => halo);
+              addScaledLine(haloBuckets, points, width + haloExtra, () => halo);
+              if (glow > 0) {
+                addScaledLine(outerGlowBuckets, points, width + GLOW_WIDTH * 2, () => style);
+                addScaledLine(glowBuckets, points, width + GLOW_WIDTH, () => style);
+              }
             }
             addScaledLine(buckets, points, width, () => style);
           }
+          const alpha = ctx.globalAlpha;
           strokeBuckets(ctx, haloBuckets);
+          ctx.globalAlpha = alpha * glow * OUTER_GLOW_SHARE;
+          strokeBuckets(ctx, outerGlowBuckets);
+          ctx.globalAlpha = alpha * glow;
+          strokeBuckets(ctx, glowBuckets);
+          ctx.globalAlpha = alpha;
           strokeBuckets(ctx, buckets);
           return;
         }
         if (halo) {
-          // One edge at a time, halo then line, so each strand cuts a dark
-          // gap through the strands under it.
+          // One edge at a time, halo, glow, then line, so each strand cuts a
+          // dark gap through the strands under it.
           const lineWidth = ctx.lineWidth;
+          const alpha = ctx.globalAlpha;
           for (const edge of edges) {
             ctx.beginPath();
             if (!this.traceWaveEdge(ctx, edge, shaped)) {
               continue;
             }
             ctx.strokeStyle = halo;
-            ctx.lineWidth = lineWidth + HALO_WIDTH;
+            ctx.lineWidth = lineWidth + haloExtra;
             ctx.stroke();
             ctx.strokeStyle = style;
+            if (glow > 0) {
+              // Two layers, the wider one fainter, for a soft falloff.
+              ctx.globalAlpha = alpha * glow * OUTER_GLOW_SHARE;
+              ctx.lineWidth = lineWidth + GLOW_WIDTH * 2;
+              ctx.stroke();
+              ctx.globalAlpha = alpha * glow;
+              ctx.lineWidth = lineWidth + GLOW_WIDTH;
+              ctx.stroke();
+              ctx.globalAlpha = alpha;
+            }
             ctx.lineWidth = lineWidth;
             ctx.stroke();
           }
