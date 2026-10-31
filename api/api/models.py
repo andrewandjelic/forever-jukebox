@@ -46,6 +46,8 @@ class SpotifyItem(BaseModel):
     name: str | None = None
     artist: str | None = None
     duration: int
+    # Album art URL for the result row (the smallest size Spotify offers).
+    image: str | None = None
 
 
 class SpotifySearchResponse(BaseModel):

@@ -62,7 +62,6 @@
     "autoPickedNote": "The top match was auto-picked from the plain-audio ranking — pick another to switch.",
     "checkingExisting": "Checking existing analysis...",
     "enterQuery": "Enter a search query.",
-    "searchFailed": "Search failed: {{error}}",
     "youtubeSearchFailed": "YouTube search failed: {{error}}",
     "lookupFailed": "Lookup failed: {{error}}",
     "openYoutube": "Open in YouTube",

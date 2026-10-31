@@ -49,6 +49,8 @@ export type SpotifySearchItem = {
   name?: string;
   artist?: string;
   duration?: number;
+  // Album art URL, when Spotify has one.
+  image?: string | null;
 };
 
 export type YoutubeSearchItem = {

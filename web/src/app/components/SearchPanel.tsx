@@ -55,6 +55,28 @@ function YoutubePreviewButton({
   );
 }
 
+const youtubeThumbnail = (youtubeId: string) =>
+  `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/mqdefault.jpg`;
+
+// A small picture on each result row (the video's thumbnail or the album art)
+// so the right one is easy to spot; it hides itself if it fails to load.
+function ResultThumbnail({ src }: { src: string | null | undefined }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return null;
+  }
+  return (
+    <img
+      className="search-thumb"
+      src={src}
+      alt=""
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function SearchResults() {
   const { t } = useTranslation();
   const results = useAppStore((s) => s.searchResults);
@@ -96,6 +118,7 @@ function SearchResults() {
                   data-track-artist={artist}
                   onClick={() => selectSpotify({ name, artist, duration })}
                 >
+                  <ResultThumbnail src={item.image} />
                   <strong>{title}</strong>
                   <span>{formatTrackDuration(item.duration)}</span>
                 </button>
@@ -140,6 +163,9 @@ function SearchResults() {
                     })
                   }
                 >
+                  <ResultThumbnail
+                    src={youtubeId ? youtubeThumbnail(youtubeId) : null}
+                  />
                   <strong>{title}</strong>
                   <span>{formatTrackDuration(item.duration)}</span>
                 </button>

@@ -2058,6 +2058,32 @@ body.playlist-add-enabled .favorite-row:focus-within .playlist-add-button {
   gap: 8px;
 }
 
+/* Thumbnail rows: picture, title (taking the free space), then duration. */
+.search-item:has(.search-thumb),
+.search-select:has(.search-thumb) {
+  align-items: center;
+}
+
+.search-item:has(.search-thumb) strong {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search-thumb {
+  flex: 0 0 auto;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-control);
+}
+
+/* Album art is square. */
+.search-item > .search-thumb {
+  width: 54px;
+  aspect-ratio: 1;
+}
+
 .search-autopick-note {
   margin: 0;
   color: var(--muted);
@@ -4155,6 +4181,442 @@ body[data-style="irish"]:not(.theme-light) .viz::before {
 @media (prefers-reduced-motion: reduce) {
   body[data-style="irish"]:not(.theme-light) .viz::before {
     animation: none;
+  }
+}
+
+/* ===== Doom skin: a black-and-bone engraving with blood-red condensed
+   lettering, for dark techno, metal and goth. The visualizer pounds on the
+   beat: beatPound.ts sets --pound (every beat, by loudness) and --pound-bar
+   (first beat of each bar) on #jukebox-viz. ===== */
+body[data-style="doom"]:not(.theme-light) {
+  --bg: #050505;
+  --text: #E9E4D8;
+  --text-rgb: 233, 228, 216;
+  --muted: #9A948A;
+  --accent: #D02B20;
+  --title-accent: #C42A20;
+  --title-glow: rgba(196, 42, 32, 0.4);
+  --surface-panel: rgba(6, 6, 6, 0.94);
+  --surface-hero: rgba(4, 4, 4, 0.96);
+  --surface-control: #0E0E0E;
+  --surface-control-hover: #1C1A19;
+  --border-panel: rgba(233, 228, 216, 0.22);
+  --border-hero: rgba(233, 228, 216, 0.4);
+  --border-control: rgba(233, 228, 216, 0.3);
+  /* A charcoal centre, so the black halos around the strands read. */
+  --viz-bg: radial-gradient(ellipse at 50% 45%, #2C2926 0%, #141312 55%, #030303 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.9);
+  --edge-selected: #FF3B2E;
+  --beat-highlight: #F4EFE4;
+  --wave-1: #8E0F0A;
+  --wave-2: #E8241A;
+  --wave-3: #F4EFE4;
+  /* Only reds and bone white on black: beats and strands step from blood
+     red to white by timbre, spread evenly. */
+  --beat-colors: #A3110B, #D41A12, #FF2E1F, #FF5A2E, #F4EFE4;
+  --beat-spread: even;
+  /* The red strands glow additively; the white ones are "neon black": thin,
+     with a black glow that cuts a gap where they cross the strands beneath. */
+  --arc-halo: rgba(0, 0, 0, 0.85);
+  --arc-halo-colors: #F4EFE4;
+  --arc-width: 0.5;
+  --arc-glow: 0.35;
+  background:
+    radial-gradient(ellipse at 50% 35%, transparent 0 35%, rgba(0, 0, 0, 0.9) 100%),
+    repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.035) 0 1px, transparent 1px 4px),
+    #050505;
+  background-attachment: fixed;
+}
+
+/* Square plates with a thin double rule, like the frame of a print. */
+body[data-style="doom"]:not(.theme-light) .hero,
+body[data-style="doom"]:not(.theme-light) .panel {
+  border-radius: 0;
+  box-shadow: none;
+  outline: 1px solid rgba(233, 228, 216, 0.1);
+  outline-offset: 3px;
+}
+
+body[data-style="doom"]:not(.theme-light) .hero-title {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 4px;
+}
+
+body[data-style="doom"]:not(.theme-light) .hero-title-neon,
+body[data-style="doom"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Imbue", serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(2.4rem, 4.6vw, 3.8rem);
+  line-height: 0.85;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--title-accent);
+  text-shadow: none;
+  animation: none;
+}
+
+body[data-style="doom"]:not(.theme-light) button,
+body[data-style="doom"]:not(.theme-light) .tab-btn {
+  border-radius: 0;
+}
+
+body[data-style="doom"]:not(.theme-light) button:hover,
+body[data-style="doom"]:not(.theme-light) .tab-btn:hover {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+body[data-style="doom"]:not(.theme-light) .tab-btn.active {
+  background: #7E140E;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+body[data-style="doom"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border-radius: 0;
+  border: 1px solid rgba(233, 228, 216, 0.55);
+  outline: 1px solid rgba(233, 228, 216, 0.16);
+  outline-offset: -7px;
+}
+
+/* The engraving: fine crosshatching, densest toward the edges like etched
+   shading. It surges outward on the first beat of each bar. */
+body[data-style="doom"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(233, 228, 216, 0.09) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.06) 0 1px, transparent 1px 7px);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent 25%, #000 85%);
+  mask-image: radial-gradient(ellipse at 50% 50%, transparent 25%, #000 85%);
+  transform: scale(calc(1 + var(--pound-bar, 0) * 0.05));
+}
+
+/* A blood-red vignette: a flicker on each beat, a full flash only on the bar,
+   which keeps red flashes well under three a second even at 180 BPM. */
+body[data-style="doom"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(196, 30, 20, 0.6) 100%);
+  opacity: calc(var(--pound, 0) * 0.2 + var(--pound-bar, 0) * 0.6);
+}
+
+/* The arcs punch toward you on each beat and drop on the bar. */
+body[data-style="doom"]:not(.theme-light) .viz-layer {
+  transform:
+    scale(calc(1 + var(--pound, 0) * 0.02))
+    translateY(calc(var(--pound-bar, 0) * 4px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="doom"]:not(.theme-light) .viz::before,
+  body[data-style="doom"]:not(.theme-light) .viz-layer {
+    transform: none;
+  }
+  body[data-style="doom"]:not(.theme-light) .viz::after {
+    opacity: 0;
+  }
+}
+
+/* ===== Moth skin: a dusk-blue fairy-tale haze lit by pearl and ember, for
+   dream pop, shoegaze and indie. Glowing motes drift up through the
+   visualizer, strands leave soft trails, and each beat swells a warm bloom
+   (beatPound.ts with a slow decay) instead of a pound. ===== */
+body[data-style="moth"]:not(.theme-light) {
+  --bg: #1A1E2C;
+  --text: #EFE8D6;
+  --text-rgb: 239, 232, 214;
+  --muted: #A9AFC4;
+  --accent: #F4996B;
+  --title-accent: #F1E6CC;
+  --title-glow: rgba(244, 153, 107, 0.45);
+  --surface-panel: rgba(30, 35, 52, 0.72);
+  --surface-hero: rgba(34, 39, 58, 0.75);
+  --surface-control: rgba(52, 58, 82, 0.7);
+  --surface-control-hover: rgba(70, 77, 106, 0.8);
+  --border-panel: rgba(239, 232, 214, 0.16);
+  --border-hero: rgba(239, 232, 214, 0.24);
+  --border-control: rgba(239, 232, 214, 0.22);
+  /* Twilight sky with a warm meadow glow rising from below. */
+  --viz-bg:
+    radial-gradient(ellipse 90% 60% at 50% 110%, rgba(232, 112, 64, 0.3), transparent 62%),
+    radial-gradient(ellipse at 50% 38%, #3E4662 0%, #272C40 55%, #12141E 100%);
+  --viz-shadow: rgba(10, 12, 20, 0.6);
+  --edge-selected: #FF9A6A;
+  --beat-highlight: #FFF4DC;
+  --wave-1: #9FB0D6;
+  --wave-2: #F1E6CC;
+  --wave-3: #F4996B;
+  /* The cover's colours: periwinkle sky, pearl wings, pale gold, coral and
+     ember orbs, spread evenly so the strands stay apart. */
+  --beat-colors: #A9B8DA, #EFE6CF, #F6CF94, #F4996B, #E2683E;
+  --beat-spread: even;
+  --viz-trails: 0.45;
+  background:
+    radial-gradient(ellipse 80% 45% at 50% 105%, rgba(232, 112, 64, 0.2), transparent 70%),
+    linear-gradient(180deg, #2D3550 0%, #1F2436 55%, #171A27 100%);
+  background-attachment: fixed;
+}
+
+body[data-style="moth"]:not(.theme-light) .hero,
+body[data-style="moth"]:not(.theme-light) .panel {
+  border-radius: 18px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 40px rgba(8, 10, 18, 0.45);
+}
+
+body[data-style="moth"]:not(.theme-light) .hero-title {
+  border: 1px solid rgba(239, 232, 214, 0.35);
+  border-radius: 999px;
+  box-shadow: 0 0 22px rgba(244, 153, 107, 0.25);
+  padding: 2px 18px 6px;
+}
+
+body[data-style="moth"]:not(.theme-light) .hero-title-neon,
+body[data-style="moth"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(2rem, 3.4vw, 2.9rem);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  color: var(--title-accent);
+  text-shadow: 0 0 14px rgba(244, 153, 107, 0.55), 0 0 32px rgba(159, 176, 214, 0.35);
+  animation: none;
+}
+
+body[data-style="moth"]:not(.theme-light) button,
+body[data-style="moth"]:not(.theme-light) .tab-btn {
+  border-radius: 999px;
+}
+
+body[data-style="moth"]:not(.theme-light) button:hover,
+body[data-style="moth"]:not(.theme-light) .tab-btn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px rgba(244, 153, 107, 0.35);
+}
+
+body[data-style="moth"]:not(.theme-light) .tab-btn.active {
+  background: rgba(244, 153, 107, 0.22);
+  border-color: var(--accent);
+}
+
+body[data-style="moth"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border-radius: 22px;
+  border: 1px solid rgba(239, 232, 214, 0.18);
+  box-shadow: inset 0 0 90px rgba(10, 12, 20, 0.55), 0 0 40px rgba(159, 176, 214, 0.12);
+}
+
+/* Glowing motes, like the cover's orbs and flowers, drifting slowly up. */
+body[data-style="moth"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 30%, rgba(246, 207, 148, 0.85) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 63% 72%, rgba(244, 153, 107, 0.8) 0 2px, transparent 4px),
+    radial-gradient(circle at 82% 18%, rgba(239, 230, 207, 0.7) 0 1px, transparent 2.5px),
+    radial-gradient(circle at 38% 88%, rgba(226, 104, 62, 0.75) 0 1.5px, transparent 3.5px),
+    radial-gradient(circle at 92% 55%, rgba(246, 207, 148, 0.6) 0 1px, transparent 2.5px),
+    radial-gradient(circle at 8% 70%, rgba(239, 230, 207, 0.6) 0 1px, transparent 2.5px);
+  background-size: 260px 300px;
+  filter: drop-shadow(0 0 4px rgba(244, 153, 107, 0.8));
+  animation: moth-motes 38s linear infinite;
+}
+
+@keyframes moth-motes {
+  to { background-position: 30px -600px; }
+}
+
+/* A warm bloom that swells on each beat, fullest on the bar. */
+body[data-style="moth"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 62%, rgba(244, 153, 107, 0.28), transparent 70%);
+  mix-blend-mode: screen;
+  opacity: calc(var(--pound, 0) * 0.55 + var(--pound-bar, 0) * 0.35);
+}
+
+/* The arcs breathe gently with the beat. */
+body[data-style="moth"]:not(.theme-light) .viz-layer {
+  transform: scale(calc(1 + var(--pound, 0) * 0.008));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="moth"]:not(.theme-light) .viz::before {
+    animation: none;
+  }
+  body[data-style="moth"]:not(.theme-light) .viz-layer {
+    transform: none;
+  }
+  body[data-style="moth"]:not(.theme-light) .viz::after {
+    opacity: 0;
+  }
+}
+
+/* ===== Irie skin: a sound system in a smoky yard, for reggae, dub, dancehall,
+   drum'n'bass and jungle. Red, gold and green on smoky black; strands leave
+   dub-echo trails; leaves and smoke drift behind the arcs; the speaker cone
+   rings push out with the bass (beatPound.ts, 0.2 s decay). ===== */
+body[data-style="irie"]:not(.theme-light) {
+  --bg: #0A0D09;
+  --text: #F4EFD8;
+  --text-rgb: 244, 239, 216;
+  --muted: #B9C2A6;
+  --accent: #FCD116;
+  --title-accent: #FCD116;
+  --title-glow: rgba(252, 209, 22, 0.4);
+  --surface-panel: rgba(14, 18, 12, 0.88);
+  --surface-hero: rgba(16, 21, 14, 0.9);
+  --surface-control: #18200F;
+  --surface-control-hover: #24301A;
+  --border-panel: rgba(252, 209, 22, 0.2);
+  --border-hero: rgba(252, 209, 22, 0.32);
+  --border-control: rgba(252, 209, 22, 0.28);
+  /* One layer only: the tricolour border below paints underneath it. */
+  --viz-bg: radial-gradient(ellipse at 50% 48%, #1C2617 0%, #0D120B 58%, #050705 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.8);
+  --edge-selected: #FCD116;
+  --beat-highlight: #FFFFFF;
+  --wave-1: #2FB44B;
+  --wave-2: #F7C948;
+  --wave-3: #E8392B;
+  --beat-colors: #2FB44B, #9BCB3B, #F7C948, #F08A24, #E8392B;
+  --beat-spread: even;
+  /* Dub echo. */
+  --viz-trails: 0.55;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(47, 180, 75, 0.18), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(232, 57, 43, 0.16), transparent 50%),
+    radial-gradient(ellipse at 50% 0%, rgba(252, 209, 22, 0.1), transparent 55%),
+    #0A0D09;
+  background-attachment: fixed;
+}
+
+body[data-style="irie"]:not(.theme-light) .hero,
+body[data-style="irie"]:not(.theme-light) .panel {
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+body[data-style="irie"]:not(.theme-light) .hero-title {
+  border: 2px solid #FCD116;
+  border-radius: 12px;
+  box-shadow: 0 0 16px rgba(252, 209, 22, 0.3), inset 0 0 12px rgba(47, 180, 75, 0.25);
+}
+
+/* Chunky sound-system lettering striped green, gold and red. */
+body[data-style="irie"]:not(.theme-light) .hero-title-neon,
+body[data-style="irie"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Bungee", sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #3FCB5A 0 34%, #FCD116 34% 67%, #E8392B 67%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(252, 209, 22, 0.35));
+  animation: none;
+}
+
+body[data-style="irie"]:not(.theme-light) button,
+body[data-style="irie"]:not(.theme-light) .tab-btn {
+  border-radius: 10px;
+}
+
+body[data-style="irie"]:not(.theme-light) button:hover,
+body[data-style="irie"]:not(.theme-light) .tab-btn:hover {
+  border-color: #FCD116;
+  box-shadow: 0 0 14px rgba(252, 209, 22, 0.4);
+}
+
+body[data-style="irie"]:not(.theme-light) .tab-btn.active {
+  background: #1F7A35;
+  border-color: #FCD116;
+}
+
+/* Red, gold and green frame. */
+body[data-style="irie"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background:
+    var(--viz-bg) padding-box,
+    linear-gradient(90deg, #2FB44B, #F7C948 50%, #E8392B) border-box;
+  box-shadow: 0 0 30px rgba(47, 180, 75, 0.15), inset 0 0 80px rgba(0, 0, 0, 0.6);
+}
+
+/* Smoke and leaves drifting behind the arcs. */
+body[data-style="irie"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 38% 26% at 30% 40%, rgba(200, 214, 190, 0.07), transparent 70%),
+    radial-gradient(ellipse 30% 22% at 72% 62%, rgba(200, 214, 190, 0.06), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='240' viewBox='0 0 220 240'%3E%3Cg fill='%232FB44B' fill-opacity='0.13'%3E%3Cg transform='translate(14 18) rotate(-14 50 90) scale(0.62)'%3E%3Cg%3E%3Cellipse cx='50' cy='50' rx='5.5' ry='40'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(-28 50 90)'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(28 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(-56 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(56 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(-84 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(84 50 90)'/%3E%3Crect x='49' y='88' width='2' height='14' rx='1'/%3E%3C/g%3E%3C/g%3E%3Cg transform='translate(122 120) rotate(18 50 90) scale(0.48)'%3E%3Cg%3E%3Cellipse cx='50' cy='50' rx='5.5' ry='40'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(-28 50 90)'/%3E%3Cellipse cx='50' cy='56' rx='5' ry='34' transform='rotate(28 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(-56 50 90)'/%3E%3Cellipse cx='50' cy='64' rx='4.5' ry='26' transform='rotate(56 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(-84 50 90)'/%3E%3Cellipse cx='50' cy='74' rx='3.5' ry='16' transform='rotate(84 50 90)'/%3E%3Crect x='49' y='88' width='2' height='14' rx='1'/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 220px 240px;
+  animation: irie-drift 46s linear infinite;
+}
+
+@keyframes irie-drift {
+  0% { background-position: -6% 0, 6% 0, 0 0; }
+  50% { background-position: 8% -3%, -6% 4%, 30px -240px; }
+  100% { background-position: -6% 0, 6% 0, 60px -480px; }
+}
+
+/* Speaker cone rings that push out with the bass. */
+body[data-style="irie"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0 22%,
+    rgba(252, 209, 22, 0.12) 22.4% 23.4%,
+    transparent 23.8% 33%,
+    rgba(47, 180, 75, 0.12) 33.4% 34.4%,
+    transparent 34.8% 46%,
+    rgba(232, 57, 43, 0.14) 46.4% 47.4%,
+    transparent 47.8%
+  );
+  mix-blend-mode: screen;
+  opacity: calc(0.35 + var(--pound, 0) * 0.65);
+  transform: scale(calc(1 + var(--pound, 0) * 0.025 + var(--pound-bar, 0) * 0.05));
+}
+
+/* The arcs thump with the bass. */
+body[data-style="irie"]:not(.theme-light) .viz-layer {
+  transform: scale(calc(1 + var(--pound, 0) * 0.015));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="irie"]:not(.theme-light) .viz::before {
+    animation: none;
+  }
+  body[data-style="irie"]:not(.theme-light) .viz::after,
+  body[data-style="irie"]:not(.theme-light) .viz-layer {
+    transform: none;
   }
 }
 

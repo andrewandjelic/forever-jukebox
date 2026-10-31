@@ -177,7 +177,49 @@ describe("SearchPanel", () => {
     });
   });
 
-  it("loads the youtube thumbnail only after opening the preview modal", async () => {
+  it("shows a small thumbnail on each result row", () => {
+    act(() => {
+      useAppStore.setState({
+        searchResults: {
+          kind: "youtube",
+          items: [
+            { item: { id: "yt-a", title: "A", duration: 100 }, name: "A", artist: "" },
+            { item: { id: "yt-b", title: "B", duration: 200 }, name: "B", artist: "" },
+          ],
+        },
+      });
+    });
+    render(<SearchPanel />);
+    const thumbs = [...document.querySelectorAll<HTMLImageElement>(".search-thumb")];
+    expect(thumbs.map((img) => img.src)).toEqual([
+      "https://i.ytimg.com/vi/yt-a/mqdefault.jpg",
+      "https://i.ytimg.com/vi/yt-b/mqdefault.jpg",
+    ]);
+    expect(thumbs[0].getAttribute("loading")).toBe("lazy");
+    expect(thumbs[0].getAttribute("referrerpolicy")).toBe("no-referrer");
+    // A thumbnail that fails to load disappears instead of showing a broken image.
+    fireEvent.error(thumbs[0]);
+    expect(document.querySelectorAll(".search-thumb")).toHaveLength(1);
+  });
+
+  it("shows album art on spotify results that have it", () => {
+    act(() => {
+      useAppStore.setState({
+        searchResults: {
+          kind: "spotify",
+          items: [
+            { id: "s1", name: "With Art", artist: "X", duration: 100, image: "https://i.scdn.co/image/small" },
+            { id: "s2", name: "No Art", artist: "Y", duration: 200 },
+          ],
+        },
+      });
+    });
+    render(<SearchPanel />);
+    const thumbs = [...document.querySelectorAll<HTMLImageElement>(".search-thumb")];
+    expect(thumbs.map((img) => img.src)).toEqual(["https://i.scdn.co/image/small"]);
+  });
+
+  it("loads the large youtube thumbnail only after opening the preview modal", async () => {
     act(() => {
       useAppStore.setState({
         searchResults: {

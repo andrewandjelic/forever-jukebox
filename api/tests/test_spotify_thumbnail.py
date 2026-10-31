@@ -1,0 +1,19 @@
+from api.spotify import _album_thumbnail
+
+
+def test_album_thumbnail_picks_the_smallest_image():
+    track = {
+        "album": {
+            "images": [
+                {"url": "https://i.scdn.co/640", "width": 640},
+                {"url": "https://i.scdn.co/300", "width": 300},
+                {"url": "https://i.scdn.co/64", "width": 64},
+            ]
+        }
+    }
+    assert _album_thumbnail(track) == "https://i.scdn.co/64"
+
+
+def test_album_thumbnail_is_none_without_art():
+    assert _album_thumbnail({}) is None
+    assert _album_thumbnail({"album": {"images": []}}) is None

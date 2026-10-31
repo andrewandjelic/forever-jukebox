@@ -37,7 +37,6 @@ import {
   type AttachVizNodes,
 } from "./runtime";
 import type { AppContext, TabId } from "./context";
-import type { AppConfig } from "./api";
 import {
   maybeAutoFavoriteUserSupplied,
 } from "./favorites-actions";
@@ -56,7 +55,7 @@ import {
   advanceAutocanonizerOnEnded,
   handleNormalTrackSelected,
 } from "./playlist-actions";
-import { applyAppConfig } from "./app-config";
+import { bootstrapAppConfig } from "./app-config";
 import { useAppStore, type LocalizedText } from "./store";
 import {
   loadFavorites,
@@ -213,25 +212,7 @@ export function initRuntime(): void {
   setAttachViz(attachViz);
 
   setAnalysisStatus(context, () => i18n.t("status.noTrack"), false);
-  loadAppConfig()
-    .then((config) => {
-      if (config) {
-        applyAppConfig(config as AppConfig, {
-          hydrateFavorites: false,
-        });
-      }
-    })
-    .catch((err) => {
-      console.warn(`App config load failed: ${String(err)}`);
-    });
-  fetchAppConfig()
-    .then((config) => {
-      applyAppConfig(config);
-      return saveAppConfig(config);
-    })
-    .catch((err) => {
-      console.warn(`App config fetch failed: ${String(err)}`);
-    });
+  void bootstrapAppConfig(loadAppConfig, fetchAppConfig, saveAppConfig);
 
   // Runs on initial load and browser back/forward, driven by the React
   // shell's route-sync effect (replaces the popstate listener and the
