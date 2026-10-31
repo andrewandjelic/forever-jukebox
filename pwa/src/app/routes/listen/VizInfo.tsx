@@ -1,6 +1,11 @@
 import type React from "react";
 import { useTranslation } from "react-i18next";
-import { formatDuration, formatTime } from "@/shared/utils/format";
+import {
+  formatDuration,
+  formatListenMultiplier,
+  formatTime,
+  listenMultiplierTenths,
+} from "@/shared/utils/format";
 import {
   AUTOCANONIZER_MAIN_COLOR,
   AUTOCANONIZER_OTHER_COLOR,
@@ -32,8 +37,15 @@ export function VizInfo({
   beatsPlayed: number;
   bringItHomeMode: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const hideBeats = playMode !== "jukebox";
+  const multiplierTenths = hideBeats
+    ? null
+    : listenMultiplierTenths(listenSeconds, trackDurationSeconds);
+  const multiplier =
+    multiplierTenths === null
+      ? null
+      : formatListenMultiplier(multiplierTenths, i18n.language);
   return (
     <div className="viz-info">
       <div className="viz-title" id="viz-now-playing" ref={vizTitleRef}></div>
@@ -73,6 +85,20 @@ export function VizInfo({
         <span className="viz-meta-stats">
           <span>{t("listen.listenTime")}</span>
           <span>{formatDuration(listenSeconds)}</span>
+          {multiplier !== null ? (
+            <>
+              <span className="viz-divider">·</span>
+              {/* "4.2× original"; the key replays its highlight on each tick. */}
+              <span
+                key={multiplierTenths}
+                id="listen-multiplier"
+                className="listen-multiplier"
+                title={t("listen.listenMultiplierHint", { value: multiplier })}
+              >
+                {t("listen.listenMultiplier", { value: multiplier })}
+              </span>
+            </>
+          ) : null}
           <span className={`viz-divider ${hideBeats ? "is-hidden" : ""}`}>·</span>
           <span className={hideBeats ? "is-hidden" : ""}>{beatsLabel}</span>
           <span className={hideBeats ? "is-hidden" : ""}>{beatsPlayed}</span>

@@ -144,6 +144,9 @@ type ShellSlice = {
   // only appears once per fresh load (a new search/reload re-enables it).
   retryInFlightJobId: string | null;
   listenTimeText: string;
+  // Listen time in tenths of the song's length (42 = 4.2x); null while the
+  // length is unknown.
+  listenMultiplierTenths: number | null;
   beatsPlayedText: string;
   playlistLoadBusy: boolean;
   branchStats: BranchStatsState | null;
@@ -239,6 +242,7 @@ const createUiSlice: Slice<
     | "analysisRetryJobId"
     | "retryInFlightJobId"
     | "listenTimeText"
+    | "listenMultiplierTenths"
     | "beatsPlayedText"
     | "playlistLoadBusy"
     | "branchStats"
@@ -302,6 +306,7 @@ const createUiSlice: Slice<
     analysisRetryJobId: null,
     retryInFlightJobId: null,
     listenTimeText: "00:00:00",
+    listenMultiplierTenths: null,
     beatsPlayedText: "0",
     playlistLoadBusy: false,
     branchStats: null,

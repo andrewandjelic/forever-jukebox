@@ -217,6 +217,8 @@
     "finishTrack": "Song zu Ende spielen",
     "bringingHome": "Spielt zu Ende",
     "listenTime": "Hörzeit:",
+    "listenMultiplier": "{{value}}× Original",
+    "listenMultiplierHint": "Du hast {{value}}-mal so lange gehört wie der Originalsong",
     "totalBeats": "Beats insgesamt:",
     "totalCowbells": "Kuhglocken insgesamt:",
     "volume": "Lautstärke",

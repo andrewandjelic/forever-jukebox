@@ -93,6 +93,8 @@
     "visualizationNumber": "Visualisierung {{number}}",
     "finishTrack": "Song zu Ende spielen",
     "listenTime": "Hörzeit:",
+    "listenMultiplier": "{{value}}× Original",
+    "listenMultiplierHint": "Du hast {{value}}-mal so lange gehört wie der Originalsong",
     "volume": "Lautstärke",
     "audioBalance": "Audiobalance",
     "blueBalance": "Blaue Balance",

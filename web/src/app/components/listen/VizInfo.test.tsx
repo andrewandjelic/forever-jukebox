@@ -19,6 +19,7 @@ describe("VizInfo", () => {
         playMode: "jukebox",
         jukeboxAudioMode: "off",
         listenTimeText: "00:00:00",
+        listenMultiplierTenths: null,
         beatsPlayedText: "0",
         bringItHomeMode: false,
         trackDurationSec: 225,
@@ -104,6 +105,24 @@ describe("VizInfo", () => {
     expect(document.getElementById("viz-beats-label")?.textContent).toBe(
       "Total Cowbells:",
     );
+  });
+
+  it("shows listen time as a multiple of the song in jukebox mode", () => {
+    render(<VizInfo />);
+    // Hidden until the song's length is known.
+    expect(document.getElementById("listen-multiplier")).toBeNull();
+    act(() => {
+      useAppStore.setState({ listenMultiplierTenths: 42 });
+    });
+    const multiplier = document.getElementById("listen-multiplier");
+    expect(multiplier?.textContent).toBe("4.2× original");
+    expect(multiplier?.getAttribute("title")).toBe(
+      "You've listened 4.2 times as long as the original song",
+    );
+    act(() => {
+      useAppStore.setState({ playMode: "autocanonizer" });
+    });
+    expect(document.getElementById("listen-multiplier")).toBeNull();
   });
 
   it("updates the live counters via direct DOM writes without re-rendering", () => {

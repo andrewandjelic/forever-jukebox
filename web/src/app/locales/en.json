@@ -217,6 +217,8 @@
     "finishTrack": "Finish out the track",
     "bringingHome": "Bringing it on home",
     "listenTime": "Listen Time:",
+    "listenMultiplier": "{{value}}× original",
+    "listenMultiplierHint": "You've listened {{value}} times as long as the original song",
     "totalBeats": "Total Beats:",
     "totalCowbells": "Total Cowbells:",
     "volume": "Volume",

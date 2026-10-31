@@ -1255,6 +1255,20 @@ describe("playback timers", () => {
     expect(useAppStore.getState().listenTimeText).toBe("00:00:02");
   });
 
+  it("tracks listen time as tenths of the song's length", () => {
+    createContext();
+    useAppStore.setState({
+      playTimerMs: 252_000,
+      lastPlayStamp: null,
+      trackDurationSec: 60,
+    });
+    updateListenTimeDisplay();
+    expect(useAppStore.getState().listenMultiplierTenths).toBe(42);
+    useAppStore.setState({ trackDurationSec: null });
+    updateListenTimeDisplay();
+    expect(useAppStore.getState().listenMultiplierTenths).toBeNull();
+  });
+
   it("maps null, zero, negative, and unknown sleep timer durations to off", () => {
     setupSleepTimerClock();
     createContext();

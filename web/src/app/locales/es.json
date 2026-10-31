@@ -217,6 +217,8 @@
     "finishTrack": "Finalizar la canción",
     "bringingHome": "Buscando el final de la canción...",
     "listenTime": "Tiempo escuchando:",
+    "listenMultiplier": "{{value}}× el original",
+    "listenMultiplierHint": "Has escuchado {{value}} veces la duración original de la canción",
     "totalBeats": "Beats totales:",
     "totalCowbells": "Cencerros totales:",
     "volume": "Volumen",
