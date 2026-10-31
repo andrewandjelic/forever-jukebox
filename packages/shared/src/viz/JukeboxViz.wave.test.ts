@@ -126,6 +126,23 @@ describe("waveform tracing", () => {
     expect(hueCount("range")).toBeLessThanOrEqual(2);
     expect(hueCount("even")).toBeGreaterThanOrEqual(8);
   });
+
+  it("maps beats onto a style's own color list, in order", () => {
+    const beats = Array.from({ length: 10 }, (_, i) => ({
+      overlappingSegments: [{ timbre: [0, i, 0] }],
+    })) as unknown as QuantumBase[];
+    const colors = computeBeatColors(beats, {
+      hueStart: 0,
+      hueRange: 300,
+      saturation: "80%",
+      spread: "even",
+      colors: ["#900", "#f00", "#fff"],
+    });
+
+    expect(colors[0]).toBe("#900");
+    expect(colors[9]).toBe("#fff");
+    expect(new Set(colors)).toEqual(new Set(["#900", "#f00", "#fff"]));
+  });
 });
 
 describe("rippleAt", () => {

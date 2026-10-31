@@ -279,6 +279,10 @@ export function medianBeatMs(beats: Array<{ duration: number }>) {
 // brightens them) so dense passages don't turn into noodles.
 const RIDE_LINE_REF = 0.35;
 const RIDE_ARC_WIDTH = 0.9;
+// Haloed arcs ("neon black"): extra halo width around each strand, in px,
+// and how much brighter the opaque strands draw than additive ones.
+const HALO_WIDTH = 4;
+const HALO_ARC_BOOST = 1.6;
 const RIDE_ARC_DIM = 0.75;
 const RIDE_RING_WIDTH = 1.6;
 type ScaledPoint = { x: number; y: number; scale: number };
@@ -400,11 +404,14 @@ export function shapeWaveform(wave: Float32Array, block = WAVE_BLOCK) {
 // spread "range" places beats by timbre value between the track's extremes;
 // "even" places them by rank, so a few outlier beats can't squeeze the rest of
 // the track into one or two hues (same order, so alike beats still match).
+// colors, when set, replaces the hue wheel: beats map onto the listed colors
+// in order (for styles that need, say, reds and white but no other hues).
 export type BeatPalette = {
   hueStart: number;
   hueRange: number;
   saturation: string;
   spread?: "range" | "even";
+  colors?: string[];
 };
 
 const DEFAULT_BEAT_PALETTE: BeatPalette = {
@@ -467,6 +474,10 @@ export function computeBeatColors(
   return timbres.map((timbre) => {
     if (!timbre) {
       return "";
+    }
+    const listed = palette.colors;
+    if (listed && listed.length > 0) {
+      return listed[Math.round(norm(timbre[1], 0) * (listed.length - 1))];
     }
     // The default 300-degree range keeps the two extremes from wrapping
     // into the same red; styles narrow it (rustic) or open it up (psych).
@@ -674,6 +685,12 @@ class CanvasViz {
     trails: 0,
     // Overall brightness of the live waveform layer (0-1).
     intensity: 1,
+    // One color for every live arc instead of each beat's color ("" = off).
+    arcColor: "",
+    // A halo drawn around each live arc in plain (not additive) blending, so
+    // strands stay apart where they cross: a dark halo gives a "neon black"
+    // look ("" = off, arcs glow additively as usual).
+    arcHalo: "",
   };
 
   constructor(
@@ -992,9 +1009,16 @@ class CanvasViz {
         styles.getPropertyValue("--beat-spread").trim() === "even"
           ? "even"
           : "range",
+      colors: styles
+        .getPropertyValue("--beat-colors")
+        .split(",")
+        .map((color) => color.trim())
+        .filter(Boolean),
     };
     this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
+    this.theme.arcColor = styles.getPropertyValue("--arc-color").trim();
+    this.theme.arcHalo = styles.getPropertyValue("--arc-halo").trim();
   }
 
   private parseThemeColor(color: string) {
@@ -1153,6 +1177,31 @@ class CanvasViz {
     }
   }
 
+  // Traces one live arc into the current path, rippling with the audio.
+  // False when its beats have no position.
+  private traceWaveEdge(
+    ctx: CanvasRenderingContext2D,
+    edge: Edge,
+    shaped: Float32Array | null,
+  ) {
+    const from = this.positions[edge.src.which];
+    const to = this.positions[edge.dest.which];
+    if (!from || !to) {
+      return false;
+    }
+    const geometry = this.getEdgeGeometry(edge);
+    const control =
+      geometry?.bend && geometry.control
+        ? { x: geometry.control[0], y: geometry.control[1] }
+        : { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+    const amplitude = Math.min(
+      WAVE_ARC_MAX_PX,
+      Math.hypot(to.x - from.x, to.y - from.y) * WAVE_ARC_RATIO,
+    );
+    traceWaveCurve(ctx, from, control, to, shaped, edge.id * 37, amplitude);
+    return true;
+  }
+
   private drawWaveLayer(wave: Float32Array | null) {
     if (!this.data) {
       return;
@@ -1188,6 +1237,7 @@ class CanvasViz {
     gradient.addColorStop(1, c3);
 
     ctx.save();
+    const halo = this.theme.arcHalo;
     ctx.globalCompositeOperation = "lighter";
     ctx.lineJoin = "round";
 
@@ -1201,8 +1251,11 @@ class CanvasViz {
     const arcWidth = flat ? 1 + energy : 1.2 + energy * 2;
     const playhead = this.world[this.currentIndex];
     const unit = Math.min(width, height);
+    // Haloed arcs are opaque strokes drawn over one another, not light.
+    ctx.globalCompositeOperation = halo ? "source-over" : "lighter";
     for (const [color, colorEdges] of this.edgesByColor) {
-      ctx.strokeStyle = color || gradient;
+      const style = this.theme.arcColor || color || gradient;
+      ctx.strokeStyle = style;
       // Group by distance band so each band strokes in one go.
       const bands: Edge[][] = ARC_DEPTH_BANDS.map(() => []);
       for (const edge of colorEdges) {
@@ -1216,48 +1269,51 @@ class CanvasViz {
         if (edges.length === 0) {
           return;
         }
-        ctx.globalAlpha = arcAlpha * ARC_DEPTH_BANDS[band].alpha;
+        const bandAlpha = arcAlpha * ARC_DEPTH_BANDS[band].alpha;
+        ctx.globalAlpha = halo ? Math.min(1, bandAlpha * HALO_ARC_BOOST) : bandAlpha;
         ctx.lineWidth = arcWidth * ARC_DEPTH_BANDS[band].width;
         if (this.riding()) {
           const buckets: StrokeBuckets = new Map();
-          const style = color || gradient;
+          const haloBuckets: StrokeBuckets = new Map();
           const width = RIDE_ARC_WIDTH * ARC_DEPTH_BANDS[band].width;
           ctx.globalAlpha *= RIDE_ARC_DIM;
           for (const edge of edges) {
-            addScaledLine(buckets, this.arcPoints3D(edge, shaped), width, () => style);
+            const points = this.arcPoints3D(edge, shaped);
+            if (halo) {
+              addScaledLine(haloBuckets, points, width + HALO_WIDTH, () => halo);
+            }
+            addScaledLine(buckets, points, width, () => style);
           }
+          strokeBuckets(ctx, haloBuckets);
           strokeBuckets(ctx, buckets);
+          return;
+        }
+        if (halo) {
+          // One edge at a time, halo then line, so each strand cuts a dark
+          // gap through the strands under it.
+          const lineWidth = ctx.lineWidth;
+          for (const edge of edges) {
+            ctx.beginPath();
+            if (!this.traceWaveEdge(ctx, edge, shaped)) {
+              continue;
+            }
+            ctx.strokeStyle = halo;
+            ctx.lineWidth = lineWidth + HALO_WIDTH;
+            ctx.stroke();
+            ctx.strokeStyle = style;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+          }
           return;
         }
         ctx.beginPath();
         for (const edge of edges) {
-          const from = this.positions[edge.src.which];
-          const to = this.positions[edge.dest.which];
-          if (!from || !to) {
-            continue;
-          }
-          const geometry = this.getEdgeGeometry(edge);
-          const control =
-            geometry?.bend && geometry.control
-              ? { x: geometry.control[0], y: geometry.control[1] }
-              : { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-          const amplitude = Math.min(
-            WAVE_ARC_MAX_PX,
-            Math.hypot(to.x - from.x, to.y - from.y) * WAVE_ARC_RATIO,
-          );
-          traceWaveCurve(
-            ctx,
-            from,
-            control,
-            to,
-            shaped,
-            edge.id * 37,
-            amplitude,
-          );
+          this.traceWaveEdge(ctx, edge, shaped);
         }
         ctx.stroke();
       });
     }
+    ctx.globalCompositeOperation = "lighter";
 
     if (this.waveRing && this.positions.length > 0) {
       // Ring size from the flat layout; the tumble is applied while tracing.
