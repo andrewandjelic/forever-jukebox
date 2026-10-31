@@ -4184,10 +4184,12 @@ body[data-style="doom"]:not(.theme-light) {
   --wave-1: #8E0F0A;
   --wave-2: #E0301E;
   --wave-3: #FF8A3D;
-  /* Beats and arcs run from crimson through blood red to ember by timbre. */
-  --beat-hue-start: 340;
-  --beat-hue-range: 32;
-  --beat-sat: 88%;
+  /* Beats and arcs run from gothic violet through crimson and blood red to
+     ember by timbre, spread evenly so neighbouring strands stay apart. */
+  --beat-hue-start: 260;
+  --beat-hue-range: 140;
+  --beat-sat: 80%;
+  --beat-spread: even;
   background:
     radial-gradient(ellipse at 50% 35%, transparent 0 35%, rgba(0, 0, 0, 0.9) 100%),
     repeating-linear-gradient(-45deg, rgba(233, 228, 216, 0.035) 0 1px, transparent 1px 4px),

@@ -397,13 +397,43 @@ export function shapeWaveform(wave: Float32Array, block = WAVE_BLOCK) {
 // beats that sound alike (and so link by arcs) share a color. Timbre is
 // normalized across the track and hues are quantized so arcs can be stroked
 // in a few batches. Beats without segment data get "".
-export type BeatPalette = { hueStart: number; hueRange: number; saturation: string };
+// spread "range" places beats by timbre value between the track's extremes;
+// "even" places them by rank, so a few outlier beats can't squeeze the rest of
+// the track into one or two hues (same order, so alike beats still match).
+export type BeatPalette = {
+  hueStart: number;
+  hueRange: number;
+  saturation: string;
+  spread?: "range" | "even";
+};
 
 const DEFAULT_BEAT_PALETTE: BeatPalette = {
   hueStart: 0,
   hueRange: 300,
   saturation: "100%",
+  spread: "range",
 };
+
+// Maps a value to its rank among `values`, 0..1 (ties share a rank).
+function rankNormalizer(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return (value: number) => {
+    if (sorted.length < 2) {
+      return 0.5;
+    }
+    let lo = 0;
+    let hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (sorted[mid] < value) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo / (sorted.length - 1);
+  };
+}
 
 export function computeBeatColors(
   beats: QuantumBase[],
@@ -420,8 +450,20 @@ export function computeBeatColors(
       max[i] = Math.max(max[i], timbre[i + 1]);
     }
   }
+  const ranks =
+    palette.spread === "even"
+      ? [0, 1].map((i) =>
+          rankNormalizer(
+            timbres.flatMap((timbre) => (timbre ? [timbre[i + 1]] : [])),
+          ),
+        )
+      : null;
   const norm = (value: number, i: number) =>
-    max[i] > min[i] ? (value - min[i]) / (max[i] - min[i]) : 0.5;
+    ranks
+      ? ranks[i](value)
+      : max[i] > min[i]
+        ? (value - min[i]) / (max[i] - min[i])
+        : 0.5;
   return timbres.map((timbre) => {
     if (!timbre) {
       return "";
@@ -946,6 +988,10 @@ class CanvasViz {
       saturation:
         styles.getPropertyValue("--beat-sat").trim() ||
         DEFAULT_BEAT_PALETTE.saturation,
+      spread:
+        styles.getPropertyValue("--beat-spread").trim() === "even"
+          ? "even"
+          : "range",
     };
     this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
