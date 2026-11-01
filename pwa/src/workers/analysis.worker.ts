@@ -6,6 +6,11 @@ import {
   makeQuanta,
 } from "./analysis/helpers";
 import type { Quantum, Segment } from "./analysis/helpers";
+import { beatWorkerCount, detectBeats } from "./analysis/beatDetection";
+import type { BeatProgress } from "./analysis/beatDetection";
+import { essentiaWorkerCount, extractFrames, segmentFrames } from "./analysis/essentiaFrames";
+
+type BeatStage = Parameters<BeatProgress>[0];
 
 type AnalysisResult = {
   engine_version: 1;
@@ -47,47 +52,12 @@ const DEFAULT_SEGMENTATION = {
   beatSnapTolerance: 0.12,
 };
 
-type MadmomResult = {
-  fps: number;
-  beat_times: number[];
-  beat_numbers: number[];
-  beat_confidences: number[];
-};
-
-type EssentiaResult = {
-  segments: Segment[];
-};
-
-type EssentiaWorkerConfig = {
-  frameSize: number;
-  hopSize: number;
-  sampleRate: number;
-  segmentation: typeof DEFAULT_SEGMENTATION;
-};
-
-type MadmomMessage =
-  | { type: "result"; payload: MadmomResult }
-  | { type: "error"; message?: string }
-  | { type: "progress"; stage: number; progress: number };
-
-type EssentiaMessage =
-  | { type: "result"; payload: EssentiaResult }
-  | { type: "error"; message?: string }
-  | { type: "progress"; stage: string; progress: number };
-
 const FRIENDLY_MEMORY_ERROR =
   "Beat detection ran out of memory for this track.";
 
 function postProgress(stage: ProgressStage, progress: number, message?: string) {
   const payload: WorkerMessage = { type: "progress", stage, progress, message };
   self.postMessage(payload);
-}
-
-function madmomProgressStageName(stage: number) {
-  if (stage === 0) {
-    return "features";
-  }
-  return stage === 1 ? "inference" : "decode";
 }
 
 function formatNestedError(context: string, err: unknown) {
@@ -98,154 +68,6 @@ function formatNestedError(context: string, err: unknown) {
     return `${context}: ${FRIENDLY_MEMORY_ERROR}`;
   }
   return `${context}: ${message}`;
-}
-
-type WorkerTaskControls<TResult> = {
-  resolve: (result: TResult) => void;
-  reject: (error: Error) => void;
-};
-
-function runWorkerTask<TMessage, TResult>(options: {
-  createWorker: () => Worker;
-  payload: unknown;
-  transfer?: Transferable[];
-  onMessage: (message: TMessage, controls: WorkerTaskControls<TResult>) => void;
-  onRuntimeError: (event: ErrorEvent) => Error;
-  onMessageError: () => Error;
-}): Promise<TResult> {
-  const {
-    createWorker,
-    payload,
-    transfer,
-    onMessage,
-    onRuntimeError,
-    onMessageError,
-  } = options;
-  return new Promise<TResult>((resolve, reject) => {
-    const worker = createWorker();
-    let settled = false;
-    const finish = (done: () => void) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      worker.terminate();
-      done();
-    };
-    const controls: WorkerTaskControls<TResult> = {
-      resolve: (result) => finish(() => resolve(result)),
-      reject: (error) => finish(() => reject(error)),
-    };
-    worker.addEventListener("message", (event: MessageEvent<TMessage>) => {
-      onMessage(event.data, controls);
-    });
-    worker.addEventListener("error", (event) => {
-      controls.reject(onRuntimeError(event));
-    });
-    worker.addEventListener("messageerror", () => {
-      controls.reject(onMessageError());
-    });
-    worker.postMessage(payload, transfer ?? []);
-  });
-}
-
-async function runMadmomAnalysis(
-  samples: Float32Array,
-  sampleRate: number,
-  onProgress?: (stage: string, progress: number) => void
-): Promise<MadmomResult> {
-  return runWorkerTask<MadmomMessage, MadmomResult>({
-    createWorker: () => {
-      const madmomWorkerUrl = new URL(
-        `${import.meta.env.BASE_URL}madmom/worker.js`,
-        self.location.origin,
-      );
-      return new Worker(madmomWorkerUrl, { type: "module" });
-    },
-    payload: { type: "analyze", samples, sampleRate },
-    transfer: [samples.buffer],
-    onMessage: (data, controls) => {
-      if (!data) {
-        return;
-      }
-      if (data.type === "progress") {
-        if (onProgress) {
-          onProgress(madmomProgressStageName(data.stage), data.progress);
-        }
-        return;
-      }
-      if (data.type === "error") {
-        controls.reject(
-          new Error(
-            formatNestedError(
-              "Beat detection failed",
-              data.message || "Madmom worker error",
-            ),
-          ),
-        );
-        return;
-      }
-      if (data.type === "result") {
-        controls.resolve(data.payload);
-      }
-    },
-    onRuntimeError: (event) =>
-      new Error(
-        formatNestedError(
-          "Beat detection worker runtime failure",
-          event.message,
-        ),
-      ),
-    onMessageError: () => new Error("Beat detection worker message error"),
-  });
-}
-
-async function runEssentiaAnalysis(
-  samples: Float32Array,
-  sampleRate: number,
-  beats: number[],
-  config: EssentiaWorkerConfig,
-  onProgress?: (stage: string, progress: number) => void
-): Promise<EssentiaResult> {
-  return runWorkerTask<EssentiaMessage, EssentiaResult>({
-    createWorker: () =>
-      new Worker(new URL("./essentia.worker.ts", import.meta.url), {
-        type: "module",
-      }),
-    payload: { type: "analyze", samples, sampleRate, beats, config },
-    transfer: [samples.buffer],
-    onMessage: (data, controls) => {
-      if (!data) {
-        return;
-      }
-      if (data.type === "progress") {
-        onProgress?.(data.stage, data.progress);
-        return;
-      }
-      if (data.type === "error") {
-        controls.reject(
-          new Error(
-            formatNestedError(
-              "Feature extraction failed",
-              data.message || "Essentia worker error",
-            ),
-          ),
-        );
-        return;
-      }
-      if (data.type === "result") {
-        controls.resolve(data.payload);
-      }
-    },
-    onRuntimeError: (event) =>
-      new Error(
-        formatNestedError(
-          "Feature extraction worker runtime failure",
-          event.message || "Essentia worker crashed",
-        ),
-      ),
-    onMessageError: () => new Error("Essentia worker message error"),
-  });
 }
 
 async function analyzeAudio(options: {
@@ -261,34 +83,59 @@ async function analyzeAudio(options: {
   const essentiaSamples = mono22050;
   const madmomSamples = mono44100;
 
+  // Essentia's per-frame features don't depend on the beats, so they run
+  // alongside beat detection; only the segmentation waits for the beats.
   postProgress("beats", 0.05, "Detecting beats");
-  const madmomStageProgress: Record<string, number> = {
-    decode: 0,
+  let essentiaProgress = 0;
+  let beatsDone = false;
+  const framesPromise = extractFrames({
+    samples: essentiaSamples,
+    config: {
+      frameSize: ESSENTIA_FRAME_SIZE,
+      hopSize: ESSENTIA_HOP_SIZE,
+      sampleRate: ESSENTIA_SAMPLE_RATE,
+    },
+    workers: essentiaWorkerCount(),
+    describeError: (message) => new Error(formatNestedError("Feature extraction failed", message)),
+    onProgress: (progress) => {
+      essentiaProgress = progress;
+      if (beatsDone) {
+        postProgress("features", progress * 0.7, "Extracting features");
+      }
+    },
+  });
+  const madmomStageProgress: Record<BeatStage, number> = {
     features: 0,
     inference: 0,
+    decode: 0,
   };
-  const madmomStageWeights: Record<string, number> = {
-    decode: 0.2,
-    features: 0.6,
-    inference: 0.2,
+  const madmomStageWeights: Record<BeatStage, number> = {
+    features: 0.1,
+    inference: 0.6,
+    decode: 0.3,
   };
-  const madmom = await runMadmomAnalysis(
-    madmomSamples,
-    MADMOM_SAMPLE_RATE,
-    (stage, progress) => {
-      const stageKey = stage in madmomStageProgress ? stage : "features";
-      madmomStageProgress[stageKey] = Math.max(
-        madmomStageProgress[stageKey],
-        progress
-      );
+  const madmomPromise = detectBeats({
+    samples: madmomSamples,
+    sampleRate: MADMOM_SAMPLE_RATE,
+    workers: beatWorkerCount(duration),
+    describeError: (message) => new Error(formatNestedError("Beat detection failed", message)),
+    onProgress: (stage, progress) => {
+      madmomStageProgress[stage] = Math.max(madmomStageProgress[stage], progress);
       const weighted =
-        madmomStageProgress.decode * madmomStageWeights.decode +
         madmomStageProgress.features * madmomStageWeights.features +
-        madmomStageProgress.inference * madmomStageWeights.inference;
-      const pct = weighted * 0.4;
-      postProgress("beats", pct, `Detecting beats (${stage})`);
-    }
-  );
+        madmomStageProgress.inference * madmomStageWeights.inference +
+        madmomStageProgress.decode * madmomStageWeights.decode;
+      postProgress("beats", weighted * 0.4, `Detecting beats (${stage})`);
+    },
+  });
+  const [madmom, frames] = await Promise.all([
+    madmomPromise.then((result) => {
+      beatsDone = true;
+      postProgress("features", essentiaProgress * 0.7, "Extracting features");
+      return result;
+    }),
+    framesPromise,
+  ]);
 
   const beatTimes = Array.isArray(madmom.beat_times) ? madmom.beat_times.slice() : [];
   const beatNumbers = Array.isArray(madmom.beat_numbers) ? madmom.beat_numbers.slice() : [];
@@ -301,38 +148,8 @@ async function analyzeAudio(options: {
     beatConfidences.push(1);
   }
 
-  postProgress("features", 0.1, "Extracting features");
-  const essentiaStageProgress: Record<string, number> = {
-    features: 0,
-    segments: 0,
-  };
-  const essentiaStageWeights: Record<string, number> = {
-    features: 0.7,
-    segments: 0.3,
-  };
-  const essentia = await runEssentiaAnalysis(
-    essentiaSamples,
-    ESSENTIA_SAMPLE_RATE,
-    beatTimes,
-    {
-      frameSize: ESSENTIA_FRAME_SIZE,
-      hopSize: ESSENTIA_HOP_SIZE,
-      sampleRate: ESSENTIA_SAMPLE_RATE,
-      segmentation: DEFAULT_SEGMENTATION,
-    },
-    (stage, progress) => {
-      const stageKey = stage in essentiaStageProgress ? stage : "features";
-      essentiaStageProgress[stageKey] = Math.max(
-        essentiaStageProgress[stageKey],
-        progress
-      );
-      const weighted =
-        essentiaStageProgress.features * essentiaStageWeights.features +
-        essentiaStageProgress.segments * essentiaStageWeights.segments;
-      const mappedStage = stageKey === "segments" ? "segments" : "features";
-      postProgress(mappedStage, weighted, `Extracting features (${stage})`);
-    }
-  );
+  postProgress("segments", 0.85, "Extracting features (segments)");
+  const segments = segmentFrames(frames, beatTimes, DEFAULT_SEGMENTATION);
 
   postProgress("building", 0.5, "Building analysis");
   const beats = makeQuanta(beatTimes, duration, beatConfidences);
@@ -366,7 +183,7 @@ async function analyzeAudio(options: {
     start: Math.round(tatum.start * 1000) / 1000,
   }));
 
-  const sections = computeSections(bars, essentia.segments, duration);
+  const sections = computeSections(bars, segments, duration);
   const tempo = computeTempo(beatTimes);
 
   const result: AnalysisResult = {
@@ -376,7 +193,7 @@ async function analyzeAudio(options: {
     bars,
     beats,
     tatums,
-    segments: essentia.segments,
+    segments,
     track: {
       duration,
       tempo,

@@ -1,33 +1,29 @@
 // Copied from web/src/workers/essentia.worker.ts on 2026-02-11, reason: reuse essentia.js analysis worker.
+// Computes the per-frame features (MFCC, HPCP, loudness) for a run of
+// frames; analysis/essentiaFrames.ts spreads a track over several of these
+// and segments the result.
 import Essentia from "essentia.js/dist/essentia.js-core.es.js";
 import { EssentiaWASM } from "essentia.js/dist/essentia-wasm.es.js";
 import wasmUrl from "essentia.js/dist/essentia-wasm.web.wasm?url";
-import { zscore1d, zscore2d } from "./essentia/math";
-import {
-  computeSegments,
-  segmentFromNovelty,
-} from "./essentia/segments";
-import type { Segment, SegmentationConfig } from "./essentia/segments";
 import { maybeDeleteVector, vectorToArraySafe } from "./essentia/vectors";
 
-type EssentiaWorkerConfig = {
-  frameSize: number;
-  hopSize: number;
-  sampleRate: number;
-  segmentation: SegmentationConfig;
-};
-
-type AnalyzeMessage = {
-  type: "analyze";
+type FramesMessage = {
+  type: "frames";
+  // Starts at this run's first frame.
   samples: Float32Array;
   sampleRate: number;
-  beats: number[];
-  config: EssentiaWorkerConfig;
+  frameSize: number;
+  hopSize: number;
+  frameCount: number;
 };
 
-type WorkerResult = {
-  segments: Segment[];
+export type FrameFeatures = {
+  mfccs: number[][];
+  hpcps: number[][];
+  rmsDb: number[];
 };
+
+const PROGRESS_EVERY_FRAMES = 32;
 
 let essentiaInstance: any = null;
 
@@ -40,27 +36,21 @@ function ensureEssentia() {
   return essentiaInstance;
 }
 
-self.onmessage = (event: MessageEvent<AnalyzeMessage>) => {
-  if (event.data?.type !== "analyze") {
+self.onmessage = (event: MessageEvent<FramesMessage>) => {
+  if (event.data?.type !== "frames") {
     return;
   }
   try {
     const essentia = ensureEssentia();
-    const { samples, sampleRate: sr, config, beats } = event.data;
-    const duration = samples.length / sr;
-    const frameSize = config.frameSize;
-    const hopSize = config.hopSize;
-    const frames = Math.max(1, Math.floor(Math.max(samples.length - frameSize, 0) / hopSize) + 1);
+    const { samples, sampleRate: sr, frameSize, hopSize, frameCount } = event.data;
     const mfccs: number[][] = [];
     const hpcps: number[][] = [];
     const rmsDb: number[] = [];
-    const frameTimes = new Float32Array(frames);
 
-    for (let i = 0; i < frames; i += 1) {
+    for (let i = 0; i < frameCount; i += 1) {
       const start = i * hopSize;
       const frame = new Float32Array(frameSize);
       frame.set(samples.subarray(start, start + frameSize));
-      frameTimes[i] = start / sr;
 
       const frameVec = essentia.arrayToVector(frame);
       const windowed = essentia.Windowing(frameVec).frame;
@@ -120,56 +110,12 @@ self.onmessage = (event: MessageEvent<AnalyzeMessage>) => {
       maybeDeleteVector(hpcp);
       maybeDeleteVector(mfcc);
 
-      if (i % 32 === 0) {
-        self.postMessage({
-          type: "progress",
-          stage: "features",
-          progress: Math.min(1, i / frames),
-        });
+      if (i % PROGRESS_EVERY_FRAMES === 0) {
+        self.postMessage({ type: "progress", frames: i });
       }
     }
 
-    const mfccNorm = zscore2d(mfccs);
-    const hpcpNorm = zscore2d(hpcps);
-    const rmsNorm = zscore1d(rmsDb);
-    const novelty = new Float32Array(frames);
-    novelty[0] = 0;
-    for (let i = 1; i < frames; i += 1) {
-      let sum = 0;
-      const prevMfcc = Array.from(mfccNorm[i - 1] ?? []);
-      const prevHpcp = Array.from(hpcpNorm[i - 1] ?? []);
-      const curMfcc = Array.from(mfccNorm[i] ?? []);
-      const curHpcp = Array.from(hpcpNorm[i] ?? []);
-      const vecPrev = prevMfcc.concat(prevHpcp, [rmsNorm[i - 1]]);
-      const vecCur = curMfcc.concat(curHpcp, [rmsNorm[i]]);
-      for (let j = 0; j < vecCur.length; j += 1) {
-        const delta = vecCur[j] - vecPrev[j];
-        sum += delta * delta;
-      }
-      novelty[i] = Math.sqrt(sum);
-    }
-
-    self.postMessage({ type: "progress", stage: "segments", progress: 0.5 });
-
-    const boundaries = segmentFromNovelty(
-      frameTimes,
-      novelty,
-      beats,
-      config.segmentation,
-      duration
-    );
-
-    const segments = computeSegments(
-      frameTimes,
-      mfccs,
-      hpcps,
-      rmsDb,
-      novelty,
-      boundaries
-    );
-
-    self.postMessage({ type: "progress", stage: "segments", progress: 1 });
-    self.postMessage({ type: "result", payload: { segments } satisfies WorkerResult });
+    self.postMessage({ type: "result", payload: { mfccs, hpcps, rmsDb } satisfies FrameFeatures });
   } catch (err) {
     const message =
       err instanceof Error ? err.message || err.toString() : String(err);
