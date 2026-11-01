@@ -10,15 +10,15 @@ const h = vi.hoisted(() => ({
     getCount: vi.fn(() => 6),
     resizeNow: vi.fn(),
     resizeActive: vi.fn(),
+    canFollowCam: vi.fn(() => false),
+    refresh: vi.fn(),
   },
-  autocanonizer: { resizeNow: vi.fn() },
 }));
 
 vi.mock("../../runtime", () => ({
   attachViz: h.attachViz,
   getAppContext: vi.fn(() => ({
     jukebox: h.jukebox,
-    autocanonizer: h.autocanonizer,
   })),
 }));
 
@@ -45,7 +45,6 @@ describe("VizContainer", () => {
         audioLoaded: false,
         analysisLoaded: false,
         audioModePreparing: false,
-        playMode: "jukebox",
         branchStats: null,
         playlist: { tracks: [], currentIndex: -1 },
         volumePct: 50,
@@ -70,30 +69,21 @@ describe("VizContainer", () => {
     const nodes = h.attachViz.mock.calls[0][0];
     expect(nodes.vizPanel.id).toBe("viz-panel");
     expect(nodes.vizLayer.id).toBe("viz-layer");
-    expect(nodes.canonizerLayer.id).toBe("canonizer-layer");
-    // every (re-)attach passes the SAME nodes — the layers never remount
+    // every (re-)attach passes the SAME node — the layer never remounts
     for (const call of h.attachViz.mock.calls) {
       expect(call[0].vizLayer).toBe(nodes.vizLayer);
-      expect(call[0].canonizerLayer).toBe(nodes.canonizerLayer);
     }
   });
 
-  it("keeps the layer nodes identical across state-driven re-renders", () => {
+  it("keeps the layer node identical across state-driven re-renders", () => {
     render(<VizContainer />);
     const layer = document.getElementById("viz-layer");
-    const canonizer = document.getElementById("canonizer-layer");
     act(() => {
-      useAppStore.setState({
-        audioLoaded: true,
-        analysisLoaded: true,
-        playMode: "autocanonizer",
-      });
+      useAppStore.setState({ audioLoaded: true, analysisLoaded: true });
     });
     expect(document.getElementById("viz-layer")).toBe(layer);
-    expect(document.getElementById("canonizer-layer")).toBe(canonizer);
-    expect(
-      document.getElementById("jukebox-viz")?.classList.contains("is-canonizer"),
-    ).toBe(true);
+    expect(document.getElementById("canonizer-layer")).toBeNull();
+    expect(document.getElementById("wubmachine-layer")).toBeNull();
     expect(
       document.getElementById("viz-panel")?.classList.contains("hidden"),
     ).toBe(false);
@@ -113,7 +103,7 @@ describe("VizContainer", () => {
     expect(h.jukebox.resizeActive).toHaveBeenCalled();
   });
 
-  it("observes the panel with ResizeObserver and resizes both controllers", () => {
+  it("observes the panel with ResizeObserver and resizes the controller", () => {
     StubResizeObserver.instances = [];
     vi.stubGlobal("ResizeObserver", StubResizeObserver);
     const { unmount } = render(<VizContainer />);
@@ -129,7 +119,6 @@ describe("VizContainer", () => {
 
     act(() => observer.trigger());
     expect(h.jukebox.resizeNow).toHaveBeenCalled();
-    expect(h.autocanonizer.resizeNow).toHaveBeenCalled();
 
     unmount();
     expect(observer.disconnect).toHaveBeenCalled();
@@ -147,7 +136,6 @@ describe("VizContainer", () => {
       window.dispatchEvent(new Event("resize"));
     });
     expect(h.jukebox.resizeNow).toHaveBeenCalled();
-    expect(h.autocanonizer.resizeNow).toHaveBeenCalled();
 
     unmount();
     expect(removeSpy).toHaveBeenCalledWith("resize", expect.any(Function));

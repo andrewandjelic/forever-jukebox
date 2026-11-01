@@ -3,13 +3,12 @@ import type { TFunction } from "i18next";
 import type { Edge, JukeboxEngine } from "@forever-jukebox/shared";
 import { isEditableTarget } from "./browser";
 import { formatPlayVelocity } from "./labels";
-import type { PlayMode, TuningModalTab } from "./types";
+import type { TuningModalTab } from "./types";
 
 // Global keyboard shortcuts for the listen route. The effect re-registers
 // on every dep change and its cleanup releases the held modifier modes.
 export function useListenHotkeys({
   isActive,
-  playMode,
   selectedEdge,
   isRunning,
   isPaused,
@@ -28,7 +27,6 @@ export function useListenHotkeys({
   toggleSelectedAnchorBranch,
 }: {
   isActive: boolean;
-  playMode: PlayMode;
   selectedEdge: Edge | null;
   isRunning: boolean;
   isPaused: boolean;
@@ -65,7 +63,6 @@ export function useListenHotkeys({
         return;
       }
       if (
-        playMode === "jukebox" &&
         (event.key === "e" || event.key === "E") &&
         !event.repeat
       ) {
@@ -79,7 +76,6 @@ export function useListenHotkeys({
         return;
       }
       if (
-        playMode === "jukebox" &&
         (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
         selectedEdge
       ) {
@@ -88,7 +84,6 @@ export function useListenHotkeys({
         return;
       }
       if (
-        playMode === "jukebox" &&
         (event.key === "Delete" || event.key === "Backspace") &&
         selectedEdge &&
         !selectedEdge.deleted
@@ -98,7 +93,6 @@ export function useListenHotkeys({
         return;
       }
       if (
-        playMode === "jukebox" &&
         (event.key === "h" || event.key === "H") &&
         !event.repeat
       ) {
@@ -119,7 +113,6 @@ export function useListenHotkeys({
         return;
       }
       if (
-        playMode === "jukebox" &&
         (event.key === "a" || event.key === "A") &&
         !event.repeat
       ) {
@@ -140,7 +133,7 @@ export function useListenHotkeys({
       } else if (event.code === "BracketRight") {
         bracketDirection = 1;
       }
-      if (playMode === "jukebox" && bracketDirection !== 0) {
+      if (bracketDirection !== 0) {
         event.preventDefault();
         const engine = engineRef.current;
         if (!engine) {
@@ -157,7 +150,7 @@ export function useListenHotkeys({
         );
         return;
       }
-      if (playMode === "jukebox" && event.key === "ArrowDown") {
+      if (event.key === "ArrowDown") {
         event.preventDefault();
         engineRef.current?.setPlayVelocity(0);
         showShortcutToast(
@@ -166,7 +159,7 @@ export function useListenHotkeys({
         );
         return;
       }
-      if (playMode === "jukebox" && event.key === "ArrowUp") {
+      if (event.key === "ArrowUp") {
         event.preventDefault();
         engineRef.current?.setPlayVelocity(1);
         showShortcutToast(
@@ -175,14 +168,13 @@ export function useListenHotkeys({
         );
         return;
       }
-      if (playMode === "jukebox" && event.key === "Control") {
+      if (event.key === "Control") {
         event.preventDefault();
         engineRef.current?.setFreezeCurrentBeat(true);
         setFreezeBeatActive(true);
         return;
       }
       if (
-        playMode === "jukebox" &&
         event.key === "Shift" &&
         isRunning &&
         !bringItHomeModeRef.current
@@ -197,7 +189,7 @@ export function useListenHotkeys({
         engineRef.current?.setFreezeCurrentBeat(false);
         setFreezeBeatActive(false);
       }
-      if (playMode === "jukebox" && event.key === "Shift") {
+      if (event.key === "Shift") {
         engineRef.current?.setForceBranch(false);
         setForceBranchActive(false);
       }
@@ -240,7 +232,6 @@ export function useListenHotkeys({
     isTuningOpen,
     isInfoOpen,
     isExportOpen,
-    playMode,
     isActive,
     showShortcutToast,
   ]);

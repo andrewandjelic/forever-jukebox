@@ -7,7 +7,6 @@ export type PreparingPhase = "download" | "separate" | null;
 const PREPARING_TITLE_KEYS = {
   swing: "listen.preparingSwingPercent",
   instrumental: "listen.preparingInstrumentalPercent",
-  wubmachine: "listen.preparingWubMachinePercent",
 } as const;
 
 function preparingMessageKey(
@@ -19,9 +18,7 @@ function preparingMessageKey(
       ? "listen.instrumentalDownloading"
       : "listen.instrumentalSeparating";
   }
-  return preparingMode === "wubmachine"
-    ? "listen.buildingWubMachine"
-    : "listen.addingSwing";
+  return "listen.addingSwing";
 }
 
 export function StatusPanel({

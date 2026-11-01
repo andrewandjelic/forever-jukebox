@@ -6,7 +6,6 @@ import { Listen } from "./Listen";
 import { VISUALIZATION_LABELS } from "@forever-jukebox/shared/constants/visualization";
 import { getOrCreateSwingBuffer } from "@forever-jukebox/shared/audio/swingBufferCache";
 import { renderSwingBuffer } from "@forever-jukebox/shared/audio/swingRenderer";
-import { markStoredCopy } from "@forever-jukebox/shared/audio/renderedTrackCache";
 import {
   cancelInstrumentalRender,
   isInstrumentalModeAvailable,
@@ -15,13 +14,8 @@ import {
 
 const exportMocks = vi.hoisted(() => ({
   exportJukeboxAudio: vi.fn(),
-  exportCanonizerAudio: vi.fn(),
-  exportRenderedAudio: vi.fn(),
   pickBinaryExportFile: vi.fn(),
   saveExportBinary: vi.fn(),
-}));
-const wubMachineMocks = vi.hoisted(() => ({
-  renderWubMachineBuffer: vi.fn(),
 }));
 
 const mockAppState = {
@@ -31,32 +25,6 @@ const mockAppState = {
   setIsSettingsOpen: vi.fn<(isOpen: boolean) => void>(),
 };
 
-type MockAutocanonizerInstance = {
-  setFinishOutSong: ReturnType<typeof vi.fn>;
-  planRender: ReturnType<typeof vi.fn>;
-  setStreamPans: ReturnType<typeof vi.fn>;
-  setVolume: ReturnType<typeof vi.fn>;
-  startAtIndex: ReturnType<typeof vi.fn>;
-  emitBeat: (
-    index: number,
-    cursorTimes: { mainSeconds: number; otherSeconds: number },
-  ) => void;
-  emitSelect: (index: number) => void;
-};
-
-const autocanonizerInstances: MockAutocanonizerInstance[] = [];
-type MockWubMachineInstance = {
-  setRemix: ReturnType<typeof vi.fn>;
-  setLoop: ReturnType<typeof vi.fn>;
-  setVolume: ReturnType<typeof vi.fn>;
-  play: ReturnType<typeof vi.fn>;
-  pause: ReturnType<typeof vi.fn>;
-  stop: ReturnType<typeof vi.fn>;
-  emitTick: (seconds: number) => void;
-  emitEnded: () => void;
-  emitSelect: (seconds: number) => void;
-};
-const wubMachineInstances: MockWubMachineInstance[] = [];
 type MockPlayerInstance = {
   emitEnded: () => void;
   getAudioMode: () => string;
@@ -271,56 +239,6 @@ vi.mock("@forever-jukebox/shared/audio/instrumentalRenderer", () => ({
 
 vi.mock("@/shared/export", () => ({
   exportJukeboxAudio: exportMocks.exportJukeboxAudio,
-  exportCanonizerAudio: exportMocks.exportCanonizerAudio,
-  exportRenderedAudio: exportMocks.exportRenderedAudio,
-}));
-
-vi.mock("@forever-jukebox/shared/wubmachine/wubMachineRender", () => ({
-  renderWubMachineBuffer: wubMachineMocks.renderWubMachineBuffer,
-}));
-
-vi.mock("@forever-jukebox/shared/wubmachine/WubMachineController", () => ({
-  WubMachineController: class WubMachineController {
-    private onTick: ((seconds: number) => void) | null = null;
-    private onEnded: (() => void) | null = null;
-    private onSelect: ((seconds: number) => void) | null = null;
-    private remix: AudioBuffer | null = null;
-    constructor(_layer: HTMLElement) {
-      wubMachineInstances.push(this);
-    }
-    setVisible = vi.fn((_visible: boolean) => undefined);
-    resizeNow = vi.fn();
-    setOnTick(handler: ((seconds: number) => void) | null) {
-      this.onTick = handler;
-    }
-    setOnEnded(handler: (() => void) | null) {
-      this.onEnded = handler;
-    }
-    setOnSelect(handler: ((seconds: number) => void) | null) {
-      this.onSelect = handler;
-    }
-    setVolume = vi.fn((_volume: number) => undefined);
-    setLoop = vi.fn((_loop: boolean) => undefined);
-    setRemix = vi.fn((buffer: AudioBuffer | null) => {
-      this.remix = buffer;
-    });
-    isReady() {
-      return this.remix !== null;
-    }
-    play = vi.fn((_from?: number) => undefined);
-    pause = vi.fn();
-    stop = vi.fn();
-    destroy = vi.fn();
-    emitTick(seconds: number) {
-      this.onTick?.(seconds);
-    }
-    emitEnded() {
-      this.onEnded?.();
-    }
-    emitSelect(seconds: number) {
-      this.onSelect?.(seconds);
-    }
-  },
 }));
 
 vi.mock("@/shared/utils/exportJson", () => ({
@@ -438,70 +356,6 @@ vi.mock("@forever-jukebox/shared/viz/JukeboxController", () => ({
     emitEdgeSelect(edge: unknown) {
       this.onEdgeSelect?.(edge);
     }
-  },
-}));
-
-vi.mock("@forever-jukebox/shared/autocanonizer/AutocanonizerController", () => ({
-  AutocanonizerController: class AutocanonizerController {
-    private onBeat:
-      | ((
-          index: number,
-          beat: unknown,
-          cursorTimes: { mainSeconds: number; otherSeconds: number },
-        ) => void)
-      | null = null;
-    private onSelect: ((index: number) => void) | null = null;
-    setFinishOutSong = vi.fn((_enabled: boolean) => undefined);
-    planRender = vi.fn(() => ({ durationSeconds: 95, voices: [] }));
-    constructor(_layer: HTMLElement) {
-      autocanonizerInstances.push(this);
-    }
-    setVisible = vi.fn((_visible: boolean) => undefined);
-    resizeNow = vi.fn();
-    setOnBeat(
-      handler:
-        | ((
-            index: number,
-            beat: unknown,
-            cursorTimes: { mainSeconds: number; otherSeconds: number },
-          ) => void)
-        | null,
-    ) {
-      this.onBeat = handler;
-    }
-    setOnEnded = vi.fn((_handler: (() => void) | null) => undefined);
-    setOnSelect(handler: ((index: number) => void) | null) {
-      this.onSelect = handler;
-    }
-    setVolume = vi.fn((_volume: number) => undefined);
-    setStreamPans = vi.fn(
-      (_mainPan: number, _otherPan: number) => undefined,
-    );
-    setAudio = vi.fn(
-      (_buffer: AudioBuffer | null, _context: AudioContext | null) => undefined,
-    );
-    setAnalysis = vi.fn(
-      (_analysis: unknown, _durationOverride?: number | null) => undefined,
-    );
-    resetVisualization = vi.fn();
-    isReady() {
-      return true;
-    }
-    startAtIndex = vi.fn((index: number) => {
-      this.onBeat?.(index, {}, { mainSeconds: index, otherSeconds: index });
-    });
-    emitBeat(
-      index: number,
-      cursorTimes: { mainSeconds: number; otherSeconds: number },
-    ) {
-      this.onBeat?.(index, {}, cursorTimes);
-    }
-    emitSelect(index: number) {
-      this.onSelect?.(index);
-    }
-    stop = vi.fn();
-    reset = vi.fn();
-    destroy = vi.fn();
   },
 }));
 
@@ -661,27 +515,6 @@ describe("Listen route behavior", () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-    autocanonizerInstances.length = 0;
-    wubMachineInstances.length = 0;
-    wubMachineMocks.renderWubMachineBuffer.mockReset();
-    wubMachineMocks.renderWubMachineBuffer.mockResolvedValue({
-      buffer: { duration: 30 } as AudioBuffer,
-      parts: [],
-    });
-    exportMocks.exportCanonizerAudio.mockReset();
-    exportMocks.exportCanonizerAudio.mockResolvedValue({
-      bytes: new Uint8Array([7, 8, 9]),
-      extension: "mp3",
-      mimeType: "audio/mpeg",
-      renderedDurationSeconds: 95,
-    });
-    exportMocks.exportRenderedAudio.mockReset();
-    exportMocks.exportRenderedAudio.mockResolvedValue({
-      bytes: new Uint8Array([4, 5, 6]),
-      extension: "mp3",
-      mimeType: "audio/mpeg",
-      renderedDurationSeconds: 30,
-    });
     playerInstances.length = 0;
     jukeboxControllerInstances.length = 0;
     engineInstances.length = 0;
@@ -742,289 +575,20 @@ describe("Listen route behavior", () => {
     document.body.innerHTML = "";
   });
 
-  it("switches between jukebox and autocanonizer UI modes", async () => {
+  it("has no play-mode select or mode controls", async () => {
     const rendered = renderListen();
     await settleEffects();
-
-    const modeSelect = getRequired<HTMLSelectElement>(
-      rendered.container,
-      "#play-mode-select"
-    );
-    const tuningButton = getRequired<HTMLButtonElement>(
-      rendered.container,
-      "#tuning"
-    );
-    const infoButton = getRequired<HTMLButtonElement>(
-      rendered.container,
-      "#track-info"
-    );
-    const playTitle = rendered.container.querySelector(".play-title");
-
-    expect(tuningButton.classList.contains("is-hidden")).toBe(false);
-    expect(infoButton.classList.contains("is-hidden")).toBe(false);
-    expect(playTitle?.textContent).toBe("song.wav");
-
-    await changeSelect(modeSelect, "autocanonizer");
-
-    expect(tuningButton.classList.contains("is-hidden")).toBe(true);
-    expect(infoButton.classList.contains("is-hidden")).toBe(true);
-    expect(playTitle?.textContent).toContain("(autocanonized)");
-    const beatsLabelHidden = Array.from(
-      rendered.container.querySelectorAll(".viz-meta span")
-    ).some(
-      (span) =>
-        span.textContent === "Total Beats:" && span.classList.contains("is-hidden")
-    );
-    expect(beatsLabelHidden).toBe(true);
-    const autocanonizer = autocanonizerInstances[0];
-    await act(async () => {
-      autocanonizer.emitBeat(1, {
-        mainSeconds: 62,
-        otherSeconds: 125,
-      });
-    });
-    expect(
-      getRequired(rendered.container, "#autocanonizer-main-time").textContent,
-    ).toBe("1:02");
-    expect(
-      getRequired(rendered.container, "#autocanonizer-other-time").textContent,
-    ).toBe("2:05");
-    expect(
-      getRequired(rendered.container, "#autocanonizer-total-time").textContent,
-    ).toBe("0:04");
-
-    await changeSelect(modeSelect, "jukebox");
-
-    expect(tuningButton.classList.contains("is-hidden")).toBe(false);
-    expect(infoButton.classList.contains("is-hidden")).toBe(false);
-    expect(playTitle?.textContent).toBe("song.wav");
-    await changeSelect(modeSelect, "autocanonizer");
-    expect(
-      getRequired(rendered.container, "#autocanonizer-main-time").textContent,
-    ).toBe("0:00");
-    expect(
-      getRequired(rendered.container, "#autocanonizer-other-time").textContent,
-    ).toBe("0:00");
+    expect(rendered.container.querySelector("#play-mode-select")).toBeNull();
+    expect(rendered.container.querySelector("#canonizer-finish")).toBeNull();
+    expect(rendered.container.querySelector("#wubmachine-loop")).toBeNull();
+    expect(rendered.container.querySelector("#canonizer-layer")).toBeNull();
+    expect(rendered.container.querySelector("#wubmachine-layer")).toBeNull();
     rendered.unmount();
   });
 
-  it("renders the Wub Machine remix on mode switch and plays it", async () => {
+  it("applies the volume slider to the player", async () => {
     const rendered = renderListen();
     await settleEffects();
-    const modeSelect = getRequired<HTMLSelectElement>(
-      rendered.container,
-      "#play-mode-select",
-    );
-    const playButton = getRequired<HTMLButtonElement>(rendered.container, "#viz-play");
-
-    await changeSelect(modeSelect, "wubmachine");
-    await settleEffects();
-
-    expect(wubMachineMocks.renderWubMachineBuffer).toHaveBeenCalledTimes(1);
-    expect(wubMachineMocks.renderWubMachineBuffer.mock.calls[0]?.[3]).toMatchObject({
-      trackId: "fp-test",
-    });
-    const wubmachine = wubMachineInstances[0];
-    expect(wubmachine.setRemix).toHaveBeenCalledWith(
-      { duration: 30 },
-      expect.anything(),
-      [],
-    );
-    expect(
-      getRequired(rendered.container, "#wubmachine-total-time").textContent,
-    ).toBe("0:30");
-    expect(
-      getRequired(rendered.container, "#tuning").classList.contains("is-hidden"),
-    ).toBe(true);
-    expect(
-      getRequired<HTMLButtonElement>(rendered.container, "#track-audio-export")
-        .disabled,
-    ).toBe(false);
-    expect(rendered.container.querySelector(".play-title")?.textContent).toContain(
-      "(wub machine remix)",
-    );
-
-    await click(playButton);
-    expect(wubmachine.play).toHaveBeenLastCalledWith(undefined);
-    expect(playButton.getAttribute("aria-label")).toBe("Pause");
-    await act(async () => {
-      wubmachine.emitTick(75.6);
-    });
-    expect(
-      getRequired(rendered.container, "#wubmachine-time").textContent,
-    ).toBe("1:15");
-
-    await act(async () => {
-      wubmachine.emitSelect(12);
-    });
-    expect(wubmachine.play).toHaveBeenLastCalledWith(12);
-
-    await click(playButton);
-    expect(wubmachine.pause).toHaveBeenCalledTimes(1);
-    expect(playButton.getAttribute("aria-label")).toBe("Resume");
-
-    await act(async () => {
-      wubmachine.emitEnded();
-    });
-    // Ended while paused is ignored; resume, then end the track.
-    expect(playButton.getAttribute("aria-label")).toBe("Resume");
-    await click(playButton);
-    await act(async () => {
-      wubmachine.emitEnded();
-    });
-    expect(playButton.getAttribute("aria-label")).toBe("Play");
-
-    // Switching back and forth reuses the remix instead of re-rendering.
-    await changeSelect(modeSelect, "jukebox");
-    await changeSelect(modeSelect, "wubmachine");
-    await settleEffects();
-    expect(wubMachineMocks.renderWubMachineBuffer).toHaveBeenCalledTimes(1);
-    rendered.unmount();
-  });
-
-  it("persists the Wub Machine loop preference", async () => {
-    window.localStorage.setItem("fj-wub-machine-loop", "true");
-    const rendered = renderListen();
-    await settleEffects();
-    const loop = getRequired<HTMLInputElement>(rendered.container, "#wubmachine-loop");
-    expect(loop.checked).toBe(true);
-    expect(wubMachineInstances[0].setLoop).toHaveBeenLastCalledWith(true);
-
-    await click(loop);
-    expect(loop.checked).toBe(false);
-    expect(window.localStorage.getItem("fj-wub-machine-loop")).toBe("false");
-    expect(wubMachineInstances[0].setLoop).toHaveBeenLastCalledWith(false);
-    rendered.unmount();
-  });
-
-  it("reports a failed Wub Machine render and retries from play", async () => {
-    wubMachineMocks.renderWubMachineBuffer.mockRejectedValueOnce(
-      new Error("no samples"),
-    );
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "wubmachine",
-    );
-    await settleEffects();
-    expect(rendered.container.textContent).toContain("Wub Machine remix failed");
-    expect(wubMachineInstances[0].setRemix).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-
-    await click(getRequired<HTMLButtonElement>(rendered.container, "#viz-play"));
-    await settleEffects();
-    expect(wubMachineMocks.renderWubMachineBuffer).toHaveBeenCalledTimes(2);
-    expect(wubMachineInstances[0].setRemix).toHaveBeenLastCalledWith(
-      { duration: 30 },
-      expect.anything(),
-      [],
-    );
-    rendered.unmount();
-  });
-
-  it("exports the whole Wub Machine remix, afresh for WAV when stored", async () => {
-    const storedRemix = { duration: 30 } as AudioBuffer;
-    markStoredCopy(storedRemix);
-    wubMachineMocks.renderWubMachineBuffer.mockResolvedValue({
-      buffer: storedRemix,
-      parts: [],
-    });
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "wubmachine",
-    );
-    await settleEffects();
-
-    const exportWith = async (format: string) => {
-      wubMachineMocks.renderWubMachineBuffer.mockClear();
-      await click(getRequired<HTMLButtonElement>(rendered.container, "#track-audio-export"));
-      expect(rendered.container.textContent).toContain("Remix length:");
-      expect(rendered.container.querySelector('input[type="number"]')).toBeNull();
-      const formatSelect = Array.from(
-        rendered.container.querySelectorAll<HTMLSelectElement>("select"),
-      ).find((select) => select.querySelector('option[value="wav"]'));
-      if (!formatSelect) {
-        throw new Error("Expected export format select");
-      }
-      await changeSelect(formatSelect, format);
-      await click(
-        getRequired<HTMLButtonElement>(
-          rendered.container,
-          ".modal-footer .tab-btn:last-child",
-        ),
-      );
-      await settleEffects();
-    };
-
-    await exportWith("mp3");
-    expect(wubMachineMocks.renderWubMachineBuffer).not.toHaveBeenCalled();
-    expect(exportMocks.exportJukeboxAudio).not.toHaveBeenCalled();
-    expect(exportMocks.exportRenderedAudio).toHaveBeenLastCalledWith(
-      expect.objectContaining({ buffer: storedRemix, format: "mp3", gain: 1 }),
-    );
-    expect(exportMocks.saveExportBinary.mock.calls.at(-1)?.[0]).toBe("song_wub.mp3");
-
-    await exportWith("wav");
-    expect(wubMachineMocks.renderWubMachineBuffer).toHaveBeenCalledTimes(1);
-    expect(wubMachineMocks.renderWubMachineBuffer.mock.calls[0]?.[3]).toMatchObject({
-      trackId: null,
-    });
-    expect(exportMocks.exportRenderedAudio).toHaveBeenLastCalledWith(
-      expect.objectContaining({ format: "wav" }),
-    );
-    rendered.unmount();
-  });
-
-  it("exports the whole canon in autocanonizer mode", async () => {
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "autocanonizer",
-    );
-    await settleEffects();
-    const plan = { durationSeconds: 95, voices: [] };
-    autocanonizerInstances[0].planRender.mockReturnValue(plan);
-
-    const exportButton = getRequired<HTMLButtonElement>(
-      rendered.container,
-      "#track-audio-export",
-    );
-    expect(exportButton.disabled).toBe(false);
-    expect(exportButton.classList.contains("is-hidden")).toBe(false);
-    await click(exportButton);
-    expect(rendered.container.textContent).toContain("00:01:35");
-    expect(rendered.container.querySelector('input[type="number"]')).toBeNull();
-    await click(
-      getRequired<HTMLButtonElement>(
-        rendered.container,
-        ".modal-footer .tab-btn:last-child",
-      ),
-    );
-    await settleEffects();
-
-    expect(exportMocks.exportCanonizerAudio).toHaveBeenLastCalledWith(
-      expect.objectContaining({ plan, format: "mp3", gain: 1 }),
-    );
-    expect(exportMocks.exportJukeboxAudio).not.toHaveBeenCalled();
-    expect(exportMocks.exportRenderedAudio).not.toHaveBeenCalled();
-    expect(exportMocks.saveExportBinary.mock.calls.at(-1)?.[0]).toBe("song_canon.mp3");
-    rendered.unmount();
-  });
-
-  it("keeps volume as master volume in autocanonizer mode", async () => {
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "autocanonizer",
-    );
     await click(getRequired(rendered.container, "#volume-button"));
 
     const volumeSlider = getRequired<HTMLInputElement>(
@@ -1033,7 +597,7 @@ describe("Listen route behavior", () => {
     );
     expect(volumeSlider.value).toBe("100");
     await changeRange(volumeSlider, "70");
-    expect(autocanonizerInstances[0].setVolume).toHaveBeenLastCalledWith(0.7);
+    expect(playerInstances[0].getVolume()).toBe(0.7);
     rendered.unmount();
   });
 
@@ -1042,8 +606,6 @@ describe("Listen route behavior", () => {
     const rendered = renderListen();
     await settleEffects();
     expect(playerInstances[0].getVolume()).toBe(0.4);
-    expect(autocanonizerInstances[0].setVolume).toHaveBeenLastCalledWith(0.4);
-    expect(wubMachineInstances[0].setVolume).toHaveBeenLastCalledWith(0.4);
     await click(getRequired(rendered.container, "#volume-button"));
 
     const volumeSlider = getRequired<HTMLInputElement>(
@@ -1056,36 +618,6 @@ describe("Listen route behavior", () => {
     await changeRange(volumeSlider, "0");
     expect(window.localStorage.getItem("fj-volume")).toBe("0");
     expect(icon.textContent).toBe("volume_off");
-    rendered.unmount();
-  });
-
-  it("shows independent autocanonizer stream pans in the pan popover", async () => {
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "autocanonizer",
-    );
-    await click(getRequired(rendered.container, "#autocanonizer-pan-button"));
-
-    const mainSlider = getRequired<HTMLInputElement>(
-      rendered.container,
-      "#autocanonizer-main-pan",
-    );
-    const otherSlider = getRequired<HTMLInputElement>(
-      rendered.container,
-      "#autocanonizer-other-pan",
-    );
-    expect(mainSlider.value).toBe("0");
-    expect(otherSlider.value).toBe("0");
-
-    await changeRange(mainSlider, "-40");
-
-    expect(autocanonizerInstances[0].setStreamPans).toHaveBeenLastCalledWith(
-      -0.4,
-      0,
-    );
-    expect(mainSlider.value).toBe("-40");
     rendered.unmount();
   });
 
@@ -1103,26 +635,6 @@ describe("Listen route behavior", () => {
     );
 
     expect(rendered.container.textContent).toContain("Total Cowbells:");
-    rendered.unmount();
-  });
-
-  it("loads and persists finish-out-song preference", async () => {
-    window.localStorage.setItem("fj-canonizer-finish", "true");
-    const rendered = renderListen();
-    await settleEffects();
-
-    const instance = autocanonizerInstances[0];
-    expect(instance.setFinishOutSong).toHaveBeenCalledWith(true);
-
-    const checkbox = rendered.container.querySelector(
-      "#canonizer-finish"
-    ) as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
-
-    await click(checkbox);
-
-    expect(window.localStorage.getItem("fj-canonizer-finish")).toBe("false");
-    expect(instance.setFinishOutSong).toHaveBeenLastCalledWith(false);
     rendered.unmount();
   });
 
@@ -1343,51 +855,6 @@ describe("Listen route behavior", () => {
     await click(playButton);
     expect(playButton.getAttribute("aria-label")).toBe("Pause");
 
-    rendered.unmount();
-  });
-
-  it("keeps listen time running when selecting an autocanonizer beat", async () => {
-    let nowMs = 1000;
-    let listenTimer: (() => void) | null = null;
-    vi.spyOn(performance, "now").mockImplementation(() => nowMs);
-    vi.mocked(window.setInterval).mockImplementation(
-      ((callback: TimerHandler) => {
-        if (typeof callback === "function") {
-          listenTimer = () => callback();
-        }
-        return 1 as unknown as ReturnType<typeof window.setInterval>;
-      }) as unknown as typeof window.setInterval,
-    );
-    const rendered = renderListen();
-    await settleEffects();
-    await changeSelect(
-      getRequired<HTMLSelectElement>(rendered.container, "#play-mode-select"),
-      "autocanonizer",
-    );
-    await click(getRequired<HTMLButtonElement>(rendered.container, "#viz-play"));
-
-    nowMs = 6000;
-    await act(async () => {
-      listenTimer?.();
-    });
-    expect(
-      getRequired(rendered.container, ".viz-meta-stats span:nth-child(2)")
-        .textContent,
-    ).toBe("00:00:05");
-
-    await act(async () => {
-      autocanonizerInstances[0]?.emitSelect(1);
-    });
-    nowMs = 7000;
-    await act(async () => {
-      listenTimer?.();
-    });
-
-    expect(autocanonizerInstances[0]?.startAtIndex).toHaveBeenLastCalledWith(1);
-    expect(
-      getRequired(rendered.container, ".viz-meta-stats span:nth-child(2)")
-        .textContent,
-    ).toBe("00:00:06");
     rendered.unmount();
   });
 

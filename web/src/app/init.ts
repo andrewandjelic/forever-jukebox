@@ -1,8 +1,6 @@
 import { JukeboxEngine } from "@forever-jukebox/shared";
 import { BufferedAudioPlayer } from "@forever-jukebox/shared/audio/BufferedAudioPlayer";
 import { CowbellOverlayService } from "@forever-jukebox/shared/audio/CowbellOverlayService";
-import { AutocanonizerController } from "@forever-jukebox/shared/autocanonizer/AutocanonizerController";
-import { WubMachineController } from "@forever-jukebox/shared/wubmachine/WubMachineController";
 import { JukeboxController } from "@forever-jukebox/shared/viz/JukeboxController";
 import { applyThemeVariables, resolveStoredTheme } from "./theme";
 import { resolveStoredAnchorHighlight } from "./anchorHighlight";
@@ -31,7 +29,6 @@ import { DEFAULT_VISUALIZATION_INDEX } from "./constants";
 import {
   setAppRuntime,
   setAttachViz,
-  setAdvancePlaylistOnAutocanonizerEnded,
   setPlaybackDeps,
   setRouteHandler,
   type AttachVizNodes,
@@ -46,15 +43,11 @@ import {
   updateFullscreenButton,
 } from "./fullscreen";
 import {
-  applyModeFromUrl,
   handleBeatSelect,
   handleEdgeSelect,
   initializePlayback,
 } from "./playback-ui";
-import {
-  advanceAutocanonizerOnEnded,
-  handleNormalTrackSelected,
-} from "./playlist-actions";
+import { handleNormalTrackSelected } from "./playlist-actions";
 import { bootstrapAppConfig } from "./app-config";
 import { useAppStore, type LocalizedText } from "./store";
 import {
@@ -102,8 +95,6 @@ export function initRuntime(): void {
   const context: AppContext = {
     engine,
     player,
-    autocanonizer: null,
-    wubmachine: null,
     jukebox: null,
     cowbellOverlay,
     defaultConfig,
@@ -129,7 +120,6 @@ export function initRuntime(): void {
       useAppStore.getState().navigateToTrackWithState(trackId, {
         replace,
         tuningParams: useAppStore.getState().tuningParams,
-        playMode: useAppStore.getState().playMode,
       }),
     setAnalysisStatus: (message: LocalizedText, spinning: boolean) =>
       setAnalysisStatus(context, message, spinning),
@@ -140,7 +130,6 @@ export function initRuntime(): void {
   };
   const playbackDeps: PlaybackDeps = { ...sharedFlowDeps };
   setPlaybackDeps(playbackDeps);
-  setAdvancePlaylistOnAutocanonizerEnded(advanceAutocanonizerOnEnded);
   playbackDeps.onAnalysisLoaded = (response) => {
     maybeAutoFavoriteUserSupplied(response);
   };
@@ -168,7 +157,7 @@ export function initRuntime(): void {
       pollAnalysis(context, playbackDeps, jobId),
     onNormalTrackSelected: handleNormalTrackSelected,
   };
-  // Construct the viz controllers once <VizContainer> hands over its nodes
+  // Construct the viz controller once <VizContainer> hands over its nodes
   // (ref phase — before any React effect runs). StrictMode re-attaches the
   // same nodes; the guard makes that a no-op.
   let vizAttached = false;
@@ -177,22 +166,11 @@ export function initRuntime(): void {
       return;
     }
     vizAttached = true;
-    const autocanonizer = new AutocanonizerController(nodes.canonizerLayer);
     const jukebox = new JukeboxController(nodes.vizLayer);
     jukebox.setWaveformSource(() =>
       player.isPlaying() ? player.getWaveform() : null,
     );
-    context.autocanonizer = autocanonizer;
-    context.wubmachine = new WubMachineController(nodes.wubMachineLayer);
     context.jukebox = jukebox;
-    autocanonizer.setVolume(player.getVolume());
-    context.wubmachine.setVolume(player.getVolume());
-    const { autocanonizerMainPan, autocanonizerOtherPan } =
-      useAppStore.getState();
-    autocanonizer.setStreamPans(
-      autocanonizerMainPan / 100,
-      autocanonizerOtherPan / 100,
-    );
     jukebox.setAnchorHighlightEnabled(useAppStore.getState().highlightAnchorBranch);
     jukebox.setActiveIndex(DEFAULT_VISUALIZATION_INDEX);
     initializePlayback();
@@ -218,7 +196,6 @@ export function initRuntime(): void {
   // shell's route-sync effect (replaces the popstate listener and the
   // init-time handleRouteChange call).
   setRouteHandler((pathname) => {
-    applyModeFromUrl();
     handleRouteChange(context, playbackDeps, pathname).catch((err) => {
       console.warn(`Route load failed: ${String(err)}`);
     });

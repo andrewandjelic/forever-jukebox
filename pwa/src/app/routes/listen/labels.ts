@@ -4,7 +4,6 @@ import type { ProgressStep } from "@/ui/components/ProgressSteps";
 import type { JukeboxAudioMode } from "@forever-jukebox/shared/audio/BufferedAudioPlayer";
 import { VISUALIZATION_LABELS } from "@forever-jukebox/shared/constants/visualization";
 import { formatAudioModeTitleLabel } from "./audioMode";
-import type { PlayMode } from "./types";
 
 export const STEP_ORDER: AnalyzeStage[] = [
   "loading",
@@ -22,16 +21,9 @@ export function getVisualizationLabel(index: number, t: TFunction) {
 
 export function formatTrackTitle(
   baseTitle: string,
-  playMode: PlayMode,
   audioMode: JukeboxAudioMode,
   t: TFunction,
 ) {
-  if (playMode === "autocanonizer") {
-    return `${baseTitle} (${t("listen.autocanonized")})`;
-  }
-  if (playMode === "wubmachine") {
-    return `${baseTitle} (${t("listen.wubMachineRemix")})`;
-  }
   if (audioMode !== "off") {
     return `${baseTitle} (${formatAudioModeTitleLabel(audioMode, t)})`;
   }
@@ -69,7 +61,7 @@ export function analysisStageLabel(stage: AnalyzeStage, t: TFunction) {
   return t(keys[normalizedStage]);
 }
 
-export type PreparingAudioMode = "swing" | "instrumental" | "wubmachine" | null;
+export type PreparingAudioMode = "swing" | "instrumental" | null;
 
 export function playControlText({
   preparingMode,
@@ -87,9 +79,6 @@ export function playControlText({
   }
   if (preparingMode === "swing") {
     return t("listen.preparingSwing");
-  }
-  if (preparingMode === "wubmachine") {
-    return t("listen.preparingWubMachine");
   }
   if (isRunning) {
     return t("listen.pause");

@@ -128,16 +128,14 @@ export type ExtrasFormValues = {
 
 export function getExtrasFormValues(): ExtrasFormValues {
   const {
-    playMode,
     bringItHomeMode,
     branchStatsEnabled,
     jukeboxAudioMode,
     audioIntensity,
   } = useAppStore.getState();
-  const inJukeboxMode = playMode === "jukebox";
   return {
-    bringItHomeMode: inJukeboxMode && bringItHomeMode,
-    branchStatsEnabled: inJukeboxMode && branchStatsEnabled,
+    bringItHomeMode,
+    branchStatsEnabled,
     audioMode: jukeboxAudioMode,
     audioIntensity,
   };
@@ -151,19 +149,13 @@ export function applyExtrasChanges(
   const previousBranchStatsEnabled = useAppStore.getState().branchStatsEnabled;
   const previousAudioMode = useAppStore.getState().jukeboxAudioMode;
   const previousAudioIntensity = useAppStore.getState().audioIntensity;
-  useAppStore.setState({
-    bringItHomeMode:
-      useAppStore.getState().playMode === "jukebox" && values.bringItHomeMode,
-  });
+  useAppStore.setState({ bringItHomeMode: values.bringItHomeMode });
   if (useAppStore.getState().bringItHomeMode && useAppStore.getState().shiftBranching) {
     useAppStore.setState({ shiftBranching: false });
     engine.setForceBranch(false);
   }
   engine.setBringItHomeMode(useAppStore.getState().bringItHomeMode);
-  useAppStore.setState({
-    branchStatsEnabled:
-      useAppStore.getState().playMode === "jukebox" && values.branchStatsEnabled,
-  });
+  useAppStore.setState({ branchStatsEnabled: values.branchStatsEnabled });
   if (!useAppStore.getState().branchStatsEnabled) {
     useAppStore.setState({ branchStats: null });
   }
@@ -213,7 +205,6 @@ export function applyExtrasChanges(
         previousAudioIntensity,
         nextAudioIntensity,
       ) &&
-      useAppStore.getState().playMode === "jukebox" &&
       (useAppStore.getState().isRunning || useAppStore.getState().isPaused)
     ) {
       engine.syncToPlaybackPosition();
@@ -253,7 +244,6 @@ export function resetExtrasDefaults(context: AppContext) {
   updatePlayButton();
   if (
     previousAudioMode !== "off" &&
-    useAppStore.getState().playMode === "jukebox" &&
     (useAppStore.getState().isRunning || useAppStore.getState().isPaused)
   ) {
     engine.syncToPlaybackPosition();
@@ -425,12 +415,9 @@ export function resetTuningDefaults(context: AppContext) {
     jukebox?.setData(data);
   }
   syncDeletedEdgeState(context);
-  // Serialize am/ai only in jukebox mode — autocanonizer URLs carry no tuning.
-  const { jukeboxAudioMode, audioIntensity, playMode } = useAppStore.getState();
+  const { jukeboxAudioMode, audioIntensity } = useAppStore.getState();
   const audioModeParams = new URLSearchParams();
-  if (playMode === "jukebox") {
-    appendAudioModeParams(audioModeParams, jukeboxAudioMode, audioIntensity);
-  }
+  appendAudioModeParams(audioModeParams, jukeboxAudioMode, audioIntensity);
   const serialized = audioModeParams.toString();
   useAppStore.setState({
     tuningParams: serialized.length > 0 ? serialized : null,

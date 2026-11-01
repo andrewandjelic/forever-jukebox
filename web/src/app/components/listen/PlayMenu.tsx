@@ -50,7 +50,7 @@ function DeleteConfirmModal({
       return;
     }
     // `pending` was frozen at modal-open; if the active track changed
-    // underneath us (e.g. autocanonizer playlist auto-advance) the frozen job
+    // underneath us (e.g. a playlist skip) the frozen job
     // no longer matches the current session. Re-read and bail rather than
     // delete the right job but reset/navigate the wrong session.
     const current = getPendingDelete();
@@ -202,7 +202,6 @@ export function PlayMenu() {
   const audioLoaded = useAppStore((s) => s.audioLoaded);
   const analysisLoaded = useAppStore((s) => s.analysisLoaded);
   const audioModePreparing = useAppStore((s) => s.audioModePreparing);
-  const playMode = useAppStore((s) => s.playMode);
   const audioMode = useAppStore((s) => s.jukeboxAudioMode);
   const trackTitle = useAppStore((s) => s.trackTitle);
   const trackArtist = useAppStore((s) => s.trackArtist);
@@ -227,15 +226,12 @@ export function PlayMenu() {
   const titleRef = useRef<HTMLDivElement | null>(null);
 
   const hidden = !(audioLoaded && analysisLoaded) || audioModePreparing;
-  // Tuning and track info describe the jukebox graph.
-  const hideJukeboxTools = playMode !== "jukebox";
   const adminMode = isAdminMode();
   const displayTitle =
     trackTitle || trackArtist
       ? (() => {
           const withSuffix = formatPlaybackTitle(
             trackTitle ?? t("common.unknown"),
-            playMode,
             audioMode,
           );
           return trackArtist ? `${withSuffix} — ${trackArtist}` : withSuffix;
@@ -263,11 +259,10 @@ export function PlayMenu() {
     return isFavoriteTuningDrifted({
       favorite: currentFavorite,
       ready: analysisLoaded,
-      livePlayMode: playMode,
       liveTuningParams: tuningParams,
       defaults: getAppContext().defaultConfig,
     });
-  }, [currentFavorite, analysisLoaded, playMode, tuningParams]);
+  }, [currentFavorite, analysisLoaded, tuningParams]);
   const favoriteToggleLabel = favoriteActive
     ? t("playback.removeFavorite")
     : t("playback.addFavorite");
@@ -298,7 +293,7 @@ export function PlayMenu() {
           <span
             id="bring-home-label"
             className={
-              playMode === "jukebox" && bringItHomeMode
+              bringItHomeMode
                 ? "bring-home-note"
                 : "bring-home-note is-hidden"
             }
@@ -350,8 +345,7 @@ export function PlayMenu() {
           <button
             type="button"
             id="tuning"
-            className={hideJukeboxTools ? "tune-toggle is-hidden" : "tune-toggle"}
-            disabled={hideJukeboxTools}
+            className="tune-toggle"
             aria-label={t("playback.tune")}
             title={t("playback.tune")}
             onClick={() => openTuning(getAppContext())}
@@ -366,7 +360,7 @@ export function PlayMenu() {
           <button
             type="button"
             id="track-info"
-            className={hideJukeboxTools ? "info-toggle is-hidden" : "info-toggle"}
+            className="info-toggle"
             aria-label={t("playback.info")}
             title={t("playback.info")}
             onClick={() => openInfo(getAppContext())}

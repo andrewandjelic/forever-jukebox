@@ -13,7 +13,6 @@ export {
   openExtras,
   openInfo,
   openTuning,
-  setAutocanonizerStreamPans,
   setMasterVolume,
   syncVolumeUI,
   updateListenTimeDisplay,
@@ -23,8 +22,6 @@ export {
 } from "./status-ui";
 export {
   isPlaybackBlockedForAudioMode,
-  startAutocanonizerPlayback,
-  startWubMachinePlayback,
   startJukeboxFromBeat,
   startListenTimer,
   stopListenTimer,
@@ -63,8 +60,4 @@ export {
   getLoadGeneration,
   isStaleLoad,
 } from "./load-generation";
-export {
-  cancelWubMachineRender,
-  maybePrepareWubMachine,
-} from "./wubmachine";
 export { releaseWakeLock, requestWakeLock } from "./wake-lock";

@@ -38,8 +38,6 @@ type TestAppContext = AppContext & {
 
 function setupRuntime(): TestAppContext {
   const context = {
-    autocanonizer: {},
-    wubmachine: {},
     jukebox: { resizeActive: vi.fn() },
   } as unknown as TestAppContext;
   setAppRuntime(context);
@@ -66,8 +64,6 @@ describe("fullscreen actions", () => {
     attachViz({
       vizPanel: { requestFullscreen } as unknown as HTMLElement,
       vizLayer: document.createElement("div"),
-      canonizerLayer: document.createElement("div"),
-      wubMachineLayer: document.createElement("div"),
     });
 
     toggleFullscreen();

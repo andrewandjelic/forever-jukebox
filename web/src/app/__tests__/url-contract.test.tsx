@@ -66,7 +66,6 @@ describe("URL contract", () => {
 
   it("queues play tab navigation with tuning params", () => {
     useAppStore.setState({
-      playMode: "jukebox",
       tuningParams: "jb=1&thresh=20",
     });
     useAppStore
@@ -78,7 +77,6 @@ describe("URL contract", () => {
 
   it("queues track URL updates with tuning params, replace vs push", () => {
     useAppStore.setState({
-      playMode: "jukebox",
       tuningParams: "lg=1",
     });
     useAppStore
@@ -101,7 +99,6 @@ describe("URL contract", () => {
       "a3f3c0dc73c6476c9db95c227f9206f2",
       "https://example.test/current?old=1",
       "jb=1&d=2,8&am=nightcore",
-      "jukebox",
     );
     expect(href).toBe(
       "https://example.test/listen/a3f3c0dc73c6476c9db95c227f9206f2?jb=1&d=2,8&am=nightcore",
@@ -110,31 +107,28 @@ describe("URL contract", () => {
 
   it("builds track URLs without search when tuning is absent", () => {
     expect(
-      urlForTrack("abc123", "https://example.test/top", null, "jukebox"),
+      urlForTrack("abc123", "https://example.test/top", null),
     ).toBe("https://example.test/listen/abc123");
   });
 
   it("carries the audio-mode tuning param", () => {
-    expect(pathForTrack("xyz", "am=nightcore", "jukebox")).toBe(
+    expect(pathForTrack("xyz", "am=nightcore")).toBe(
       "/listen/xyz?am=nightcore",
     );
   });
 
   it("carries the audio-intensity tuning param alongside the mode", () => {
-    expect(pathForTrack("xyz", "am=nightcore&ai=130", "jukebox")).toBe(
+    expect(pathForTrack("xyz", "am=nightcore&ai=130")).toBe(
       "/listen/xyz?am=nightcore&ai=130",
     );
   });
 
-  it("adds the mode param for autocanonizer and drops tuning params", () => {
-    useAppStore.setState({
-      playMode: "autocanonizer",
-      tuningParams: "lg=1",
-    });
+  it("drops the mode param that links from removed play modes carry", () => {
+    useAppStore.setState({ tuningParams: "mode=autocanonizer&lg=1" });
     useAppStore
       .getState()
       .navigateToTrackWithState("xyz", { replace: true });
-    expectNavigationRequest("/listen/xyz?mode=autocanonizer", true);
+    expectNavigationRequest("/listen/xyz?lg=1", true);
   });
 
   it("encodes track ids in listen paths", () => {
@@ -156,7 +150,6 @@ describe("URL contract", () => {
         .navigateToTrackWithState("xyz", {
           replace: true,
           tuningParams: "lg=1",
-          playMode: "jukebox",
         });
     });
 

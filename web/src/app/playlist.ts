@@ -1,5 +1,3 @@
-import type { PlayMode } from "./context";
-import { storedPlayMode } from "./favorites";
 import i18n from "./i18n";
 
 export type PlaylistSourceType = "youtube" | "soundcloud" | "bandcamp" | "upload";
@@ -11,9 +9,6 @@ export type PlaylistTrack = {
   artist: string;
   duration: number | null;
   tuningParams?: string | null;
-  // Play mode to load this track in. Absent means jukebox (the default), so
-  // previously saved playlists and search/top tracks need no data migration.
-  playMode?: PlayMode;
 };
 
 export type PlaylistState = {
@@ -115,11 +110,8 @@ export function normalizePlaylistTrack(track: PlaylistTrack): PlaylistTrack | nu
   if (tuningParams) {
     normalized.tuningParams = tuningParams;
   }
-  // Keeps existing saved playlists byte-for-byte unchanged.
-  const playMode = storedPlayMode(track.playMode ?? "jukebox");
-  if (playMode) {
-    normalized.playMode = playMode;
-  }
+  // Tracks saved while the Autocanonizer and Wub Machine existed may carry a
+  // playMode; it is dropped and they play in the jukebox.
   return normalized;
 }
 

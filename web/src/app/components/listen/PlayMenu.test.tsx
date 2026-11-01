@@ -53,7 +53,6 @@ describe("PlayMenu", () => {
         audioLoaded: true,
         analysisLoaded: true,
         audioModePreparing: false,
-        playMode: "jukebox",
         jukeboxAudioMode: "off",
         trackTitle: "Song",
         trackArtist: "Artist",
@@ -105,7 +104,7 @@ describe("PlayMenu", () => {
     );
   });
 
-  it("shows the bring-it-home note only in jukebox mode with the mode on", () => {
+  it("shows the bring-it-home note only with the mode on", () => {
     render(<PlayMenu />);
     const label = document.getElementById("bring-home-label");
     expect(label?.classList.contains("is-hidden")).toBe(true);
@@ -113,19 +112,6 @@ describe("PlayMenu", () => {
       useAppStore.setState({ bringItHomeMode: true });
     });
     expect(label?.classList.contains("is-hidden")).toBe(false);
-  });
-
-  it("hides tune and info buttons in autocanonizer mode", () => {
-    act(() => {
-      useAppStore.setState({ playMode: "autocanonizer" });
-    });
-    render(<PlayMenu />);
-    expect(
-      document.getElementById("tuning")?.classList.contains("is-hidden"),
-    ).toBe(true);
-    expect(
-      document.getElementById("track-info")?.classList.contains("is-hidden"),
-    ).toBe(true);
   });
 
   it("marks the favorite star active for the current track", () => {

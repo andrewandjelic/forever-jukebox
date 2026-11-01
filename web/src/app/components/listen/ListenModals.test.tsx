@@ -81,7 +81,6 @@ beforeEach(() => {
       infoModalOpen: false,
       settingsModalOpen: false,
       playlistModalOpen: false,
-      playMode: "jukebox",
       sleepTimer: { configuredDurationMs: null, endTimeMs: null, remainingMs: 0 },
       trackInfo: {
         durationText: "00:03:21",
@@ -172,23 +171,6 @@ describe("TuningModal", () => {
         .getElementById("tuning-title")
         ?.classList.contains("is-extras-active"),
     ).toBe(true);
-  });
-
-  it("hides the extras toggle and forces the tuning tab outside jukebox mode", () => {
-    act(() => {
-      useAppStore.setState({
-        tuningModalOpen: true,
-        tuningModalTab: "extras",
-        playMode: "autocanonizer",
-      });
-    });
-    render(<TuningModal />);
-    expect(
-      document.getElementById("tuning-tab-toggle")?.classList.contains("hidden"),
-    ).toBe(true);
-    expect(document.getElementById("tuning-title-text")?.textContent).toBe(
-      "Tuning",
-    );
   });
 
   it("applies extras and closes", async () => {

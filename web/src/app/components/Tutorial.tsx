@@ -30,8 +30,8 @@ const STEPS: Step[] = [
     target: "#tuning",
   },
   {
-    title: "Mode and look",
-    body: "Switch between Jukebox, Autocanonizer and Wub Machine, and pick a visual style. Styles follow the song's genre until you choose one yourself.",
+    title: "Pick a look",
+    body: "Pick a visual style. Styles follow the song's genre until you choose one yourself.",
     target: ".viz-actions",
   },
 ];

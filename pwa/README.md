@@ -39,12 +39,23 @@ npm run test     # unit tests
 ## Analysis pipeline
 
 - Worker orchestration: `src/workers/analysis.worker.ts`
-- Beat/downbeat model worker: `public/madmom/worker.js`
-- Feature/segmentation worker: `src/workers/essentia.worker.ts`
+- Beat/downbeat model worker: `public/madmom/worker.js`, run as a pool by
+  `src/workers/analysis/beatDetection.ts`: features on one worker, the model's
+  8 networks shared out, then each bar length (3 and 4 beats) decoded on its
+  own worker. The result is bit-identical to the engine's single-call analysis
+  for any number of workers; the pool is sized from `hardwareConcurrency` and
+  `deviceMemory` (one worker means the single call).
+- Feature worker: `src/workers/essentia.worker.ts`, a few at once over runs of
+  frames (`src/workers/analysis/essentiaFrames.ts`), alongside beat detection;
+  only the segmentation waits for the beats.
 - Audio decode/resample for analysis: `ffmpeg.wasm` (mono PCM at 22.05kHz + 44.1kHz)
 - Playback buffer decode: Web Audio API (`decodeAudioData`) from ffmpeg-generated WAV
 - madmom worker consumes backend-parity arrays (`beat_times`, `beat_numbers`, `beat_confidences`)
-- madmom WASM package/models are from `madmom-beats-port v4.1.1`
+- madmom WASM package/models are from `madmom-beats-port v4.1.1`, rebuilt with
+  speedups (sparse filterbank, batched LSTM gates, single-pass Viterbi) and a
+  staged API for the worker pool; beats are bit-identical to v4.1.1. Rebuild:
+  `wasm-pack build --target web --release` in `rust/madmom_beats_port_wasm` of
+  the patched source, then copy `pkg/` here.
 
 madmom WASM: [madmom-beats-port](https://github.com/creightonlinza/madmom-beats-port)
 
@@ -58,8 +69,6 @@ madmom WASM: [madmom-beats-port](https://github.com/creightonlinza/madmom-beats-
 
 - Export playable jukebox output directly from the Listen screen.
 - Export uses current tuning + deleted branches and a fresh seeded random run.
-- Autocanonizer mode exports one full pass of the canon; "Finish out the track" adds the
-  trailing voice's ending.
 - Formats:
   - MP3 (compressed)
   - WAV (lossless)

@@ -1,5 +1,4 @@
 import type { JukeboxAudioMode } from "@forever-jukebox/shared/audio/BufferedAudioPlayer";
-import type { AppState } from "./context";
 import i18n from "./i18n";
 
 export function formatDuration(seconds: number) {
@@ -11,15 +10,6 @@ export function formatDuration(seconds: number) {
   const mm = String(minutes).padStart(2, "0");
   const ss = String(secs).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
-}
-
-export function formatCursorTime(seconds: number) {
-  const totalSeconds = Number.isFinite(seconds)
-    ? Math.max(0, Math.floor(seconds))
-    : 0;
-  const minutes = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
 // Listen time as a multiple of the song's own length, in whole tenths, so the
@@ -81,15 +71,8 @@ export function formatAudioModeLabel(audioMode: JukeboxAudioMode) {
 
 export function formatPlaybackTitle(
   baseTitle: string,
-  playMode: AppState["playMode"],
   audioMode: JukeboxAudioMode,
 ) {
-  if (playMode === "autocanonizer") {
-    return `${baseTitle} (${i18n.t("playback.autocanonized")})`;
-  }
-  if (playMode === "wubmachine") {
-    return `${baseTitle} (${i18n.t("playback.wubMachineRemix")})`;
-  }
   if (audioMode !== "off") {
     return `${baseTitle} (${formatAudioModeLabel(audioMode)})`;
   }

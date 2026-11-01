@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  AUTOCANONIZER_MAIN_COLOR,
-  AUTOCANONIZER_OTHER_COLOR,
-} from "@forever-jukebox/shared/autocanonizer/AutocanonizerViz";
-import {
-  setAutocanonizerStreamPans,
-  setMasterVolume,
-} from "../../playback";
+import { setMasterVolume } from "../../playback";
 import {
   hasActivePlaylistControls,
   hasPlaylistControls,
@@ -38,42 +31,25 @@ export function VizBottomRight() {
   const { t } = useTranslation();
   const playlist = useAppStore((s) => s.playlist);
   const volumePct = useAppStore((s) => s.volumePct);
-  const playMode = useAppStore((s) => s.playMode);
-  const mainPan = useAppStore((s) => s.autocanonizerMainPan);
-  const otherPan = useAppStore((s) => s.autocanonizerOtherPan);
   const isFullscreen = useAppStore((s) => s.isFullscreen);
   const [volumeOpen, setVolumeOpen] = useState(false);
-  const [panOpen, setPanOpen] = useState(false);
   const volumeWrapRef = useRef<HTMLDivElement | null>(null);
-  const panWrapRef = useRef<HTMLDivElement | null>(null);
-  const isCanonizer = playMode === "autocanonizer";
 
-  // Click-away closes the open audio panels.
+  // Click-away closes the volume panel.
   useEffect(() => {
-    if (!volumeOpen && !panOpen) {
+    if (!volumeOpen) {
       return;
     }
     const onDocumentClick = (event: Event) => {
       const target = event.target;
-      if (
-        target instanceof Node &&
-        (volumeWrapRef.current?.contains(target) ||
-          panWrapRef.current?.contains(target))
-      ) {
+      if (target instanceof Node && volumeWrapRef.current?.contains(target)) {
         return;
       }
       setVolumeOpen(false);
-      setPanOpen(false);
     };
     document.addEventListener("click", onDocumentClick);
     return () => document.removeEventListener("click", onDocumentClick);
-  }, [volumeOpen, panOpen]);
-
-  useEffect(() => {
-    if (!isCanonizer) {
-      setPanOpen(false);
-    }
-  }, [isCanonizer]);
+  }, [volumeOpen]);
 
   // Scrolling over the player turns the volume up or down, showing the
   // volume panel while it changes. Ctrl+wheel stays the browser's zoom.
@@ -100,7 +76,6 @@ export function VizBottomRight() {
           applyVolume(next);
         }
       }
-      setPanOpen(false);
       setVolumeOpen(true);
       window.clearTimeout(hideTimer);
       hideTimer = window.setTimeout(() => setVolumeOpen(false), WHEEL_PANEL_MS);
@@ -124,16 +99,6 @@ export function VizBottomRight() {
     ? t("playback.exitFullscreen")
     : t("playback.fullscreen");
 
-  const handleStreamPanChange = (stream: "main" | "other", pan: number) => {
-    const nextMain = stream === "main" ? pan : mainPan;
-    const nextOther = stream === "other" ? pan : otherPan;
-    useAppStore.setState({
-      autocanonizerMainPan: nextMain,
-      autocanonizerOtherPan: nextOther,
-    });
-    setAutocanonizerStreamPans(getAppContext(), nextMain, nextOther);
-  };
-
   return (
     <>
       <button
@@ -155,92 +120,6 @@ export function VizBottomRight() {
           queue_music
         </span>
       </button>
-      {isCanonizer ? (
-        <div className="pan-control-wrap" ref={panWrapRef}>
-          <div
-            className={
-              panOpen ? "pan-control-panel" : "pan-control-panel is-hidden"
-            }
-            id="autocanonizer-pan-control-panel"
-          >
-            <label className="stream-pan-control">
-              <div className="label-line">
-                <span className="pan-end-label">{t("playback.balanceLeft")}</span>
-                <span style={{ color: AUTOCANONIZER_MAIN_COLOR }}>
-                  {t("playback.blueBalance")}
-                </span>
-                <span className="pan-end-label">
-                  {t("playback.balanceRight")}
-                </span>
-              </div>
-              <input
-                className="pan-slider stream-pan-slider"
-                id="autocanonizer-main-pan"
-                type="range"
-                aria-label={t("playback.blueBalance")}
-                min={-100}
-                max={100}
-                step={1}
-                list="autocanonizer-pan-ticks"
-                value={mainPan}
-                style={{ accentColor: AUTOCANONIZER_MAIN_COLOR }}
-                onChange={(event) =>
-                  handleStreamPanChange("main", Number(event.target.value))
-                }
-              />
-            </label>
-            <label className="stream-pan-control">
-              <div className="label-line">
-                <span className="pan-end-label">{t("playback.balanceLeft")}</span>
-                <span style={{ color: AUTOCANONIZER_OTHER_COLOR }}>
-                  {t("playback.greenBalance")}
-                </span>
-                <span className="pan-end-label">
-                  {t("playback.balanceRight")}
-                </span>
-              </div>
-              <input
-                className="pan-slider stream-pan-slider"
-                id="autocanonizer-other-pan"
-                type="range"
-                aria-label={t("playback.greenBalance")}
-                min={-100}
-                max={100}
-                step={1}
-                list="autocanonizer-pan-ticks"
-                value={otherPan}
-                style={{ accentColor: AUTOCANONIZER_OTHER_COLOR }}
-                onChange={(event) =>
-                  handleStreamPanChange("other", Number(event.target.value))
-                }
-              />
-            </label>
-            <datalist id="autocanonizer-pan-ticks">
-              <option value={-100} />
-              <option value={0} />
-              <option value={100} />
-            </datalist>
-          </div>
-          <button
-            type="button"
-            id="autocanonizer-pan-button"
-            className="volume-button pan-button"
-            aria-label={t("playback.audioBalance")}
-            title={t("playback.audioBalance")}
-            onClick={() => {
-              setVolumeOpen(false);
-              setPanOpen((prev) => !prev);
-            }}
-          >
-            <span
-              className="material-symbols-outlined pan-icon"
-              aria-hidden="true"
-            >
-              swap_horiz
-            </span>
-          </button>
-        </div>
-      ) : null}
       <div className="volume-control-wrap" ref={volumeWrapRef}>
         <div
           className={
@@ -271,10 +150,7 @@ export function VizBottomRight() {
           className="volume-button"
           aria-label={t("playback.volume")}
           title={t("playback.volume")}
-          onClick={() => {
-            setPanOpen(false);
-            setVolumeOpen((prev) => !prev);
-          }}
+          onClick={() => setVolumeOpen((prev) => !prev)}
         >
           <span
             className="material-symbols-outlined volume-icon"

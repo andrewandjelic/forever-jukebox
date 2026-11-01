@@ -30,7 +30,6 @@ describe("selectTrack", () => {
 
   it("clears current tuning from fresh track navigation", () => {
     useAppStore.setState({
-      playMode: "jukebox",
       tuningParams: "jb=1&thresh=25",
     });
 

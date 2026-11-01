@@ -88,7 +88,6 @@ describe("prepareInstrumentalMode", () => {
     useAppStore.setState(initialStoreState, true);
     useAppStore.setState({
       jukeboxAudioMode: "instrumental",
-      playMode: "jukebox",
       audioLoaded: true,
       analysisLoaded: true,
       isRunning: true,
@@ -210,7 +209,6 @@ describe("maybePrepareInstrumentalMode", () => {
     useAppStore.setState(initialStoreState, true);
     useAppStore.setState({
       jukeboxAudioMode: "instrumental",
-      playMode: "jukebox",
       audioLoaded: true,
       analysisLoaded: true,
     });
@@ -230,11 +228,5 @@ describe("maybePrepareInstrumentalMode", () => {
     useAppStore.setState({ analysisLoaded: true });
     maybePrepareInstrumentalMode(context);
     expect(renderInstrumentalBuffer).toHaveBeenCalledTimes(1);
-  });
-
-  it("skips autocanonizer play mode", () => {
-    useAppStore.setState({ playMode: "autocanonizer" });
-    maybePrepareInstrumentalMode(createContext());
-    expect(renderInstrumentalBuffer).not.toHaveBeenCalled();
   });
 });

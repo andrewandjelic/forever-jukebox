@@ -8,10 +8,9 @@ import {
   type ExtrasFormState,
   type TuneFormState,
 } from "./tuning";
-import type { PlayMode, TuningModalTab } from "./types";
+import type { TuningModalTab } from "./types";
 
 export function TuningModal({
-  playMode,
   activeTab,
   onTabChange,
   tuneForm,
@@ -23,7 +22,6 @@ export function TuningModal({
   onReset,
   onApply,
 }: {
-  playMode: PlayMode;
   activeTab: TuningModalTab;
   onTabChange: (tab: TuningModalTab) => void;
   tuneForm: TuneFormState;
@@ -60,7 +58,7 @@ export function TuningModal({
             <div className="modal-tabs" aria-label={t("tuning.sections")}>
               <button
                 id="tuning-tab-toggle"
-                className={`modal-tab ${playMode !== "jukebox" ? "hidden" : ""}`}
+                className="modal-tab"
                 type="button"
                 onClick={() =>
                   onTabChange(activeTab === "tuning" ? "extras" : "tuning")
@@ -246,7 +244,6 @@ export function TuningModal({
                       branchStatsEnabled: event.target.checked,
                     }))
                   }
-                  disabled={playMode !== "jukebox"}
                 />
                 <span>{t("tuning.showBranchStats")}</span>
               </label>
@@ -261,7 +258,6 @@ export function TuningModal({
                       bringItHomeMode: event.target.checked,
                     }))
                   }
-                  disabled={playMode !== "jukebox"}
                 />
                 <span>{t("tuning.bringItHome")}</span>
               </label>
@@ -270,7 +266,6 @@ export function TuningModal({
               <div className="label-line">{t("tuning.audioMode")}</div>
               <AudioModeOptions
                 selectedAudioMode={extrasForm.audioMode}
-                disabled={playMode !== "jukebox"}
                 onChange={(audioMode) =>
                   setExtrasForm((prev) => ({ ...prev, audioMode }))
                 }

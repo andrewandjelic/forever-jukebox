@@ -319,6 +319,12 @@ if WEB_DIST.exists():
             html = _set_title(html, doc_title)
         return html
 
+    # Files outside /assets keep the same name across builds (the madmom
+    # worker and engine, the offline app's service worker, icons), so browsers
+    # must revalidate them rather than reuse a stale copy; the ETag makes that
+    # a cheap 304.
+    REVALIDATE = {"Cache-Control": "no-cache"}
+
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], responses=NOT_FOUND)
     def spa_fallback(full_path: str, request: Request):
         if full_path.startswith("api"):
@@ -330,13 +336,13 @@ if WEB_DIST.exists():
             offline_index = offline_dist / "index.html"
             if offline_index.exists():
                 if full_path == "offline/":
-                    return FileResponse(offline_index)
+                    return FileResponse(offline_index, headers=REVALIDATE)
                 offline_candidate = (WEB_DIST / full_path).resolve()
                 if offline_candidate.is_file() and offline_candidate.is_relative_to(offline_dist):
-                    return FileResponse(offline_candidate)
-                return FileResponse(offline_index)
+                    return FileResponse(offline_candidate, headers=REVALIDATE)
+                return FileResponse(offline_index, headers=REVALIDATE)
         candidate = (WEB_DIST / full_path).resolve()
         if candidate.is_file() and candidate.is_relative_to(WEB_DIST):
-            return FileResponse(candidate)
+            return FileResponse(candidate, headers=REVALIDATE)
         base_url = str(request.base_url).rstrip("/")
         return HTMLResponse(_render_index(base_url, full_path))

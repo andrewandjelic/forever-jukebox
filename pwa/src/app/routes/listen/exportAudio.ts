@@ -10,13 +10,9 @@ export type ExportFormState = {
   bitrateKbps: number;
 };
 
-export function buildAudioExportName(
-  fileName: string,
-  extension: string,
-  suffix = "forever",
-) {
+export function buildAudioExportName(fileName: string, extension: string) {
   const base = fileName.replace(/\.[^.]+$/, "").trim();
-  return `${base || "jukebox"}_${suffix}.${extension}`;
+  return `${base || "jukebox"}_forever.${extension}`;
 }
 
 export function exportProgressMessage(
@@ -30,8 +26,6 @@ export function exportProgressMessage(
       return t("listen.preparingSwing");
     case "preparingInstrumental":
       return t("listen.preparingInstrumental");
-    case "preparingWubMachine":
-      return t("export.preparingWubMachine");
     case "planning":
       return t("export.planning");
     case "renderingChunk":

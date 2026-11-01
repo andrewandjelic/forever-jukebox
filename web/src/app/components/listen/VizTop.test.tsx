@@ -6,8 +6,6 @@ import { VizTop } from "./VizTop";
 
 const h = vi.hoisted(() => ({
   setActiveVisualization: vi.fn(),
-  setCanonizerFinish: vi.fn(),
-  setPlayMode: vi.fn(),
   trackEvent: vi.fn(),
   getCount: vi.fn(() => 6),
 }));
@@ -15,14 +13,18 @@ const h = vi.hoisted(() => ({
 vi.mock("../../playback-ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../playback-ui")>()),
   setActiveVisualization: h.setActiveVisualization,
-  setCanonizerFinish: h.setCanonizerFinish,
-  setPlayMode: h.setPlayMode,
 }));
 vi.mock("../../analytics", () => ({
   trackEvent: h.trackEvent,
 }));
 vi.mock("../../runtime", () => ({
-  getAppContext: vi.fn(() => ({ jukebox: { getCount: h.getCount } })),
+  getAppContext: vi.fn(() => ({
+    jukebox: {
+      getCount: h.getCount,
+      canFollowCam: vi.fn(() => false),
+      refresh: vi.fn(),
+    },
+  })),
 }));
 
 describe("VizTop", () => {
@@ -31,7 +33,6 @@ describe("VizTop", () => {
     h.getCount.mockReturnValue(6);
     act(() => {
       useAppStore.setState({
-        playMode: "jukebox",
         activeVizIndex: 1,
         audioLoaded: true,
         analysisLoaded: true,
@@ -53,11 +54,11 @@ describe("VizTop", () => {
   });
 
   it("falls back to the index for visualizations beyond the label list", async () => {
-    h.getCount.mockReturnValue(8);
+    h.getCount.mockReturnValue(9);
     render(<VizTop />);
-    await userEvent.selectOptions(document.getElementById("viz-select")!, "6");
+    await userEvent.selectOptions(document.getElementById("viz-select")!, "8");
 
-    expect(h.trackEvent).toHaveBeenCalledWith("select_viz", { viz: "6" });
+    expect(h.trackEvent).toHaveBeenCalledWith("select_viz", { viz: "8" });
   });
 
   it("does not report while the selector is disabled", async () => {

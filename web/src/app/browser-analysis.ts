@@ -63,13 +63,13 @@ async function analyzeAudio(
   report: (percent: number, force?: boolean) => void,
 ): Promise<unknown> {
   // Loaded on first use: the engine (ffmpeg.wasm, Essentia, madmom) is large.
-  const [{ prepareAudioWithFfmpeg }, { AnalysisWorkerClient }] = await Promise.all([
+  const [{ prepareAnalysisAudioWithFfmpeg }, { AnalysisWorkerClient }] = await Promise.all([
     import("@pwa/core/infrastructure/audio/ffmpegAudio"),
     import("@pwa/core/infrastructure/analysis/AnalysisWorkerClient"),
   ]);
   const bytes = await fetchAudio(jobId);
   report(2);
-  const audio = await prepareAudioWithFfmpeg(new File([bytes], jobId));
+  const audio = await prepareAnalysisAudioWithFfmpeg(new File([bytes], jobId));
   report(10, true);
   return new AnalysisWorkerClient().analyze({
     mono22050: audio.mono22050,

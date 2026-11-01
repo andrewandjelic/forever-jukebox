@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CANONIZER_FINISH_KEY } from "../../constants";
 import { useAppStore } from "../../store";
 import { PlayControls } from "./PlayControls";
 import { VizTop } from "./VizTop";
@@ -10,14 +9,13 @@ const h = vi.hoisted(() => ({
   togglePlayback: vi.fn(),
   playlistPrevious: vi.fn(),
   playlistNext: vi.fn(),
-  setPlayMode: vi.fn(),
   setActiveVisualization: vi.fn(),
-  setCanonizerFinish: vi.fn(),
   jukebox: {
     getCount: vi.fn(() => 7),
     canFollowCam: vi.fn(() => false),
     setFollowCam: vi.fn(),
     setMotion: vi.fn(),
+    refresh: vi.fn(),
   },
 }));
 
@@ -30,9 +28,7 @@ vi.mock("../../playlist-actions", () => ({
   playlistNext: h.playlistNext,
 }));
 vi.mock("../../playback-ui", () => ({
-  setPlayMode: h.setPlayMode,
   setActiveVisualization: h.setActiveVisualization,
-  setCanonizerFinish: h.setCanonizerFinish,
 }));
 vi.mock("../../runtime", () => ({
   getAppContext: vi.fn(() => ({ jukebox: h.jukebox })),
@@ -49,7 +45,6 @@ describe("PlayControls", () => {
       useAppStore.setState({
         isRunning: false,
         isPaused: false,
-        playMode: "jukebox",
         jukeboxAudioMode: "off",
         audioModePreparing: false,
         audioLoaded: true,
@@ -137,10 +132,8 @@ describe("PlayControls", () => {
 
 describe("VizTop", () => {
   beforeEach(() => {
-    localStorage.removeItem(CANONIZER_FINISH_KEY);
     act(() => {
       useAppStore.setState({
-        playMode: "jukebox",
         activeVizIndex: 1,
         audioLoaded: true,
         analysisLoaded: true,
@@ -169,34 +162,21 @@ describe("VizTop", () => {
     expect(select.disabled).toBe(false);
   });
 
-  it("disables the viz select in autocanonizer mode and forwards changes", async () => {
+  it("disables the viz select until the track is ready and forwards changes", async () => {
     render(<VizTop />);
     const select = document.getElementById("viz-select") as HTMLSelectElement;
     await userEvent.selectOptions(select, "4");
     expect(h.setActiveVisualization).toHaveBeenCalledWith(4);
     act(() => {
-      useAppStore.setState({ playMode: "autocanonizer" });
+      useAppStore.setState({ audioModePreparing: true });
     });
     expect(select.disabled).toBe(true);
   });
 
-  it("switches play mode", async () => {
+  it("has no play-mode select or mode checkboxes", () => {
     render(<VizTop />);
-    await userEvent.selectOptions(
-      document.getElementById("play-mode-select")!,
-      "autocanonizer",
-    );
-    expect(h.setPlayMode).toHaveBeenCalledWith("autocanonizer");
-  });
-
-  it("persists the canonizer finish checkbox via the bridge", async () => {
-    render(<VizTop />);
-    const checkbox = document.getElementById(
-      "canonizer-finish",
-    ) as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
-    await userEvent.click(checkbox);
-    expect(h.setCanonizerFinish).toHaveBeenCalledWith(true);
-    expect(checkbox.checked).toBe(true);
+    expect(document.getElementById("play-mode-select")).toBeNull();
+    expect(document.getElementById("canonizer-finish")).toBeNull();
+    expect(document.getElementById("wubmachine-loop")).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";
 import { normalizePath, type Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 import pkg from "./package.json";
+import { madmomVersion } from "../pwa/madmom-version";
 
 // Browser analysis (src/app/browser-analysis.ts) reuses the offline app's
 // engine straight from its source.
@@ -58,6 +59,8 @@ export default defineConfig(() => {
       __APP_VERSION__: JSON.stringify(
         `${pkg.version} (${new Date().toISOString().slice(0, 10)})`,
       ),
+      // Cache-busts the analysis engine's madmom worker (see pwa/madmom-version.ts).
+      __MADMOM_VERSION__: JSON.stringify(madmomVersion(MADMOM_DIR)),
     },
     plugins: [
       react(),

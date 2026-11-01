@@ -130,9 +130,20 @@ async function deleteIfExists(ffmpeg: FFmpeg, path: string) {
   }
 }
 
-export async function prepareAudioWithFfmpeg(
+export function prepareAudioWithFfmpeg(file: File): Promise<PreparedFfmpegAudio> {
+  return prepareAudio(file, true) as Promise<PreparedFfmpegAudio>;
+}
+
+// Only the analysis input, for callers that play the audio another way: skips
+// decoding the whole file a third time into the playback WAV.
+export function prepareAnalysisAudioWithFfmpeg(file: File): Promise<PreparedAnalysisAudio> {
+  return prepareAudio(file, false);
+}
+
+async function prepareAudio(
   file: File,
-): Promise<PreparedFfmpegAudio> {
+  withPlayback: boolean,
+): Promise<PreparedAnalysisAudio & { playbackWav?: Uint8Array }> {
   return withFfmpegLock(async (ffmpeg) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const inputName = `input-${id}`;
@@ -184,6 +195,18 @@ export async function prepareAudioWithFfmpeg(
       ]);
       if (upsample44100Code !== 0) {
         throw new Error(`ffmpeg 44.1k upsample exited with code ${upsample44100Code}`);
+      }
+
+      if (!withPlayback) {
+        const mono22050 = bytesToFloat32(
+          readBytes(await ffmpeg.readFile(output22050), output22050),
+          output22050,
+        );
+        const mono44100 = bytesToFloat32(
+          readBytes(await ffmpeg.readFile(output44100), output44100),
+          output44100,
+        );
+        return { mono22050, mono44100, duration: mono22050.length / SR_FEATURES };
       }
 
       const playbackCode = await ffmpeg.exec([

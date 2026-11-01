@@ -1,36 +1,26 @@
 import { findBackwardTwin } from "@forever-jukebox/shared";
 import type { Edge } from "@forever-jukebox/shared/types";
 import {
-  CANONIZER_FINISH_KEY,
   VIZ_STORAGE_KEY,
-  WUB_MACHINE_LOOP_KEY,
   visualizationSeparatesPairedEdges,
 } from "./constants";
 import { trackEvent } from "./analytics";
 import { formatErrorForDisplay } from "./errorDisplay";
 import { formatDuration } from "./format";
-import type { AppContext, PlayMode } from "./context";
+import type { AppContext } from "./context";
 import {
   applyExtrasChanges,
-  cancelWubMachineRender,
-  maybePrepareWubMachine,
   openExtras,
-  startAutocanonizerPlayback,
   startJukeboxFromBeat,
-  startWubMachinePlayback,
   stopPlayback,
   syncDeletedEdgeState,
   togglePlayback,
   updateTrackInfo,
-  updateVizVisibility,
   type ExtrasApplyResult,
   type ExtrasFormValues,
 } from "./playback";
-import {
-  advancePlaylistOnAutocanonizerEnded,
-  getAttachedAppContext,
-} from "./runtime";
-import { getCurrentTrackId, useAppStore } from "./store";
+import { getAttachedAppContext } from "./runtime";
+import { useAppStore } from "./store";
 import {
   getTuningParamsFromEngine,
   serializeParams,
@@ -81,11 +71,7 @@ function syncExtrasPopup(edge: Edge | null) {
       return;
     }
     const { engine } = context;
-    if (
-      !useAppStore.getState().branchStatsEnabled ||
-      useAppStore.getState().playMode !== "jukebox" ||
-      !edge
-    ) {
+    if (!useAppStore.getState().branchStatsEnabled || !edge) {
       useAppStore.setState({ branchStats: null });
       return;
     }
@@ -157,8 +143,7 @@ export function initializePlayback(): void {
     if (!context) {
       return;
     }
-    const { autocanonizer, engine, jukebox, player, wubmachine } = context;
-    setPlayMode("jukebox");
+    const { engine, jukebox, player } = context;
     setBringItHomeMode(useAppStore.getState().bringItHomeMode);
     syncExtrasPopup(null);
 
@@ -169,15 +154,11 @@ export function initializePlayback(): void {
         setActiveVisualization(parsed);
       }
     }
-    const storedCanonizerFinish = localStorage.getItem(CANONIZER_FINISH_KEY);
-    const finishOutSong = storedCanonizerFinish === "true";
-    autocanonizer.setFinishOutSong(finishOutSong);
-
     player.setOnEnded(() => {
       if (!useAppStore.getState().isRunning) {
         return;
       }
-      if (useAppStore.getState().playMode === "jukebox" && !useAppStore.getState().bringItHomeMode) {
+      if (!useAppStore.getState().bringItHomeMode) {
         // Recover if audio hits buffer end before scheduled wrap executes.
         startJukeboxFromBeat(context, 0);
         if (!player.isPlaying()) {
@@ -186,56 +167,6 @@ export function initializePlayback(): void {
         return;
       }
       stopPlayback(context);
-    });
-
-    autocanonizer.setOnBeat((index, _beat, cursorTimes) => {
-      useAppStore.setState({
-        beatsPlayedText: `${index + 1}`,
-        lastBeatIndex: index,
-        autocanonizerMainSeconds: cursorTimes.mainSeconds,
-        autocanonizerOtherSeconds: cursorTimes.otherSeconds,
-      });
-    });
-    // A track that plays to its end hands over to the next playlist track.
-    const handleLinearTrackEnded = () => {
-      if (!useAppStore.getState().isRunning) {
-        return;
-      }
-      advancePlaylistOnAutocanonizerEnded()
-        .then((advanced) => {
-          if (!advanced && useAppStore.getState().isRunning) {
-            stopPlayback(context);
-          }
-        })
-        .catch((err) => {
-          console.warn(`Playlist advance failed: ${String(err)}`);
-          if (useAppStore.getState().isRunning) {
-            stopPlayback(context);
-          }
-        });
-    };
-    autocanonizer.setOnEnded(handleLinearTrackEnded);
-    autocanonizer.setOnSelect((index) => {
-      if (useAppStore.getState().playMode !== "autocanonizer") {
-        return;
-      }
-      startAutocanonizerPlayback(context, index, { resetSession: false });
-    });
-
-    wubmachine.setLoop(localStorage.getItem(WUB_MACHINE_LOOP_KEY) === "true");
-    wubmachine.setOnTick((seconds) => {
-      // Fires every frame; the display only changes once a second.
-      const wubMachineSeconds = Math.floor(seconds);
-      if (useAppStore.getState().wubMachineSeconds !== wubMachineSeconds) {
-        useAppStore.setState({ wubMachineSeconds });
-      }
-    });
-    wubmachine.setOnEnded(handleLinearTrackEnded);
-    wubmachine.setOnSelect((seconds) => {
-      if (useAppStore.getState().playMode !== "wubmachine") {
-        return;
-      }
-      startWubMachinePlayback(context, seconds, { resetSession: false });
     });
 
     engine.onUpdate((engineState) => {
@@ -290,25 +221,6 @@ export function initializePlayback(): void {
       useAppStore.setState({ shiftBranching: false });
       engine.setForceBranch(false);
     }
-  }
-
-export function setCanonizerFinish(checked: boolean): void {
-    const context = getAttachedAppContext();
-    if (!context) {
-      return;
-    }
-    const { autocanonizer } = context;
-    localStorage.setItem(CANONIZER_FINISH_KEY, String(checked));
-    autocanonizer.setFinishOutSong(checked);
-  }
-
-export function setWubMachineLoop(checked: boolean): void {
-    const context = getAttachedAppContext();
-    if (!context) {
-      return;
-    }
-    localStorage.setItem(WUB_MACHINE_LOOP_KEY, String(checked));
-    context.wubmachine.setLoop(checked);
   }
 
   function selectAdjacentBranch(direction: -1 | 1) {
@@ -403,16 +315,9 @@ export function handleKeydown(event: KeyboardEvent): void {
       togglePlayback(context);
       return;
     }
-    if (
-      useAppStore.getState().playMode === "jukebox" &&
-      (event.key === "e" || event.key === "E") &&
-      !event.repeat
-    ) {
+    if ((event.key === "e" || event.key === "E") && !event.repeat) {
       event.preventDefault();
       openExtras(context);
-      return;
-    }
-    if (useAppStore.getState().playMode !== "jukebox") {
       return;
     }
     if ((event.key === "h" || event.key === "H") && !event.repeat) {
@@ -518,9 +423,6 @@ export function handleKeyup(event: KeyboardEvent): void {
       engine.setFreezeCurrentBeat(false);
       useAppStore.setState({ freezeBeat: false });
     }
-    if (useAppStore.getState().playMode !== "jukebox") {
-      return;
-    }
     if (event.key === "Shift" && useAppStore.getState().shiftBranching) {
       useAppStore.setState({ shiftBranching: false });
       engine.setForceBranch(false);
@@ -546,9 +448,6 @@ export function handleBeatSelect(index: number): void {
       return;
     }
     const { jukebox } = context;
-    if (useAppStore.getState().playMode !== "jukebox") {
-      return;
-    }
     const { vizData } = useAppStore.getState();
     if (!vizData) {
       return;
@@ -567,9 +466,6 @@ export function handleEdgeSelect(edge: Edge | null): void {
       return;
     }
     const { jukebox } = context;
-    if (useAppStore.getState().playMode !== "jukebox") {
-      return;
-    }
     useAppStore.setState({ selectedEdge: edge });
     jukebox.setSelectedEdgeActive(edge);
     syncExtrasPopup(edge);
@@ -596,16 +492,10 @@ export function copyShortUrl(): void {
     const url = new URL(
       `${window.location.origin}/listen/${encodeURIComponent(trackId)}`,
     );
-    if (useAppStore.getState().playMode === "jukebox") {
-      const tuningParams = getTuningParamsFromEngine(context);
-      tuningParams.forEach((value, key) => {
-        url.searchParams.set(key, value);
-      });
-    }
-    const { playMode } = useAppStore.getState();
-    if (playMode !== "jukebox") {
-      url.searchParams.set("mode", playMode);
-    }
+    const tuningParams = getTuningParamsFromEngine(context);
+    tuningParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
     const shortUrl = url.toString();
     try {
       await navigator.clipboard.writeText(shortUrl);
@@ -636,57 +526,4 @@ export function setActiveVisualization(index: number): void {
     useAppStore.setState({ activeVizIndex: index });
     jukebox.setActiveIndex(index);
     localStorage.setItem(VIZ_STORAGE_KEY, String(useAppStore.getState().activeVizIndex));
-  }
-
-  function getPlayModeFromUrl(): PlayMode {
-    const mode = new URLSearchParams(window.location.search).get("mode");
-    return mode === "autocanonizer" || mode === "wubmachine" ? mode : "jukebox";
-  }
-
-export function applyModeFromUrl(): void {
-    setPlayMode(getPlayModeFromUrl());
-  }
-
-export function setPlayMode(mode: PlayMode): void {
-    const context = getAttachedAppContext();
-    if (!context) {
-      return;
-    }
-    const { autocanonizer, jukebox, wubmachine } = context;
-    if (useAppStore.getState().playMode === mode) {
-      return;
-    }
-    if (useAppStore.getState().isRunning || useAppStore.getState().isPaused) {
-      stopPlayback(context);
-    }
-    context.cowbellOverlay.cancelScheduledHits();
-    cancelWubMachineRender();
-    useAppStore.setState({
-      playMode: mode,
-      autocanonizerMainSeconds: 0,
-      autocanonizerOtherSeconds: 0,
-    });
-    if (mode !== "jukebox") {
-      // The extras tab disappears outside jukebox mode, so force the stored
-      // tab back to "tuning".
-      useAppStore.setState({ tuningModalTab: "tuning" });
-    }
-    autocanonizer.setVisible(mode === "autocanonizer");
-    wubmachine.setVisible(mode === "wubmachine");
-    jukebox.setVisible(mode === "jukebox");
-    maybePrepareWubMachine(context);
-    syncExtrasPopup(useAppStore.getState().selectedEdge);
-    if (useAppStore.getState().activeTabId === "play") {
-      const currentId = getCurrentTrackId();
-      if (currentId) {
-        useAppStore
-          .getState()
-          .navigateToTrackWithState(currentId, { replace: true });
-      } else {
-        useAppStore.getState().navigateToTabWithState("play", {
-          replace: true,
-        });
-      }
-    }
-    updateVizVisibility();
   }

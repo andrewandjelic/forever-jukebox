@@ -2,12 +2,12 @@ import type { AppContext, AttachedAppContext } from "./context";
 import type { PlaybackDeps } from "./playback";
 
 // Module-singleton access to the genuine runtime singletons (engine, player,
-// jukebox, autocanonizer, cowbellOverlay, defaultConfig). initRuntime owns
+// jukebox, cowbellOverlay, defaultConfig). initRuntime owns
 // construction; flow modules and components read the runtime via
 // getAppContext() instead of receiving an injected `context` arg or bridge prop.
 //
 // initRuntime() owns construction and calls setAppRuntime(context) before any
-// React effect can run. The viz controllers (jukebox/autocanonizer) don't exist
+// React effect can run. The viz controller (jukebox) doesn't exist
 // until <VizContainer> hands over its DOM nodes (attachViz); init mutates
 // the same `context` object this holds, so getAppContext() observes them as
 // soon as attachViz fills the slots — matching today's `context.jukebox = null`
@@ -29,11 +29,7 @@ export function getAppContext(): AppContext {
 }
 
 export function getAttachedAppContext(): AttachedAppContext | null {
-  if (
-    !appContext?.jukebox ||
-    !appContext.autocanonizer ||
-    !appContext.wubmachine
-  ) {
+  if (!appContext?.jukebox) {
     return null;
   }
   return appContext as AttachedAppContext;
@@ -55,8 +51,6 @@ export function getPlaybackDeps(): PlaybackDeps | null {
 export type AttachVizNodes = {
   vizPanel: HTMLElement;
   vizLayer: HTMLDivElement;
-  canonizerLayer: HTMLDivElement;
-  wubMachineLayer: HTMLDivElement;
 };
 
 let attachVizFn: ((nodes: AttachVizNodes) => void) | null = null;
@@ -73,20 +67,6 @@ export function attachViz(nodes: AttachVizNodes): void {
 
 export function getVizPanel(): HTMLElement | null {
   return vizPanel;
-}
-
-let advancePlaylistOnAutocanonizerEndedFn:
-  | (() => Promise<boolean>)
-  | null = null;
-
-export function setAdvancePlaylistOnAutocanonizerEnded(
-  fn: () => Promise<boolean>,
-): void {
-  advancePlaylistOnAutocanonizerEndedFn = fn;
-}
-
-export function advancePlaylistOnAutocanonizerEnded(): Promise<boolean> {
-  return advancePlaylistOnAutocanonizerEndedFn?.() ?? Promise.resolve(false);
 }
 
 // applyModeFromUrl + handleRouteChange — runs on initial load and browser
