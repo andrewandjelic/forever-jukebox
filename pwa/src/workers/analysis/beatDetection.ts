@@ -44,7 +44,12 @@ export function beatWorkerCount(durationSec: number): number {
 }
 
 function createWorker(describeError: (message: string) => Error) {
-  const url = new URL(`${import.meta.env.BASE_URL}madmom/worker.js`, self.location.origin);
+  // Versioned: the worker and engine have fixed public names, and a browser
+  // would otherwise keep running a cached copy from an older build.
+  const url = new URL(
+    `${import.meta.env.BASE_URL}madmom/worker.js?v=${__MADMOM_VERSION__}`,
+    self.location.origin,
+  );
   return new WorkerChannel(new Worker(url, { type: "module" }), describeError);
 }
 

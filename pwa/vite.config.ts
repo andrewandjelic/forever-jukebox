@@ -4,6 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import pkg from "./package.json";
 import { fileURLToPath } from "node:url";
 import en from "./src/app/locales/en.json";
+import { madmomVersion } from "./madmom-version";
 
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
@@ -30,6 +31,9 @@ export default defineConfig(({ command }) => {
     },
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
+      __MADMOM_VERSION__: JSON.stringify(
+        madmomVersion(fileURLToPath(new URL("./public/madmom", import.meta.url))),
+      ),
     },
     resolve: {
       alias: {
@@ -85,6 +89,10 @@ export default defineConfig(({ command }) => {
         workbox: {
           mode: "development",
           navigateFallback: `${appBase}index.html`,
+          // The madmom worker and engine load as ?v=<content hash> (see
+          // madmom-version.ts); the precache is revisioned per build, so it
+          // serves them by path. (The first two are Workbox's defaults.)
+          ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^v$/],
           ...(isDev
             ? {}
             : {

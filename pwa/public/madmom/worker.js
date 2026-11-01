@@ -1,12 +1,8 @@
-import init, {
-  BeatNetworks,
-  analyze_json_with_model_progress,
-  decode_beats,
-  default_config_json,
-  extract_features_json,
-  feature_columns_json,
-  validate_config_json,
-} from "./pkg/madmom_beats_port_wasm.js";
+// Loaded as worker.js?v=<version> (see beatDetection.ts). The engine and
+// model get the same query, so a browser can't pair this worker with a cached
+// older engine.
+const version = self.location.search;
+let engine = null;
 
 let ready = false;
 let readyPromise = null;
@@ -37,21 +33,26 @@ function formatMadmomError(err) {
 async function ensureReady() {
   if (ready) return;
   if (!readyPromise) {
-    readyPromise = init();
+    readyPromise = import(`./pkg/madmom_beats_port_wasm.js${version}`).then(async (module) => {
+      await module.default({
+        module_or_path: new URL(`./pkg/madmom_beats_port_wasm_bg.wasm${version}`, import.meta.url),
+      });
+      engine = module;
+    });
   }
   await readyPromise;
   if (!modelJson) {
-    const modelRes = await fetch("./models/downbeats_blstm.json");
+    const modelRes = await fetch(`./models/downbeats_blstm.json${version}`);
     modelJson = await modelRes.text();
   }
   if (!modelWeights) {
-    const weightsRes = await fetch("./models/downbeats_blstm_weights.npz");
+    const weightsRes = await fetch(`./models/downbeats_blstm_weights.npz${version}`);
     const buf = await weightsRes.arrayBuffer();
     modelWeights = new Uint8Array(buf);
   }
   if (!configJson) {
-    configJson = default_config_json();
-    const validation = validate_config_json(configJson);
+    configJson = engine.default_config_json();
+    const validation = engine.validate_config_json(configJson);
     if (validation !== null) {
       throw new Error(
         `Invalid madmom default config: ${JSON.stringify(validation)}`,
@@ -63,7 +64,7 @@ async function ensureReady() {
 
 function getNetworks() {
   if (!networks) {
-    networks = new BeatNetworks(modelJson, modelWeights);
+    networks = new engine.BeatNetworks(modelJson, modelWeights);
   }
   return networks;
 }
@@ -91,7 +92,7 @@ const handlers = {
     const progressCb = (stage, progress) => {
       self.postMessage({ type: "progress", stage, progress });
     };
-    return analyze_json_with_model_progress(
+    return engine.analyze_json_with_model_progress(
       samples,
       sampleRate,
       configJson,
@@ -101,10 +102,10 @@ const handlers = {
     );
   },
   features({ samples, sampleRate }) {
-    const features = extract_features_json(samples, sampleRate, configJson);
+    const features = engine.extract_features_json(samples, sampleRate, configJson);
     return {
       features,
-      columns: feature_columns_json(configJson),
+      columns: engine.feature_columns_json(configJson),
       networks: getNetworks().count(),
       meters: JSON.parse(configJson).dbn.beats_per_bar,
     };
@@ -123,7 +124,7 @@ const handlers = {
     const progressCb = (_stage, progress) => {
       self.postMessage({ type: "progress", stage: 2, progress });
     };
-    return decode_beats(outputs, count, columns, configForMeter(meter), progressCb);
+    return engine.decode_beats(outputs, count, columns, configForMeter(meter), progressCb);
   },
 };
 
