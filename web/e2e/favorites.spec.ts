@@ -89,38 +89,30 @@ test.describe("favorites", () => {
     await expect(page).toHaveURL(/thresh=42/);
   });
 
-  test("favoriting in autocanonizer mode stores it and restores the mode", async ({
+  test("a favorite saved in a removed play mode opens in the jukebox", async ({
     page,
   }) => {
     await loadFirstTopTrack(page);
-    // switch to autocanonizer, then favorite
-    await page.locator("#play-mode-select").selectOption("autocanonizer");
-    await expect(page).toHaveURL(/[?&]mode=autocanonizer/);
     await page.locator("#favorite-toggle").click();
     await expectToast(page, "Added to Favorites");
-
-    const stored = await page.evaluate(() =>
-      JSON.parse(localStorage.getItem("fj-favorites") ?? "[]"),
-    );
-    expect(stored[0].playMode).toBe("autocanonizer");
-
-    // navigate away (which strips the mode param), then restore via the list
+    // Mark it as saved while the Autocanonizer existed.
+    await page.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem("fj-favorites") ?? "[]");
+      stored[0].playMode = "autocanonizer";
+      localStorage.setItem("fj-favorites", JSON.stringify(stored));
+    });
+    await page.reload();
     await page.locator('[data-tab-button="top"]').click();
     await page.locator('[data-top-subtab="favorites"]').click();
-    // the row's link carries the mode so copy-link / open-in-new-tab work
-    await expect(page.locator(".favorite-row a").first()).toHaveAttribute(
+    await expect(page.locator(".favorite-row a").first()).not.toHaveAttribute(
       "href",
-      /[?&]mode=autocanonizer/,
+      /[?&]mode=/,
     );
     await page.locator(".favorite-row a").first().click();
     await waitForTrackLoaded(page);
 
-    // back in autocanonizer mode, URL and control reflect it
-    await expect(page).toHaveURL(/[?&]mode=autocanonizer/);
-    await expect(page.locator("#play-mode-select")).toHaveValue(
-      "autocanonizer",
-    );
-    await expect(page.locator("#jukebox-viz")).toHaveClass(/is-canonizer/);
+    await expect(page).not.toHaveURL(/[?&]mode=/);
+    await expect(page.locator("#viz-layer")).toBeVisible();
   });
 
   test("favorites survive a reload", async ({ page }) => {

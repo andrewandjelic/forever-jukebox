@@ -1,6 +1,5 @@
 import type { QuantumBase } from "@forever-jukebox/shared/types";
 import { getAppContext } from "./runtime";
-import { useAppStore } from "./store";
 
 // Beat "pound" for styles that throb with the music (Doom pounds, Moth blooms).
 // While a song plays in Jukebox mode it writes two CSS variables on
@@ -44,7 +43,7 @@ export function beatLoudness(beat: QuantumBase): number | null {
 
 function currentPound(): { pound: number; bar: number } {
   const { player, engine } = getAppContext();
-  if (!player.isPlaying() || useAppStore.getState().playMode !== "jukebox") {
+  if (!player.isPlaying()) {
     return { pound: 0, bar: 0 };
   }
   const time = player.getCurrentTime();

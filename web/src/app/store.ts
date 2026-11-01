@@ -173,7 +173,6 @@ type Actions = {
     options?: {
       replace?: boolean;
       tuningParams?: string | null;
-      playMode?: AppState["playMode"];
     },
   ) => void;
   selectTab: (tabId: TabId) => void;
@@ -325,7 +324,7 @@ const createUiSlice: Slice<
           : (state.tuningParams ?? getTuningParamsStringFromUrl());
       const path = pathForTab(tabId, trackId);
       const search =
-        tabId === "play" ? buildSearchParams(tuningParams, state.playMode) : "";
+        tabId === "play" ? buildSearchParams(tuningParams) : "";
       queueNavigation(`${path}${search}`, options?.replace);
     },
     navigateToTrackWithState: (trackId, options) => {
@@ -336,7 +335,6 @@ const createUiSlice: Slice<
           options && "tuningParams" in options
             ? options.tuningParams
             : state.tuningParams,
-          options?.playMode ?? state.playMode,
         ),
         options?.replace,
       );
@@ -392,16 +390,9 @@ const createPlaybackSlice: Slice<
     AppStoreState,
     | "isRunning"
     | "isPaused"
-    | "playMode"
     | "playTimerMs"
     | "lastPlayStamp"
     | "lastBeatIndex"
-    | "autocanonizerMainSeconds"
-    | "autocanonizerOtherSeconds"
-    | "autocanonizerMainPan"
-    | "autocanonizerOtherPan"
-    | "wubMachineSeconds"
-    | "wubMachineDurationSec"
     | "vizData"
     | "shiftBranching"
     | "freezeBeat"
@@ -415,16 +406,9 @@ const createPlaybackSlice: Slice<
 > = () => ({
   isRunning: false,
   isPaused: false,
-  playMode: "jukebox",
   playTimerMs: 0,
   lastPlayStamp: null,
   lastBeatIndex: null,
-  autocanonizerMainSeconds: 0,
-  autocanonizerOtherSeconds: 0,
-  autocanonizerMainPan: 0,
-  autocanonizerOtherPan: 0,
-  wubMachineSeconds: 0,
-  wubMachineDurationSec: 0,
   vizData: null,
   shiftBranching: false,
   freezeBeat: false,

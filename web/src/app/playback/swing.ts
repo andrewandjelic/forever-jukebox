@@ -18,10 +18,8 @@ function getCurrentSwingSourceIdentity(): string | null {
 }
 
 export function canPrepareSwingMode(context: AppContext) {
-  const { playMode, audioLoaded, analysisLoaded, vizData } =
-    useAppStore.getState();
+  const { audioLoaded, analysisLoaded, vizData } = useAppStore.getState();
   return (
-    playMode === "jukebox" &&
     audioLoaded &&
     analysisLoaded &&
     context.player.getSourceBuffer() !== null &&
@@ -93,7 +91,6 @@ export function prepareSwingMode(context: AppContext) {
       if (
         resumeAfterPrepare &&
         useAppStore.getState().isPaused &&
-        useAppStore.getState().playMode === "jukebox" &&
         useAppStore.getState().jukeboxAudioMode === "swing" &&
         !useAppStore.getState().isRunning
       ) {

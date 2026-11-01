@@ -40,7 +40,6 @@ vi.mock("./playback", () => ({
   loadTrackById: vi.fn(async () => true),
   loadTrackByJobId: vi.fn(async () => true),
 }));
-vi.mock("./playback-ui", () => ({ setPlayMode: vi.fn() }));
 vi.mock("./favorites", async (importActual) => ({
   ...(await importActual<typeof import("./favorites")>()),
   saveFavorites: vi.fn(),
@@ -332,7 +331,6 @@ describe("favorites actions", () => {
     setupFavorites([legacy]);
     useAppStore.setState({
       analysisLoaded: true,
-      playMode: "jukebox",
       tuningParams: "thresh=45",
     });
     vi.mocked(syncTuningParamsState).mockReturnValue("thresh=45");
@@ -346,28 +344,6 @@ describe("favorites actions", () => {
     expect(favorites[0].tuningParams).toBe("thresh=45");
   });
 
-  it("keeps the saved tuning when only the play mode changed", async () => {
-    const tuned = {
-      ...favorite("a3f3c0dc73c6476c9db95c227f9206f2"),
-      tuningParams: "jb=1&thresh=45",
-    };
-    setupFavorites([tuned]);
-    useAppStore.setState({
-      analysisLoaded: true,
-      playMode: "autocanonizer",
-      tuningParams: null,
-    });
-
-    toggleFavorite();
-    await flushMicrotasks();
-
-    const favorites = useAppStore.getState().favorites;
-    expect(favorites).toHaveLength(1);
-    expect(favorites[0].playMode).toBe("autocanonizer");
-    // The mode switch alone must not discard the jukebox tuning.
-    expect(favorites[0].tuningParams).toBe("jb=1&thresh=45");
-  });
-
   it("still removes a favorite whose tuning matches", async () => {
     const a = {
       ...favorite("a3f3c0dc73c6476c9db95c227f9206f2"),
@@ -376,7 +352,6 @@ describe("favorites actions", () => {
     setupFavorites([a]);
     useAppStore.setState({
       analysisLoaded: true,
-      playMode: "jukebox",
       // Same tuning spelled differently: equivalent, so the tap removes.
       tuningParams: "thresh=45&jb=1",
     });
@@ -407,6 +382,22 @@ describe("favorites actions", () => {
       selectFavorite(missing.uniqueSongId, "youtube");
 
       expect(useAppStore.getState().favorites).toEqual([kept]);
+    });
+
+    it("loads a favorite saved in a removed play mode as jukebox with its tuning", () => {
+      // Saved while the Autocanonizer existed; its mode is ignored now.
+      const legacy = {
+        ...favorite("wdSfFVe_L3s"),
+        tuningParams: "jb=1&thresh=45",
+        playMode: "autocanonizer",
+      } as FavoriteTrack;
+      setupFavorites([legacy]);
+      useAppStore.setState({ navigateToTabWithState: vi.fn() });
+
+      selectFavorite("wdSfFVe_L3s", "youtube");
+
+      expect(useAppStore.getState().tuningParams).toBe("jb=1&thresh=45");
+      expect(loadTrackById).toHaveBeenCalled();
     });
 
     it("loads a source-id favorite without a missing-job prune", () => {

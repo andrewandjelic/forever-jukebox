@@ -1,4 +1,4 @@
-import type { PlayMode, TabId } from "./context";
+import type { TabId } from "./context";
 import { serializeParams } from "./tuning";
 
 export type FaqSubtabId = "faq" | "whats-new";
@@ -36,9 +36,8 @@ export function urlForTrack(
   trackId: string,
   baseUrl: string,
   tuningParams?: string | null,
-  playMode?: PlayMode,
 ) {
-  const url = new URL(pathForTrack(trackId, tuningParams, playMode), baseUrl);
+  const url = new URL(pathForTrack(trackId, tuningParams), baseUrl);
   return url.toString();
 }
 
@@ -49,27 +48,15 @@ export function pathForFaqSubtab(subtabId: FaqSubtabId) {
 export function pathForTrack(
   trackId: string,
   tuningParams?: string | null,
-  playMode?: PlayMode,
 ) {
-  return `${pathForTab("play", trackId)}${buildSearchParams(
-    tuningParams,
-    playMode,
-  )}`;
+  return `${pathForTab("play", trackId)}${buildSearchParams(tuningParams)}`;
 }
 
-export function buildSearchParams(
-  tuningParams?: string | null,
-  playMode?: PlayMode,
-) {
-  const params =
-    playMode && playMode !== "jukebox"
-      ? new URLSearchParams()
-      : new URLSearchParams(tuningParams ?? "");
-  if (playMode && playMode !== "jukebox") {
-    params.set("mode", playMode);
-  } else {
-    params.delete("mode");
-  }
+export function buildSearchParams(tuningParams?: string | null) {
+  const params = new URLSearchParams(tuningParams ?? "");
+  // Links from when the Autocanonizer and Wub Machine existed may carry a
+  // mode; they play in the jukebox now.
+  params.delete("mode");
   const search = serializeParams(params);
   return search ? `?${search}` : "";
 }

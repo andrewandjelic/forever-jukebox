@@ -1,11 +1,9 @@
 import type React from "react";
 import { useTranslation } from "react-i18next";
 import { SymbolIcon } from "@/ui/components/SymbolIcon";
-import type { PlayMode } from "./types";
 
 export function PlayMenu({
   playTitleRef,
-  playMode,
   bringItHomeMode,
   hasAnalysis,
   isExporting,
@@ -14,7 +12,6 @@ export function PlayMenu({
   onOpenExport,
 }: {
   playTitleRef: React.RefCallback<HTMLDivElement>;
-  playMode: PlayMode;
   bringItHomeMode: boolean;
   hasAnalysis: boolean;
   isExporting: boolean;
@@ -23,23 +20,21 @@ export function PlayMenu({
   onOpenExport: () => void;
 }) {
   const { t } = useTranslation();
-  // Tuning and track info describe the jukebox graph.
-  const hideJukeboxTools = playMode !== "jukebox";
   return (
     <div className="menu-bar">
       <div className="menu-left">
         <div className="play-title" ref={playTitleRef}></div>
-        {playMode === "jukebox" && bringItHomeMode ? (
+        {bringItHomeMode ? (
           <span className="bring-home-note">{t("listen.bringingHome")}</span>
         ) : null}
       </div>
       <div className="menu-right">
         <button
           id="tuning"
-          className={`tune-toggle ${hideJukeboxTools ? "is-hidden" : ""}`}
+          className="tune-toggle"
           type="button"
           onClick={onOpenTuning}
-          disabled={!hasAnalysis || hideJukeboxTools}
+          disabled={!hasAnalysis}
           title={t("listen.tune")}
           aria-label={t("listen.tune")}
         >
@@ -47,10 +42,10 @@ export function PlayMenu({
         </button>
         <button
           id="track-info"
-          className={`info-toggle ${hideJukeboxTools ? "is-hidden" : ""}`}
+          className="info-toggle"
           type="button"
           onClick={onOpenInfo}
-          disabled={!hasAnalysis || hideJukeboxTools}
+          disabled={!hasAnalysis}
           title={t("listen.info")}
           aria-label={t("listen.info")}
         >

@@ -84,33 +84,18 @@ export function syncVolumeUI(context: AppContext) {
   useAppStore.setState({ volumePct: Math.round(player.getVolume() * 100) });
 }
 
-// Fan a 0–100 volume percentage out to every audio sink: the main player, the
-// autocanonizer (only once its viz controller is attached), and the cowbell
-// overlay. Centralised so the pct→fraction conversion can't drift — a missing
+// Fan a 0–100 volume percentage out to every audio sink: the main player and
+// the cowbell overlay. Centralised so the pct→fraction conversion can't drift — a missing
 // /100 here ships audio 100x too loud.
 export function setMasterVolume(context: AppContext, volumePct: number) {
   const volume = volumePct / 100;
   context.player.setVolume(volume);
-  context.autocanonizer?.setVolume(volume);
-  context.wubmachine?.setVolume(volume);
   context.cowbellOverlay.setVolume(volume);
-}
-
-export function setAutocanonizerStreamPans(
-  context: AppContext,
-  mainPan: number,
-  otherPan: number,
-) {
-  context.autocanonizer?.setStreamPans(mainPan / 100, otherPan / 100);
 }
 
 function openTuningTab(context: AppContext, tab: "tuning" | "extras") {
   syncVolumeUI(context);
-  const hasExtrasTab = useAppStore.getState().playMode === "jukebox";
-  useAppStore.setState({
-    tuningModalOpen: true,
-    tuningModalTab: tab === "extras" && hasExtrasTab ? "extras" : "tuning",
-  });
+  useAppStore.setState({ tuningModalOpen: true, tuningModalTab: tab });
 }
 
 export function openTuning(context: AppContext) {

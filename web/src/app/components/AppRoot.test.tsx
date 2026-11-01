@@ -17,9 +17,6 @@ const h = vi.hoisted(() => ({
     resizeNow: vi.fn(),
     setSelectedEdge: vi.fn(),
   },
-  autocanonizer: {
-    resizeNow: vi.fn(),
-  },
   engine: {
     setForceBranch: vi.fn(),
   },
@@ -33,12 +30,10 @@ vi.mock("../runtime", () => ({
   attachViz: h.attachViz,
   getAppContext: vi.fn(() => ({
     jukebox: h.jukebox,
-    autocanonizer: h.autocanonizer,
     engine: h.engine,
   })),
   getAttachedAppContext: vi.fn(() => ({
     jukebox: h.jukebox,
-    autocanonizer: h.autocanonizer,
     engine: h.engine,
   })),
   getVizPanel: vi.fn(() => null),

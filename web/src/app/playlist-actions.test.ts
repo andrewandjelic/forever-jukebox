@@ -7,14 +7,12 @@ import {
   type PlaybackDeps,
 } from "./playback";
 import { trackEvent } from "./analytics";
-import { setPlayMode } from "./playback-ui";
 import { emptyPlaylist, type PlaylistTrack } from "./playlist";
 import { setAppRuntime, setPlaybackDeps } from "./runtime";
 import { useAppStore } from "./store";
 import { showToast } from "./ui";
 import {
   addToPlaylist,
-  advanceAutocanonizerOnEnded,
   clearPlaylist,
   handleNormalTrackSelected,
   loadPlaylistIndex,
@@ -36,9 +34,6 @@ vi.mock("./playback", async (importActual) => ({
   loadTrackById: vi.fn(async () => true),
   loadTrackByJobId: vi.fn(async () => true),
   togglePlayback: vi.fn(),
-}));
-vi.mock("./playback-ui", () => ({
-  setPlayMode: vi.fn(),
 }));
 vi.mock("./analytics", () => ({
   trackEvent: vi.fn(),
@@ -251,7 +246,6 @@ describe("playlist handlers", () => {
 
   it("saves active track tuning before skipping and restores it when returning", async () => {
     createDeps({
-      playMode: "jukebox",
       tuningParams: "jb=1&thresh=25",
       playlist: {
         tracks: [track("a"), { ...track("b"), tuningParams: "lg=1" }],
@@ -275,7 +269,6 @@ describe("playlist handlers", () => {
 
   it("uses defaults when skipping to a playlist track without saved tuning", async () => {
     createDeps({
-      playMode: "jukebox",
       tuningParams: "jb=1&thresh=25",
       playlist: { tracks: [track("a"), track("b")], currentIndex: 0 },
     } as Partial<AppState>);
@@ -291,7 +284,6 @@ describe("playlist handlers", () => {
 
   it("does not snapshot temporary tuning over a favorite's saved tuning", async () => {
     createDeps({
-      playMode: "jukebox",
       tuningParams: "thresh=50",
       favorites: [
         {
@@ -321,24 +313,16 @@ describe("playlist handlers", () => {
     expect(window.location.search).toBe("?jb=1");
   });
 
-  it("does not snapshot temporary jukebox tuning over an autocanonizer favorite mode", async () => {
+  it("loads a track saved in a removed play mode with its jukebox tuning", async () => {
     createDeps({
-      playMode: "jukebox",
-      tuningParams: "thresh=50",
-      favorites: [
-        {
-          uniqueSongId: "a",
-          sourceType: "youtube",
-          title: "Track a",
-          artist: "Artist",
-          duration: null,
-          playMode: "autocanonizer",
-        },
-      ],
       playlist: {
         tracks: [
-          { ...track("a"), playMode: "autocanonizer" as const },
-          track("b"),
+          track("a"),
+          {
+            ...track("b"),
+            tuningParams: "thresh=45",
+            playMode: "autocanonizer",
+          } as PlaylistTrack,
         ],
         currentIndex: 0,
       },
@@ -346,10 +330,8 @@ describe("playlist handlers", () => {
 
     await loadPlaylistIndex(1);
 
-    expect(useAppStore.getState().playlist.tracks[0]?.tuningParams).toBeUndefined();
-    expect(useAppStore.getState().playlist.tracks[0]?.playMode).toBe(
-      "autocanonizer",
-    );
+    expect(useAppStore.getState().tuningParams).toBe("thresh=45");
+    expect(loadTrackById).toHaveBeenCalledOnce();
   });
 
   it("rolls back playlist activation when a playlist item load fails", async () => {
@@ -413,55 +395,6 @@ describe("playlist handlers", () => {
 
     resolveLoad(true);
     await loadPromise;
-  });
-
-  it("applies the per-track play mode when loading a playlist track", async () => {
-    const autocanonTrack = { ...track("b"), playMode: "autocanonizer" as const };
-    createDeps({
-      playlist: { tracks: [track("a"), autocanonTrack], currentIndex: 0 },
-    } as Partial<AppState>);
-    await loadPlaylistIndex(1);
-
-    expect(setPlayMode).toHaveBeenCalledWith("autocanonizer");
-  });
-
-  it("defaults a playlist track without a stored mode to jukebox", async () => {
-    createDeps({
-      playlist: { tracks: [track("a"), track("b")], currentIndex: 0 },
-    } as Partial<AppState>);
-    await loadPlaylistIndex(1);
-
-    expect(setPlayMode).toHaveBeenCalledWith("jukebox");
-  });
-
-  it("advances autocanonizer to the next playlist track when available", async () => {
-    const deps = createDeps({
-      playlist: { tracks: [track("a"), track("b")], currentIndex: 0 },
-    } as Partial<AppState>);
-    const advanced = await advanceAutocanonizerOnEnded();
-
-    expect(advanced).toBe(true);
-    expect(loadTrackById).toHaveBeenCalledOnce();
-    expect(togglePlayback).toHaveBeenCalledWith(deps.context);
-  });
-
-  it("does not report autocanonizer advance when the playlist load fails", async () => {
-    createDeps({
-      playlist: { tracks: [track("a"), track("b")], currentIndex: 0 },
-    } as Partial<AppState>);
-    vi.mocked(loadTrackById).mockResolvedValueOnce(false);
-    const advanced = await advanceAutocanonizerOnEnded();
-
-    expect(advanced).toBe(false);
-    expect(togglePlayback).not.toHaveBeenCalled();
-  });
-
-  it("does not advance autocanonizer without a next playlist track", async () => {
-    createDeps({
-      playlist: { tracks: [track("a"), track("b")], currentIndex: 1 },
-    } as Partial<AppState>);
-    await expect(advanceAutocanonizerOnEnded()).resolves.toBe(false);
-    expect(loadTrackById).not.toHaveBeenCalled();
   });
 
   it("clears the playlist down to the current track from the modal action", () => {
@@ -558,17 +491,6 @@ describe("playlist handlers", () => {
     expect(trackEvent).toHaveBeenCalledWith("playlist_navigate", {
       method: "pick",
     });
-  });
-
-  it("does not report the automatic advance when a track ends", async () => {
-    createDeps({
-      playlist: { tracks: [track("a"), track("b")], currentIndex: 0 },
-    } as Partial<AppState>);
-
-    await advanceAutocanonizerOnEnded();
-
-    expect(useAppStore.getState().playlist.currentIndex).toBe(1);
-    expect(trackEvent).not.toHaveBeenCalled();
   });
 
   it("does not report a skip that is blocked by a pending load", () => {

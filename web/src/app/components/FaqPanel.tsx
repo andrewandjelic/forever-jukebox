@@ -86,14 +86,6 @@ export function FaqPanel() {
               }}
             />
           </p>
-          <p>
-            <Trans
-              i18nKey="faq.playModesBody"
-              components={{
-                wub: <a href="https://github.com/psobot/wub-machine" target="_blank" rel="noreferrer">Wub Machine</a>,
-              }}
-            />
-          </p>
         </FaqItem>
         <FaqItem title={t("faq.howTitle")}>
           <p>{t("faq.howBody")}</p>
@@ -170,6 +162,13 @@ export function FaqPanel() {
             high-churn changelog that is never translated (untranslated tokens would
             just force a locale-completeness exemption). Adding a new entry is a plain
             JSX edit here. Keep the FAQ above fully tokenized. */}
+        <h4>November 2026</h4>
+        <ul>
+          <li>
+            The <strong>Autocanonizer</strong> and <strong>Wub Machine</strong> play modes were retired. Favorites, playlists and links saved in them now open in the Jukebox.
+          </li>
+        </ul>
+
         <h4>October 2026</h4>
         <ul>
           <li>

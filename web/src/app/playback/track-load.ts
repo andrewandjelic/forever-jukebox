@@ -65,11 +65,6 @@ import {
 import { maybePrepareInstrumentalMode } from "./instrumental";
 import { cancelInstrumentalRender } from "@forever-jukebox/shared/audio/instrumentalRenderer";
 import { maybePrepareSwingMode } from "./swing";
-import {
-  maybePrepareWubMachine,
-  resetWubMachine,
-  setWubMachineAnalysis,
-} from "./wubmachine";
 import { stopPlayback } from "./transport";
 import {
   applyAnchorBranchFromUrl,
@@ -156,14 +151,7 @@ export function resetForNewTrack(
   options?: { clearTuning?: boolean },
 ) {
   bumpLoadGeneration();
-  const {
-    autocanonizer,
-    cowbellOverlay,
-    engine,
-    jukebox,
-    player,
-    defaultConfig,
-  } = context;
+  const { cowbellOverlay, engine, jukebox, player, defaultConfig } = context;
   const shouldClearTuning = options?.clearTuning ?? false;
   const shouldPreserveTuning = options?.clearTuning === false;
   const preservedTuningParams = shouldPreserveTuning
@@ -208,11 +196,7 @@ export function resetForNewTrack(
   updateVizVisibility();
   useAppStore.setState({ playTimerMs: 0 });
   useAppStore.setState({ lastPlayStamp: null });
-  useAppStore.setState({
-    lastBeatIndex: null,
-    autocanonizerMainSeconds: 0,
-    autocanonizerOtherSeconds: 0,
-  });
+  useAppStore.setState({ lastBeatIndex: null });
   updateListenTimeDisplay();
   useAppStore.setState({ beatsPlayedText: "0" });
   closeTuning();
@@ -220,8 +204,6 @@ export function resetForNewTrack(
   if (useAppStore.getState().isRunning || useAppStore.getState().isPaused) {
     stopPlayback(context);
   }
-  autocanonizer?.reset();
-  resetWubMachine(context);
   if (shouldClearTuning) {
     useAppStore.setState({ tuningParams: null });
     clearTuningParamsFromUrl(true);
@@ -260,7 +242,7 @@ export function resetForNewTrack(
 }
 
 export async function loadAudioFromJob(context: AppContext, jobId: string) {
-  const { autocanonizer, player } = context;
+  const { player } = context;
   const generation = getLoadGeneration();
   try {
     const buffer = await fetchAudio(jobId);
@@ -274,14 +256,12 @@ export async function loadAudioFromJob(context: AppContext, jobId: string) {
     if (isStaleLoad(generation)) {
       return false;
     }
-    autocanonizer?.setAudio(player.getBuffer(), player.getContext());
     useAppStore.setState({ audioLoaded: true });
     useAppStore.setState({ audioLoadInFlight: false });
     updateVizVisibility();
     updateTrackInfo(context);
     maybePrepareSwingMode(context);
     maybePrepareInstrumentalMode(context);
-    maybePrepareWubMachine(context);
     const cacheId = useAppStore.getState().lastTrackId ?? useAppStore.getState().lastJobId;
     if (cacheId) {
       updateCachedTrack(cacheId, { audio: buffer, jobId }).catch((err) => {
@@ -306,8 +286,8 @@ export function applyAnalysisResult(
     return false;
   }
   maybeUpdateDeleteEligibility(response, response.id);
-  const { autocanonizer, cowbellOverlay, engine, jukebox } = context;
-  if (!autocanonizer || !jukebox) {
+  const { cowbellOverlay, engine, jukebox } = context;
+  if (!jukebox) {
     return false;
   }
   applyTuningParamsFromUrl(context);
@@ -315,8 +295,6 @@ export function applyAnalysisResult(
   cowbellOverlay.setSectionStartBeatIndices(engine.getSectionStartBeatIndices());
   applyDeletedEdgesFromUrl(context);
   applyAnchorBranchFromUrl(context);
-  autocanonizer.setAnalysis(response.result, response.result.track?.duration);
-  setWubMachineAnalysis(response.result);
   useAppStore.setState({ vizData: engine.getVisualizationData() });
   const data = useAppStore.getState().vizData;
   if (data) {
@@ -331,7 +309,6 @@ export function applyAnalysisResult(
   updateVizVisibility();
   maybePrepareSwingMode(context);
   maybePrepareInstrumentalMode(context);
-  maybePrepareWubMachine(context);
   const resultTrack = response.result.track ?? null;
   const track = resultTrack ?? response.track;
   const title = track?.title;
@@ -350,9 +327,7 @@ export function applyAnalysisResult(
   syncActivePlaylistTrackFromLoaded();
   savePlaylist(useAppStore.getState().playlist);
   onAnalysisLoaded?.(response);
-  if (useAppStore.getState().playMode === "jukebox") {
-    writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
-  }
+  writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
   const jobId = response.id || useAppStore.getState().lastJobId;
   if (jobId) {
     recordPlayOnce(jobId).catch((err) => {
@@ -861,7 +836,6 @@ function syncActivePlaylistTrackFromLoaded() {
     trackTitle,
     trackArtist,
     trackDurationSec,
-    playMode,
     tuningParams,
   } = useAppStore.getState();
   useAppStore.setState({
@@ -874,7 +848,7 @@ function syncActivePlaylistTrackFromLoaded() {
       title: trackTitle || track.title || i18n.t("common.untitled"),
       artist: trackArtist || track.artist || "",
       duration: trackDurationSec,
-      tuningParams: playMode === "jukebox" ? tuningParams : null,
+      tuningParams,
     }),
   });
 }
@@ -909,7 +883,7 @@ export async function tryLoadCachedAudio(
   context: AppContext,
   trackId: string,
 ) {
-  const { autocanonizer, player } = context;
+  const { player } = context;
   const generation = getLoadGeneration();
   try {
     const cached = await readCachedTrack(trackId);
@@ -926,14 +900,12 @@ export async function tryLoadCachedAudio(
     touchCachedTrack(trackId, cached.audio.byteLength).catch((err) => {
       console.warn(`Cache touch failed: ${String(err)}`);
     });
-    autocanonizer?.setAudio(player.getBuffer(), player.getContext());
     useAppStore.setState({ audioLoaded: true });
     useAppStore.setState({ audioLoadInFlight: false });
     updateVizVisibility();
     updateTrackInfo(context);
     maybePrepareSwingMode(context);
     maybePrepareInstrumentalMode(context);
-    maybePrepareWubMachine(context);
     return true;
   } catch (err) {
     console.warn(`Cache lookup failed: ${String(err)}`);

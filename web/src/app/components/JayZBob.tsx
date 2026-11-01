@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { getAppContext } from "../runtime";
-import { useAppStore } from "../store";
 
 // Served same-origin by the API (routes/media.py) so its frames can be drawn
 // on a canvas; Tenor itself sends no CORS headers.
@@ -60,16 +59,14 @@ function currentFrame(): number | null {
   if (!player.isPlaying()) {
     return null;
   }
-  if (useAppStore.getState().playMode === "jukebox") {
-    const time = player.getCurrentTime();
-    const beat = engine.getBeatAtTime(time);
-    if (beat && beat.duration > 0) {
-      return bobFrame(
-        beat.which,
-        (time - beat.start) / beat.duration,
-        beat.duration / player.getPlaybackRate(),
-      );
-    }
+  const time = player.getCurrentTime();
+  const beat = engine.getBeatAtTime(time);
+  if (beat && beat.duration > 0) {
+    return bobFrame(
+      beat.which,
+      (time - beat.start) / beat.duration,
+      beat.duration / player.getPlaybackRate(),
+    );
   }
   const nods = performance.now() / 1000 / NATIVE_BOB_SECONDS;
   return bobFrame(0, nods, NATIVE_BOB_SECONDS);

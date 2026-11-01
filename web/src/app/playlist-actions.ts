@@ -3,7 +3,6 @@ import type { FavoriteTrack } from "./favorites";
 import { trackEvent } from "./analytics";
 import { isLikelyJobId } from "./identity";
 import { loadTrackById, loadTrackByJobId, togglePlayback } from "./playback";
-import { setPlayMode } from "./playback-ui";
 import {
   activatePlaylistTrack,
   addPlaylistTrack,
@@ -70,7 +69,6 @@ export function resetPlaylistActionsForTest(): void {
       artist: useAppStore.getState().trackArtist || "",
       duration: useAppStore.getState().trackDurationSec,
       tuningParams,
-      playMode: useAppStore.getState().playMode,
     };
   }
 
@@ -175,15 +173,6 @@ export function handleNormalTrackSelected(track: PlaylistTrack) {
     });
   }
 
-export async function advanceAutocanonizerOnEnded() {
-    if (!canMovePlaylistNext(useAppStore.getState().playlist) || isPlaylistLoadBlocked()) {
-      return false;
-    }
-    return await loadPlaylistIndex(useAppStore.getState().playlist.currentIndex + 1, {
-      playAfterLoad: true,
-    });
-  }
-
 export async function loadPlaylistIndex(
     index: number,
     options?: { playAfterLoad?: boolean; closeModal?: boolean },
@@ -208,10 +197,6 @@ export async function loadPlaylistIndex(
       index,
     );
     updatePlaylist(activatedPlaylist);
-    // Switch mode first so applyTrackTuning sees the right mode and the URL
-    // navigation below serializes it. Tracks without a stored mode default to
-    // jukebox.
-    setPlayMode(track.playMode ?? "jukebox");
     applyTrackTuning(track);
     useAppStore
       .getState()
@@ -267,17 +252,13 @@ export async function loadPlaylistIndex(
     if (!track) {
       return playlist;
     }
-    const playMode = useAppStore.getState().playMode;
-    const tuningParams = playMode === "jukebox" ? getCurrentTuningParams() : null;
+    const tuningParams = getCurrentTuningParams();
     const favorite = findFavoriteForPlaylistTrack(track);
     if (favorite) {
-      const favoritePlayMode = favorite.playMode ?? "jukebox";
-      const favoriteTuningParams =
-        favoritePlayMode === "jukebox"
-          ? normalizeStoredTuningParams(favorite.tuningParams)
-          : null;
+      const favoriteTuningParams = normalizeStoredTuningParams(
+        favorite.tuningParams,
+      );
       if (
-        playMode !== favoritePlayMode ||
         !savedTuningParamsEquivalent(
           tuningParams,
           favoriteTuningParams,
@@ -288,7 +269,6 @@ export async function loadPlaylistIndex(
           replaceActivePlaylistTrack(playlist, {
             ...track,
             tuningParams: favoriteTuningParams,
-            playMode: favorite.playMode,
           }),
         );
         return useAppStore.getState().playlist;
@@ -298,7 +278,6 @@ export async function loadPlaylistIndex(
       replaceActivePlaylistTrack(playlist, {
         ...track,
         tuningParams,
-        playMode,
       }),
     );
     return useAppStore.getState().playlist;
@@ -336,18 +315,11 @@ export async function loadPlaylistIndex(
   }
 
   function applyTrackTuning(track: PlaylistTrack) {
-    useAppStore.setState({
-      tuningParams: useAppStore.getState().playMode === "jukebox"
-      ? (track.tuningParams ?? null)
-      : null
-    });
+    useAppStore.setState({ tuningParams: track.tuningParams ?? null });
     writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
   }
 
   function getCurrentTuningParams() {
-    if (useAppStore.getState().playMode !== "jukebox") {
-      return null;
-    }
     const context = getAppContext();
     if (!context.engine || !context.defaultConfig) {
       return useAppStore.getState().tuningParams;

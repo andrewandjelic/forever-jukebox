@@ -68,7 +68,6 @@ describe("prepareSwingMode resume guard", () => {
     useAppStore.setState(initialStoreState, true);
     useAppStore.setState({
       jukeboxAudioMode: "swing",
-      playMode: "jukebox",
       isRunning: true,
       isPaused: false,
       audioModeRenderToken: 0,

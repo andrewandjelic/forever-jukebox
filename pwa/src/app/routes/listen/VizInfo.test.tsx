@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
 import "../../i18n";
 import { VizInfo } from "./VizInfo";
-import type { PlayMode } from "./types";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -24,20 +23,11 @@ describe("VizInfo", () => {
     container.remove();
   });
 
-  function renderInfo(
-    playMode: PlayMode,
-    listenSeconds: number,
-    trackDurationSeconds: number,
-  ) {
+  function renderInfo(listenSeconds: number, trackDurationSeconds: number) {
     act(() => {
       root.render(
         <VizInfo
           vizTitleRef={() => {}}
-          playMode={playMode}
-          autocanonizerMainSeconds={0}
-          autocanonizerOtherSeconds={0}
-          wubMachineSeconds={0}
-          wubMachineDurationSeconds={0}
           trackDurationSeconds={trackDurationSeconds}
           listenSeconds={listenSeconds}
           beatsLabel="Total Beats:"
@@ -49,16 +39,15 @@ describe("VizInfo", () => {
     return container.querySelector("#listen-multiplier");
   }
 
-  it("shows listen time as a multiple of the song in jukebox mode", () => {
-    const multiplier = renderInfo("jukebox", 504, 120);
+  it("shows listen time as a multiple of the song", () => {
+    const multiplier = renderInfo(504, 120);
     expect(multiplier?.textContent).toBe("4.2× original");
     expect(multiplier?.getAttribute("title")).toBe(
       "You've listened 4.2 times as long as the original song",
     );
   });
 
-  it("hides the multiplier without a song length or outside jukebox mode", () => {
-    expect(renderInfo("jukebox", 504, 0)).toBeNull();
-    expect(renderInfo("autocanonizer", 504, 120)).toBeNull();
+  it("hides the multiplier without a song length", () => {
+    expect(renderInfo(504, 0)).toBeNull();
   });
 });

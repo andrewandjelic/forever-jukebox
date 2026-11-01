@@ -16,15 +16,12 @@ describe("VizInfo", () => {
       useAppStore.setState({
         trackTitle: null,
         trackArtist: null,
-        playMode: "jukebox",
         jukeboxAudioMode: "off",
         listenTimeText: "00:00:00",
         listenMultiplierTenths: null,
         beatsPlayedText: "0",
         bringItHomeMode: false,
         trackDurationSec: 225,
-        autocanonizerMainSeconds: 0,
-        autocanonizerOtherSeconds: 0,
       });
     });
   });
@@ -54,7 +51,7 @@ describe("VizInfo", () => {
     );
   });
 
-  it("renders counters and hides beats in autocanonizer mode", () => {
+  it("renders the listen and beat counters", () => {
     act(() => {
       useAppStore.setState({
         listenTimeText: "00:01:30",
@@ -74,27 +71,7 @@ describe("VizInfo", () => {
         "is-hidden",
       ),
     ).toBe(false);
-    act(() => {
-      useAppStore.setState({ playMode: "autocanonizer" });
-    });
-    expect(
-      document.getElementById("viz-beats-label")?.classList.contains(
-        "is-hidden",
-      ),
-    ).toBe(true);
-    expect(
-      document.getElementById("viz-beats-divider")?.classList.contains(
-        "is-hidden",
-      ),
-    ).toBe(true);
-    expect(
-      document
-        .getElementById("autocanonizer-times")
-        ?.classList.contains("is-hidden"),
-    ).toBe(false);
-    expect(
-      document.getElementById("autocanonizer-total-time")?.textContent,
-    ).toBe("3:45");
+    expect(document.getElementById("autocanonizer-times")).toBeNull();
   });
 
   it("renames the beats counter in cowbell mode", () => {
@@ -107,7 +84,7 @@ describe("VizInfo", () => {
     );
   });
 
-  it("shows listen time as a multiple of the song in jukebox mode", () => {
+  it("shows listen time as a multiple of the song", () => {
     render(<VizInfo />);
     // Hidden until the song's length is known.
     expect(document.getElementById("listen-multiplier")).toBeNull();
@@ -119,10 +96,6 @@ describe("VizInfo", () => {
     expect(multiplier?.getAttribute("title")).toBe(
       "You've listened 4.2 times as long as the original song",
     );
-    act(() => {
-      useAppStore.setState({ playMode: "autocanonizer" });
-    });
-    expect(document.getElementById("listen-multiplier")).toBeNull();
   });
 
   it("updates the live counters via direct DOM writes without re-rendering", () => {
@@ -138,8 +111,6 @@ describe("VizInfo", () => {
       useAppStore.setState({
         listenTimeText: "00:00:05",
         beatsPlayedText: "7",
-        autocanonizerMainSeconds: 62,
-        autocanonizerOtherSeconds: 125,
       });
     });
 
@@ -148,12 +119,6 @@ describe("VizInfo", () => {
       "00:00:05",
     );
     expect(document.getElementById("beats-played")?.textContent).toBe("7");
-    expect(
-      document.getElementById("autocanonizer-main-time")?.textContent,
-    ).toBe("1:02");
-    expect(
-      document.getElementById("autocanonizer-other-time")?.textContent,
-    ).toBe("2:05");
     // ...but the high-frequency updates never went through React.
     expect(renders).toBe(afterMount);
   });

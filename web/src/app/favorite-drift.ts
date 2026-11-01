@@ -1,5 +1,4 @@
 import type { JukeboxConfig } from "@forever-jukebox/shared";
-import type { PlayMode } from "./context";
 import type { FavoriteTrack } from "./favorites";
 import { savedTuningParamsEquivalent } from "./tuning";
 
@@ -12,7 +11,6 @@ export function isFavoriteTuningDrifted(input: {
   favorite: FavoriteTrack | null;
   // False until the track's analysis is loaded and tuning state reflects it.
   ready: boolean;
-  livePlayMode: PlayMode;
   liveTuningParams: string | null;
   defaults: JukeboxConfig;
 }): boolean {
@@ -20,15 +18,6 @@ export function isFavoriteTuningDrifted(input: {
     return false;
   }
   if (!input.ready) {
-    return false;
-  }
-  const favoritePlayMode = input.favorite.playMode ?? "jukebox";
-  if (favoritePlayMode !== input.livePlayMode) {
-    return true;
-  }
-  // Outside jukebox mode no tuning applies, so the mode is the whole
-  // comparison and any tuning the favorite carries is left untouched.
-  if (input.livePlayMode !== "jukebox") {
     return false;
   }
   return !savedTuningParamsEquivalent(

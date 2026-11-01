@@ -21,9 +21,8 @@ function getCurrentTrackId(): string | null {
 
 // Requires analysis as well as audio so a track load prepares only once.
 export function canPrepareInstrumentalMode(context: AppContext) {
-  const { playMode, audioLoaded, analysisLoaded } = useAppStore.getState();
+  const { audioLoaded, analysisLoaded } = useAppStore.getState();
   return (
-    playMode === "jukebox" &&
     audioLoaded &&
     analysisLoaded &&
     context.player.getSourceBuffer() !== null
@@ -98,7 +97,6 @@ export function prepareInstrumentalMode(context: AppContext) {
       if (
         resumeAfterPrepare &&
         useAppStore.getState().isPaused &&
-        useAppStore.getState().playMode === "jukebox" &&
         !useAppStore.getState().isRunning
       ) {
         startJukeboxPlayback(context, false);

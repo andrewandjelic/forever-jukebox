@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  CANONIZER_FINISH_KEY,
-  VISUALIZATION_LABELS,
-  WUB_MACHINE_LOOP_KEY,
-} from "../../constants";
+import { VISUALIZATION_LABELS } from "../../constants";
 import { trackEvent } from "../../analytics";
 import { getAppContext } from "../../runtime";
-import type { PlayMode } from "../../context";
 import { useAppStore } from "../../store";
-import {
-  setActiveVisualization,
-  setCanonizerFinish,
-  setPlayMode,
-  setWubMachineLoop,
-} from "../../playback-ui";
+import { setActiveVisualization } from "../../playback-ui";
 import {
   VIZ_STYLES,
   VIZ_STYLE_LABELS,
@@ -39,21 +29,14 @@ function getVisualizationSelectEntries(count: number, t: TFunction) {
   );
 }
 
-// The viz-top controls: play-mode select, visualization select, the
-// autocanonizer finish-out checkbox and the Wub Machine loop checkbox. Rendered into the .viz-top container.
+// The viz-top controls: style select, visualization select and the rotate and
+// ride toggles. Rendered into the .viz-top container.
 export function VizTop() {
   const { t } = useTranslation();
-  const playMode = useAppStore((s) => s.playMode);
   const activeVizIndex = useAppStore((s) => s.activeVizIndex);
   const audioLoaded = useAppStore((s) => s.audioLoaded);
   const analysisLoaded = useAppStore((s) => s.analysisLoaded);
   const audioModePreparing = useAppStore((s) => s.audioModePreparing);
-  const [finishOutSong, setFinishOutSong] = useState(
-    () => localStorage.getItem(CANONIZER_FINISH_KEY) === "true",
-  );
-  const [loopTrack, setLoopTrack] = useState(
-    () => localStorage.getItem(WUB_MACHINE_LOOP_KEY) === "true",
-  );
   const trackId = useAppStore((s) => s.lastTrackId ?? s.lastJobId);
   // Genres belong to the loaded analysis; ignore them until it has loaded so
   // a new track never borrows the previous one's genres.
@@ -78,13 +61,10 @@ export function VizTop() {
   // Follow cam ("ride"): flies a camera down the line on layouts that offer it.
   const [riding, setRiding] = useState(false);
   const canRide =
-    playMode === "jukebox" &&
-    (getAppContext().jukebox?.canFollowCam(activeVizIndex) ?? false);
+    getAppContext().jukebox?.canFollowCam(activeVizIndex) ?? false;
 
   const vizSelectDisabled =
-    !(audioLoaded && analysisLoaded) ||
-    audioModePreparing ||
-    playMode !== "jukebox";
+    !(audioLoaded && analysisLoaded) || audioModePreparing;
   // On the very first render the controllers are not constructed yet (the
   // ref handoff happens at commit); fall back to the static label count.
   const entries = getVisualizationSelectEntries(
@@ -95,27 +75,6 @@ export function VizTop() {
   return (
     <>
       <div className="viz-actions">
-        <label className="viz-select-group" htmlFor="play-mode-select">
-          <span className="viz-select-wrap">
-            <select
-              id="play-mode-select"
-              className="viz-select"
-              aria-label={t("playback.mode")}
-              value={playMode}
-              onChange={(event) => setPlayMode(event.target.value as PlayMode)}
-            >
-              <option value="autocanonizer">{t("playback.autocanonizer")}</option>
-              <option value="jukebox">{t("playback.jukebox")}</option>
-              <option value="wubmachine">{t("playback.wubMachine")}</option>
-            </select>
-            <span
-              className="material-symbols-outlined viz-select-arrow"
-              aria-hidden="true"
-            >
-              arrow_drop_down
-            </span>
-          </span>
-        </label>
         <label className="viz-select-group" htmlFor="style-select">
           <span className="viz-select-wrap">
             <select
@@ -180,24 +139,22 @@ export function VizTop() {
             </span>
           </span>
         </label>
-        {playMode === "jukebox" && (
-          <button
-            type="button"
-            className={rotating ? "viz-ride-button is-on" : "viz-ride-button"}
-            aria-pressed={rotating}
-            title="Rotate the visualization"
-            onClick={() => {
-              const next = !rotating;
-              setRotating(next);
-              getAppContext().jukebox?.setMotion(next);
-            }}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              3d_rotation
-            </span>
-            Rotate
-          </button>
-        )}
+        <button
+          type="button"
+          className={rotating ? "viz-ride-button is-on" : "viz-ride-button"}
+          aria-pressed={rotating}
+          title="Rotate the visualization"
+          onClick={() => {
+            const next = !rotating;
+            setRotating(next);
+            getAppContext().jukebox?.setMotion(next);
+          }}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            3d_rotation
+          </span>
+          Rotate
+        </button>
         {canRide && (
           <button
             type="button"
@@ -217,30 +174,6 @@ export function VizTop() {
           </button>
         )}
       </div>
-      <label className="canonizer-finish">
-        <input
-          type="checkbox"
-          id="canonizer-finish"
-          checked={finishOutSong}
-          onChange={(event) => {
-            setFinishOutSong(event.target.checked);
-            setCanonizerFinish(event.target.checked);
-          }}
-        />
-        <span>{t("playback.finishTrack")}</span>
-      </label>
-      <label className="wubmachine-loop">
-        <input
-          type="checkbox"
-          id="wubmachine-loop"
-          checked={loopTrack}
-          onChange={(event) => {
-            setLoopTrack(event.target.checked);
-            setWubMachineLoop(event.target.checked);
-          }}
-        />
-        <span>{t("playback.loopTrack")}</span>
-      </label>
     </>
   );
 }

@@ -59,13 +59,12 @@ describe("analytics", () => {
     expect(gtag).toHaveBeenCalledTimes(1);
   });
 
-  it("dedupes plays per track and mode", () => {
+  it("dedupes plays per track", () => {
     trackPlay("jukebox", "a", "Song A");
     trackPlay("jukebox", "a", "Song A");
     expect(gtag).toHaveBeenCalledTimes(1);
 
-    trackPlay("autocanonizer", "a", "Song A");
     trackPlay("jukebox", "b", "Song B");
-    expect(gtag).toHaveBeenCalledTimes(3);
+    expect(gtag).toHaveBeenCalledTimes(2);
   });
 });

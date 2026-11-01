@@ -16,13 +16,11 @@ import {
 function AudioModeRadio({
   option,
   checked,
-  disabled,
   onChange,
   className = "",
 }: {
   option: JukeboxAudioMode;
   checked: boolean;
-  disabled: boolean;
   onChange: () => void;
   className?: string;
 }) {
@@ -36,7 +34,6 @@ function AudioModeRadio({
         value={option}
         checked={checked}
         onChange={onChange}
-        disabled={disabled}
       />
       <span>{audioModeLabel(option, t)}</span>
     </label>
@@ -46,14 +43,12 @@ function AudioModeRadio({
 function AudioModeSectionGroup({
   section,
   selectedAudioMode,
-  disabled,
   onChange,
   intensityPct,
   onIntensityChange,
 }: {
   section: AudioModeSection;
   selectedAudioMode: JukeboxAudioMode;
-  disabled: boolean;
   onChange: (mode: JukeboxAudioMode) => void;
   intensityPct: number;
   onIntensityChange: (intensityPct: number) => void;
@@ -71,7 +66,6 @@ function AudioModeSectionGroup({
             key={option}
             option={option}
             checked={selectedAudioMode === option}
-            disabled={disabled}
             onChange={() => onChange(option)}
           />
         ))}
@@ -90,7 +84,6 @@ function AudioModeSectionGroup({
             max={MAX_AUDIO_MODE_INTENSITY}
             step={5}
             value={intensityPct}
-            disabled={disabled}
             onChange={(event) => onIntensityChange(Number(event.target.value))}
           />
         </label>
@@ -101,13 +94,11 @@ function AudioModeSectionGroup({
 
 export function AudioModeOptions({
   selectedAudioMode,
-  disabled,
   onChange,
   intensityPct,
   onIntensityChange,
 }: {
   selectedAudioMode: JukeboxAudioMode;
-  disabled: boolean;
   onChange: (mode: JukeboxAudioMode) => void;
   intensityPct: number;
   onIntensityChange: (intensityPct: number) => void;
@@ -123,7 +114,6 @@ export function AudioModeOptions({
         option="off"
         className="audio-mode-default-option"
         checked={selectedAudioMode === "off"}
-        disabled={disabled}
         onChange={() => onChange("off")}
       />
       {AUDIO_MODE_SECTIONS.map((section) => (
@@ -131,7 +121,6 @@ export function AudioModeOptions({
           key={section.titleKey}
           section={section}
           selectedAudioMode={selectedAudioMode}
-          disabled={disabled}
           onChange={onChange}
           intensityPct={intensityPct}
           onIntensityChange={onIntensityChange}

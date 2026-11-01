@@ -491,7 +491,6 @@ function FavoritesList({ query }: { query: string }) {
                     item.uniqueSongId,
                     window.location.href,
                     item.tuningParams,
-                    item.playMode,
                   )}
                   data-favorite-id={item.uniqueSongId}
                   data-source-type={sourceType}
@@ -501,8 +500,7 @@ function FavoritesList({ query }: { query: string }) {
                   }}
                 >
                   {titleText}
-                  {item.tuningParams &&
-                  (item.playMode ?? "jukebox") === "jukebox" ? (
+                  {item.tuningParams ? (
                     <>
                       {" "}
                       <span

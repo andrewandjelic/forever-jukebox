@@ -17,13 +17,11 @@ function favorite(overrides: Partial<FavoriteTrack> = {}): FavoriteTrack {
 function drifted(input: {
   favorite: FavoriteTrack | null;
   ready?: boolean;
-  livePlayMode?: "jukebox" | "autocanonizer";
   liveTuningParams?: string | null;
 }) {
   return isFavoriteTuningDrifted({
     favorite: input.favorite,
     ready: input.ready ?? true,
-    livePlayMode: input.livePlayMode ?? "jukebox",
     liveTuningParams: input.liveTuningParams ?? null,
     defaults: { ...DEFAULT_JUKEBOX_CONFIG },
   });
@@ -39,45 +37,6 @@ describe("isFavoriteTuningDrifted", () => {
       drifted({
         favorite: favorite({ tuningParams: "jb=1" }),
         ready: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("treats an absent favorite play mode as jukebox", () => {
-    expect(drifted({ favorite: favorite() })).toBe(false);
-    expect(
-      drifted({ favorite: favorite(), livePlayMode: "autocanonizer" }),
-    ).toBe(true);
-  });
-
-  it("drifts on a play mode mismatch alone", () => {
-    expect(
-      drifted({
-        favorite: favorite({ playMode: "autocanonizer" }),
-        livePlayMode: "jukebox",
-      }),
-    ).toBe(true);
-  });
-
-  it("compares only the mode outside jukebox", () => {
-    expect(
-      drifted({
-        favorite: favorite({ playMode: "autocanonizer" }),
-        livePlayMode: "autocanonizer",
-        liveTuningParams: "jb=1",
-      }),
-    ).toBe(false);
-  });
-
-  it("ignores tuning an autocanonizer favorite still carries", () => {
-    expect(
-      drifted({
-        favorite: favorite({
-          playMode: "autocanonizer",
-          tuningParams: "jb=1&thresh=45",
-        }),
-        livePlayMode: "autocanonizer",
-        liveTuningParams: null,
       }),
     ).toBe(false);
   });

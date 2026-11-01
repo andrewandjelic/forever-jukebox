@@ -14,14 +14,12 @@ import {
   saveFavorites,
   saveFavoritesSyncCode,
   sortFavorites,
-  storedPlayMode,
   type FavoriteTrack,
 } from "./favorites";
 import { trackEvent } from "./analytics";
 import { isFavoriteTuningDrifted } from "./favorite-drift";
 import { isLikelyJobId } from "./identity";
 import { loadTrackById, loadTrackByJobId } from "./playback";
-import { setPlayMode } from "./playback-ui";
 import { getAppContext, getPlaybackDeps } from "./runtime";
 import { useAppStore } from "./store";
 import { syncTuningParamsState, writeTuningParamsToUrl } from "./tuning";
@@ -164,10 +162,6 @@ export async function createSyncCode(): Promise<string> {
         sourceType,
         tuningParams,
       };
-      const playMode = storedPlayMode(item.playMode ?? "jukebox");
-      if (playMode) {
-        entry.playMode = playMode;
-      }
       normalized.push(entry);
     }
     return sortFavorites(normalized).slice(0, maxFavorites());
@@ -316,8 +310,7 @@ export function updateFavorites(
       a.duration === b.duration &&
       a.sourceType === b.sourceType &&
       normalizeTuningParamsField(a.tuningParams) ===
-        normalizeTuningParamsField(b.tuningParams) &&
-      (a.playMode ?? "jukebox") === (b.playMode ?? "jukebox")
+        normalizeTuningParamsField(b.tuningParams)
     );
   }
 
@@ -406,9 +399,6 @@ export function updateFavorites(
   }
 
   function getFavoriteTuningParams() {
-    if (useAppStore.getState().playMode !== "jukebox") {
-      return null;
-    }
     return syncTuningParamsState(getAppContext());
   }
 
@@ -531,19 +521,8 @@ export function maybeAutoFavoriteUserSupplied(response: AnalysisComplete) {
     const favorite = useAppStore.getState().favorites.find(
       (item) => item.uniqueSongId === favoriteId,
     );
-    // Restore the mode the track was favorited in (older favorites have no
-    // playMode and fall back to jukebox). setPlayMode runs before the play-tab
-    // navigation below, so navigateToTabWithState serializes the right mode.
-    const desiredMode = favorite?.playMode ?? "jukebox";
-    const desiredTuningParams =
-      desiredMode === "jukebox" ? (favorite?.tuningParams ?? null) : null;
-    if (useAppStore.getState().playMode !== desiredMode) {
-      setPlayMode(desiredMode);
-    }
-    useAppStore.setState({ tuningParams: desiredTuningParams });
-    if (desiredMode === "jukebox") {
-      writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
-    }
+    useAppStore.setState({ tuningParams: favorite?.tuningParams ?? null });
+    writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
     const sourceType: FavoriteTrack["sourceType"] =
       sourceTypeRaw === "upload" ||
       sourceTypeRaw === "youtube" ||
@@ -622,8 +601,6 @@ export function removeFavoriteWithToast(favoriteId: string) {
       duration: useAppStore.getState().trackDurationSec,
       sourceType: getCurrentFavoriteSourceType(),
       tuningParams: getFavoriteTuningParams(),
-      // Only the non-default mode is stored; absence means jukebox.
-      playMode: storedPlayMode(useAppStore.getState().playMode),
     };
     const result = addFavorite(useAppStore.getState().favorites, track);
     if (result.status === "limit") {
@@ -656,22 +633,15 @@ export function removeFavoriteWithToast(favoriteId: string) {
     return isFavoriteTuningDrifted({
       favorite,
       ready: useAppStore.getState().analysisLoaded,
-      livePlayMode: useAppStore.getState().playMode,
       liveTuningParams: useAppStore.getState().tuningParams,
       defaults: getAppContext().defaultConfig,
     });
   }
 
-  // Re-captures tuning + play mode onto the matched favorite, keeping its
-  // stored id (which may be a legacy source id rather than the current one).
+  // Re-captures tuning onto the matched favorite, keeping its stored id
+  // (which may be a legacy source id rather than the current one).
   async function updateFavoriteTuning(currentFavorite: FavoriteTrack) {
-    const inJukeboxMode = useAppStore.getState().playMode === "jukebox";
-    // Only jukebox mode can capture tuning; outside it the stored tuning is
-    // carried over so a play mode change alone never discards it.
-    const capturedTuningParams = inJukeboxMode
-      ? getFavoriteTuningParams()
-      : null;
-    const playMode = storedPlayMode(useAppStore.getState().playMode);
+    const capturedTuningParams = getFavoriteTuningParams();
     const showLoading = shouldShowFavoriteToggleLoading();
     if (showLoading) {
       setFavoriteToggleLoading(true);
@@ -680,13 +650,7 @@ export function removeFavoriteWithToast(favoriteId: string) {
       updateFavorites(
         useAppStore.getState().favorites.map((item) =>
           item.uniqueSongId === currentFavorite.uniqueSongId
-            ? {
-                ...item,
-                tuningParams: inJukeboxMode
-                  ? capturedTuningParams
-                  : (item.tuningParams ?? null),
-                playMode,
-              }
+            ? { ...item, tuningParams: capturedTuningParams }
             : item,
         ),
       );

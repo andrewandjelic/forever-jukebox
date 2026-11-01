@@ -3,7 +3,7 @@ import type { StereoChannels } from "./audioResample";
 
 // Pre-rendered copies of a track, kept in Cache Storage under its id as
 // WebM/Opus. Browsers that cannot encode it store nothing and render each time.
-export type RenderedTrackKind = "dubstep" | "instrumental" | "swing";
+export type RenderedTrackKind = "instrumental" | "swing";
 
 export type RenderedTrackKey = {
   kind: RenderedTrackKind;
@@ -20,11 +20,9 @@ const WEBM_TYPE = "audio/webm";
 const BYTES_HEADER = "x-fj-bytes";
 const SIGNATURE_HEADER = "x-fj-signature";
 const STORED_AT_HEADER = "x-fj-stored-at";
-const KINDS: readonly RenderedTrackKind[] = [
-  "dubstep",
-  "instrumental",
-  "swing",
-];
+// Every kind ever stored, so deleting or moving a track also covers the
+// "dubstep" renders the removed Wub Machine left behind.
+const STORED_KINDS: readonly string[] = ["dubstep", "instrumental", "swing"];
 // Entries come back through the decoder a few frames off; anything
 // further apart is a different recording under the same id.
 const FRAME_TOLERANCE = 0.001;
@@ -51,7 +49,7 @@ function hasCacheStorage() {
   return typeof caches !== "undefined";
 }
 
-function trackUrl(kind: RenderedTrackKind, trackId: string) {
+function trackUrl(kind: string, trackId: string) {
   return `${TRACK_URL_PREFIX}${kind}/${encodeURIComponent(trackId)}`;
 }
 
@@ -119,7 +117,7 @@ export async function deleteRenderedTracks(trackId: string) {
     return;
   }
   const cache = await caches.open(TRACK_CACHE);
-  for (const kind of KINDS) {
+  for (const kind of STORED_KINDS) {
     await cache.delete(trackUrl(kind, trackId));
   }
 }
@@ -130,7 +128,7 @@ export async function moveRenderedTracks(fromId: string, toId: string) {
     return;
   }
   const cache = await caches.open(TRACK_CACHE);
-  for (const kind of KINDS) {
+  for (const kind of STORED_KINDS) {
     const response = await cache.match(trackUrl(kind, fromId));
     if (response) {
       await cache.put(trackUrl(kind, toId), response);

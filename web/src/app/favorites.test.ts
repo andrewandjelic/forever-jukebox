@@ -66,6 +66,27 @@ describe("favorites", () => {
     expect(loaded[1].tuningParams).toBe("jb=1&d=2");
   });
 
+  it("loads favorites saved in removed play modes as jukebox favorites", () => {
+    localStorage.setItem(
+      "fj-favorites",
+      JSON.stringify([
+        {
+          uniqueSongId: "1",
+          title: "A",
+          artist: "Z",
+          duration: 2,
+          sourceType: "youtube",
+          tuningParams: "jb=1",
+          playMode: "wubmachine",
+        },
+      ]),
+    );
+    const loaded = loadFavorites();
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]).not.toHaveProperty("playMode");
+    expect(loaded[0].tuningParams).toBe("jb=1");
+  });
+
   it("enforces favorite limit and handles duplicates", () => {
     const base = Array.from({ length: maxFavorites() }, (_, i) => ({
       uniqueSongId: `${i}`,

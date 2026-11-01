@@ -163,7 +163,6 @@ async function flushMicrotasks(count = 5) {
 
 
 type TestAppContext = AppContext & {
-  autocanonizer: NonNullable<AppContext["autocanonizer"]>;
   jukebox: NonNullable<AppContext["jukebox"]>;
 };
 
@@ -233,37 +232,6 @@ function createContext(overrides?: Partial<AppContext>): TestAppContext {
     getSourceBuffer: vi.fn(() => null),
     setRenderedJukeboxAudioBuffer: vi.fn(),
   };
-  const autocanonizer = {
-    setAnalysis: vi.fn(),
-    setAudio: vi.fn(),
-    setVolume: vi.fn(),
-    setFinishOutSong: vi.fn(),
-    reset: vi.fn(),
-    stop: vi.fn(),
-    start: vi.fn(),
-    isReady: vi.fn(() => false),
-    setOnBeat: vi.fn(),
-    setOnEnded: vi.fn(),
-    setOnSelect: vi.fn(),
-    startAtIndex: vi.fn(),
-    resetVisualization: vi.fn(),
-    setVisible: vi.fn(),
-    resizeNow: vi.fn(),
-  };
-  const wubmachine = {
-    setVolume: vi.fn(),
-    setLoop: vi.fn(),
-    setRemix: vi.fn(),
-    setOnTick: vi.fn(),
-    setOnEnded: vi.fn(),
-    setOnSelect: vi.fn(),
-    setVisible: vi.fn(),
-    resizeNow: vi.fn(),
-    isReady: vi.fn(() => false),
-    play: vi.fn(),
-    pause: vi.fn(),
-    stop: vi.fn(),
-  };
   const jukebox = {
     setData: vi.fn(),
     setAnchorHighlightEnabled: vi.fn(),
@@ -287,8 +255,6 @@ function createContext(overrides?: Partial<AppContext>): TestAppContext {
   const context = {
     engine: engine as unknown as AppContext["engine"],
     player: player as unknown as AppContext["player"],
-    autocanonizer: autocanonizer as unknown as AppContext["autocanonizer"],
-    wubmachine: wubmachine as unknown as AppContext["wubmachine"],
     jukebox: jukebox as unknown as AppContext["jukebox"],
     cowbellOverlay: cowbellOverlay as unknown as AppContext["cowbellOverlay"],
     defaultConfig: engineConfig as unknown as AppContext["defaultConfig"],
@@ -508,7 +474,6 @@ describe("playback tuning", () => {
   it("applies branch stats toggle and audio mode from extras controls", () => {
     const context = createContext();
     useAppStore.setState({ isRunning: true });
-    useAppStore.setState({ playMode: "jukebox" });
 
     const result = applyExtrasChanges(context, {
       ...getExtrasFormValues(),
@@ -529,7 +494,6 @@ describe("playback tuning", () => {
 
   it("shows stats for the already-selected branch once stats are enabled", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     const edge = {
       id: 4,
       src: { start: 10, which: 8 },
@@ -557,7 +521,6 @@ describe("playback tuning", () => {
   it("applies audio intensity from extras controls and writes the url param", () => {
     const context = createContext();
     useAppStore.setState({ isRunning: true });
-    useAppStore.setState({ playMode: "jukebox" });
 
     applyExtrasChanges(context, {
       ...getExtrasFormValues(),
@@ -579,7 +542,6 @@ describe("playback tuning", () => {
 
   it("omits the intensity url param at the default value", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
 
     applyExtrasChanges(context, {
       ...getExtrasFormValues(),
@@ -594,7 +556,6 @@ describe("playback tuning", () => {
   it("resyncs the engine on an intensity-only change", () => {
     const context = createContext();
     useAppStore.setState({ isRunning: true });
-    useAppStore.setState({ playMode: "jukebox" });
 
     applyExtrasChanges(context, {
       ...getExtrasFormValues(),
@@ -620,7 +581,6 @@ describe("playback tuning", () => {
 
   it("applies cowbell as an audio mode from extras controls", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
 
     const result = applyExtrasChanges(context, {
       ...getExtrasFormValues(),
@@ -703,7 +663,6 @@ describe("playback tuning", () => {
     const context = createContext();
     const sourceBuffer = { duration: 120 } as AudioBuffer;
     const swingBuffer = { duration: 120 } as AudioBuffer;
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ isRunning: true });
     useAppStore.setState({ audioLoaded: true });
     useAppStore.setState({ analysisLoaded: true });
@@ -745,7 +704,6 @@ describe("playback tuning", () => {
     const context = createContext();
     const sourceBuffer = { duration: 120 } as AudioBuffer;
     useAppStore.setState({
-      playMode: "jukebox",
       audioLoaded: true,
       analysisLoaded: true,
     });
@@ -780,7 +738,6 @@ describe("playback tuning", () => {
 
   it("applies bring it home mode from extras controls", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ shiftBranching: true });
 
     applyExtrasChanges(context, {
@@ -796,7 +753,6 @@ describe("playback tuning", () => {
 
   it("hides branch stats popup when extras branch stats is disabled", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ branchStatsEnabled: true });
 
     applyExtrasChanges(context, {
@@ -809,7 +765,6 @@ describe("playback tuning", () => {
 
   it("resets extras options to defaults", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ branchStatsEnabled: true });
     useAppStore.setState({ bringItHomeMode: true });
     useAppStore.setState({ jukeboxAudioMode: "nightcore" });
@@ -1088,7 +1043,6 @@ describe("playback tuning", () => {
         rebuildGraph: vi.fn(),
       } as unknown as AppContext["engine"],
     });
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ jukeboxAudioMode: "nightcore" });
 
     const response: AnalysisComplete = {
@@ -1127,7 +1081,6 @@ describe("playback tuning", () => {
         rebuildGraph: vi.fn(),
       } as unknown as AppContext["engine"],
     });
-    useAppStore.setState({ playMode: "jukebox" });
     const response: AnalysisComplete = {
       status: "complete",
       id: "job123",
@@ -1152,23 +1105,11 @@ describe("playback tuning", () => {
   it("opens tuning modal on extras tab", () => {
     useAppStore.setState({ tuningModalOpen: false, tuningModalTab: "tuning" });
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
 
     openExtras(context);
 
     expect(useAppStore.getState().tuningModalOpen).toBe(true);
     expect(useAppStore.getState().tuningModalTab).toBe("extras");
-  });
-
-  it("falls back to the tuning tab when mode does not support extras", () => {
-    useAppStore.setState({ tuningModalOpen: false, tuningModalTab: "tuning" });
-    const context = createContext();
-    useAppStore.setState({ playMode: "autocanonizer" });
-
-    openExtras(context);
-
-    expect(useAppStore.getState().tuningModalOpen).toBe(true);
-    expect(useAppStore.getState().tuningModalTab).toBe("tuning");
   });
 
   it("applies tuning params and deleted edges from url together", () => {
@@ -1441,7 +1382,6 @@ describe("playback controls", () => {
 
   it("blocks beat-start playback while instrumental mode is preparing", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ jukeboxAudioMode: "instrumental" });
     useAppStore.setState({ audioModePreparing: true });
     useAppStore.setState({
@@ -1470,7 +1410,6 @@ describe("playback controls", () => {
 
   it("blocks beat-start playback while swing mode is preparing", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ jukeboxAudioMode: "swing" });
     useAppStore.setState({ audioModePreparing: true });
     useAppStore.setState({
@@ -1519,7 +1458,6 @@ describe("playback controls", () => {
 
   it("resumes audio output when selecting a beat while session is running", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ isRunning: true });
     useAppStore.setState({
       vizData: {
@@ -1540,7 +1478,6 @@ describe("playback controls", () => {
 
   it("does not replay when selecting a beat while already actively playing", () => {
     const context = createContext();
-    useAppStore.setState({ playMode: "jukebox" });
     useAppStore.setState({ isRunning: true });
     useAppStore.setState({
       vizData: {
@@ -1557,59 +1494,6 @@ describe("playback controls", () => {
     expect(context.engine.seekToBeat).toHaveBeenCalledWith(0);
     expect(context.engine.play).not.toHaveBeenCalled();
     expect(context.engine.startJukebox).not.toHaveBeenCalled();
-  });
-
-  it("keeps listen time running when selecting an autocanonizer beat", () => {
-    const context = createContext();
-    (context.autocanonizer.isReady as ReturnType<typeof vi.fn>).mockReturnValue(
-      true,
-    );
-    initializePlayback();
-    useAppStore.setState({
-      playMode: "autocanonizer",
-      isRunning: true,
-      playTimerMs: 3000,
-      lastPlayStamp: 1000,
-    });
-    vi.spyOn(performance, "now").mockReturnValue(5000);
-    const onSelect = (
-      context.autocanonizer.setOnSelect as ReturnType<typeof vi.fn>
-    ).mock.calls[0]?.[0] as ((index: number) => void) | undefined;
-
-    onSelect?.(1);
-
-    expect(context.autocanonizer.startAtIndex).toHaveBeenCalledWith(1);
-    expect(useAppStore.getState().playTimerMs).toBe(3000);
-    expect(useAppStore.getState().lastPlayStamp).toBe(1000);
-  });
-
-  it("plays, seeks and pauses the Wub Machine remix", () => {
-    const context = createContext();
-    const wubmachine = context.wubmachine as unknown as Record<
-      "isReady" | "play" | "pause" | "setOnSelect",
-      ReturnType<typeof vi.fn>
-    >;
-    initializePlayback();
-    useAppStore.setState({ playMode: "wubmachine" });
-
-    togglePlayback(context);
-    expect(wubmachine.play).not.toHaveBeenCalled();
-    expect(useAppStore.getState().isRunning).toBe(false);
-
-    wubmachine.isReady.mockReturnValue(true);
-    togglePlayback(context);
-    expect(wubmachine.play).toHaveBeenLastCalledWith(undefined);
-    expect(useAppStore.getState().isRunning).toBe(true);
-
-    const onSelect = wubmachine.setOnSelect.mock.calls[0]?.[0] as (
-      seconds: number,
-    ) => void;
-    onSelect(42);
-    expect(wubmachine.play).toHaveBeenLastCalledWith(42);
-
-    togglePlayback(context);
-    expect(wubmachine.pause).toHaveBeenCalledTimes(1);
-    expect(useAppStore.getState().isPaused).toBe(true);
   });
 
   it("draws the promoted jump target before moving a caught-up cursor", () => {
@@ -1964,7 +1848,6 @@ describe("playback branch shortcuts", () => {
   ) {
     const selected = edges.find((edge) => edge.id === selectedId) ?? null;
     useAppStore.setState({
-      playMode: "jukebox",
       deleteConfirmOpen: false,
       selectedEdge: selected as AppState["selectedEdge"],
       vizData: {
@@ -2156,7 +2039,6 @@ describe("playback branch shortcuts", () => {
   it("force-branches while Shift is held during playback and clears on release", () => {
     const context = createContext();
     useAppStore.setState({
-      playMode: "jukebox",
       deleteConfirmOpen: false,
       isRunning: true,
       shiftBranching: false,
@@ -2176,7 +2058,6 @@ describe("playback branch shortcuts", () => {
   it("suppresses Shift force-branching while Bring It Home is on", () => {
     const context = createContext();
     useAppStore.setState({
-      playMode: "jukebox",
       deleteConfirmOpen: false,
       isRunning: true,
       shiftBranching: false,
@@ -2193,7 +2074,6 @@ describe("playback branch shortcuts", () => {
   it("does not force-branch on Shift while paused", () => {
     const context = createContext();
     useAppStore.setState({
-      playMode: "jukebox",
       deleteConfirmOpen: false,
       isRunning: false,
       shiftBranching: false,
@@ -2210,7 +2090,6 @@ describe("playback branch shortcuts", () => {
   it("clears active force-branching when Bring It Home is toggled on via hotkey", () => {
     const context = createContext();
     useAppStore.setState({
-      playMode: "jukebox",
       deleteConfirmOpen: false,
       isRunning: true,
       shiftBranching: true,

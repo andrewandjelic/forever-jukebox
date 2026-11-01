@@ -54,8 +54,6 @@ function createContext(
       setJukeboxAudioMode: vi.fn(),
       setJukeboxAudioModeIntensity: vi.fn(),
     } as unknown as AppContext["player"],
-    autocanonizer: {} as unknown as AppContext["autocanonizer"],
-    wubmachine: {} as unknown as AppContext["wubmachine"],
     jukebox: { refresh: vi.fn() } as unknown as AppContext["jukebox"],
     cowbellOverlay: {
       enable: vi.fn(),
@@ -217,30 +215,6 @@ describe("tuning params", () => {
       "cowbell",
       100,
     );
-  });
-
-  it("records audio mode without arming the player outside jukebox mode", () => {
-    useAppStore.setState({ playMode: "autocanonizer" });
-    const context = createContext();
-    const params = new URLSearchParams("am=nightcore&ai=130");
-    const applied = applyTuningParamsToEngine(context, params);
-    expect(applied).toBe(true);
-    expect(useAppStore.getState().jukeboxAudioMode).toBe("nightcore");
-    expect(useAppStore.getState().audioIntensity).toBe(130);
-    expect(context.player.setJukeboxAudioMode).not.toHaveBeenCalled();
-  });
-
-  it("does not enable the cowbell overlay outside jukebox mode", () => {
-    useAppStore.setState({ playMode: "autocanonizer" });
-    const context = createContext();
-    const applied = applyTuningParamsToEngine(
-      context,
-      new URLSearchParams("am=cowbell"),
-    );
-    expect(applied).toBe(true);
-    expect(context.cowbellOverlay.enable).not.toHaveBeenCalled();
-    expect(context.cowbellOverlay.disable).toHaveBeenCalledTimes(1);
-    expect(context.player.setJukeboxAudioMode).not.toHaveBeenCalled();
   });
 
   it("applies audio intensity with a supported mode", () => {

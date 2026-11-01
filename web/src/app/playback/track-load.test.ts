@@ -21,11 +21,6 @@ vi.mock("./instrumental", () => ({
 }));
 vi.mock("./swing", () => ({ maybePrepareSwingMode: vi.fn() }));
 vi.mock("./transport", () => ({ stopPlayback: vi.fn() }));
-vi.mock("./wubmachine", () => ({
-  maybePrepareWubMachine: vi.fn(),
-  resetWubMachine: vi.fn(),
-  setWubMachineAnalysis: vi.fn(),
-}));
 vi.mock("../tuning", async (importActual) => ({
   ...(await importActual<typeof import("../tuning")>()),
   clearTuningParamsFromUrl: vi.fn(),
@@ -52,10 +47,6 @@ import { loadTrackByJobId, tryLoadCachedAudio, type PlaybackDeps } from "./track
 const initialStoreState = useAppStore.getState();
 const readCachedTrackMock = vi.mocked(readCachedTrack);
 
-type TestAppContext = AppContext & {
-  autocanonizer: NonNullable<AppContext["autocanonizer"]>;
-};
-
 function createContext() {
   const decodedBuffer = { duration: 12 } as AudioBuffer;
   const context = {
@@ -64,9 +55,8 @@ function createContext() {
       getBuffer: vi.fn(() => decodedBuffer),
       getContext: vi.fn(() => "audio-context"),
     },
-    autocanonizer: { setAudio: vi.fn() },
-  } as unknown as TestAppContext;
-  return { context, decodedBuffer };
+  } as unknown as AppContext;
+  return { context };
 }
 
 describe("tryLoadCachedAudio", () => {
@@ -80,7 +70,7 @@ describe("tryLoadCachedAudio", () => {
   });
 
   it("loads cached audio on a hit and takes the fast path", async () => {
-    const { context, decodedBuffer } = createContext();
+    const { context } = createContext();
     const audio = new ArrayBuffer(8);
     readCachedTrackMock.mockResolvedValue({ audio, jobId: "job-xyz" } as never);
     useAppStore.setState({
@@ -96,10 +86,6 @@ describe("tryLoadCachedAudio", () => {
     expect(context.player.decode).toHaveBeenCalledWith(audio);
     // Restores the cached job id and marks the track loaded.
     expect(useAppStore.getState().lastJobId).toBe("job-xyz");
-    expect(context.autocanonizer.setAudio).toHaveBeenCalledWith(
-      decodedBuffer,
-      "audio-context",
-    );
     expect(useAppStore.getState().audioLoaded).toBe(true);
     expect(useAppStore.getState().audioLoadInFlight).toBe(false);
     // Swing prep runs on the cached buffer; viz/info refresh.

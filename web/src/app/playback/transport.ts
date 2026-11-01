@@ -9,37 +9,29 @@ import {
   updatePlayButton,
 } from "./status-ui";
 import { requestWakeLock } from "./wake-lock";
-import { maybePrepareWubMachine } from "./wubmachine";
 import i18n from "../i18n";
 
 let listenTimerId: number | null = null;
 
-// Swing, Instrumental and the Wub Machine pre-render their buffers; playback
-// waits for that.
+// Swing and Instrumental pre-render their buffers; playback waits for that.
 export function isPlaybackBlockedForAudioMode() {
-  const { playMode, jukeboxAudioMode, audioModePreparing } =
-    useAppStore.getState();
+  const { jukeboxAudioMode, audioModePreparing } = useAppStore.getState();
   if (!audioModePreparing) {
     return false;
   }
-  return (
-    playMode === "wubmachine" ||
-    (playMode === "jukebox" &&
-      (jukeboxAudioMode === "swing" || jukeboxAudioMode === "instrumental"))
-  );
+  return jukeboxAudioMode === "swing" || jukeboxAudioMode === "instrumental";
 }
 
 function showPreparingToast() {
-  const { playMode, jukeboxAudioMode } = useAppStore.getState();
-  const key = () => {
-    if (playMode === "wubmachine") {
-      return "playback.preparingWubMachineEllipsis" as const;
-    }
-    return jukeboxAudioMode === "instrumental"
-      ? ("playback.preparingInstrumental" as const)
-      : ("playback.preparingSwingEllipsis" as const);
-  };
-  showToast(i18n.t(key()), { icon: "hourglass_top" });
+  const { jukeboxAudioMode } = useAppStore.getState();
+  showToast(
+    i18n.t(
+      jukeboxAudioMode === "instrumental"
+        ? "playback.preparingInstrumental"
+        : "playback.preparingSwingEllipsis",
+    ),
+    { icon: "hourglass_top" },
+  );
   updatePlayButton();
 }
 
@@ -61,32 +53,13 @@ export function stopListenTimer() {
 }
 
 export function stopPlayback(context: AppContext) {
-  const {
-    autocanonizer,
-    cowbellOverlay,
-    engine,
-    jukebox,
-    player,
-    wubmachine,
-  } = context;
+  const { cowbellOverlay, engine, jukebox } = context;
   cowbellOverlay.cancelScheduledHits();
-  if (useAppStore.getState().playMode === "autocanonizer") {
-    autocanonizer?.stop();
-    player.stop();
-    autocanonizer?.resetVisualization();
-  }
-  wubmachine?.stop();
   engine.stopJukebox();
   engine.resetStats();
   useAppStore.setState({ playTimerMs: 0 });
   useAppStore.setState({ lastPlayStamp: null });
-  useAppStore.setState({
-    lastBeatIndex: null,
-    beatsPlayedText: "0",
-    autocanonizerMainSeconds: 0,
-    autocanonizerOtherSeconds: 0,
-    wubMachineSeconds: 0,
-  });
+  useAppStore.setState({ lastBeatIndex: null, beatsPlayedText: "0" });
   jukebox?.reset();
   useAppStore.setState({ isRunning: false });
   useAppStore.setState({ isPaused: false });
@@ -102,20 +75,13 @@ export function stopPlayback(context: AppContext) {
 }
 
 export function pausePlayback(context: AppContext) {
-  const { autocanonizer, cowbellOverlay, engine, player, wubmachine } = context;
+  const { cowbellOverlay, engine } = context;
   if (!useAppStore.getState().isRunning) {
     return;
   }
   cowbellOverlay.cancelScheduledHits();
-  if (useAppStore.getState().playMode === "autocanonizer") {
-    autocanonizer?.stop();
-    player.stop();
-  } else if (useAppStore.getState().playMode === "wubmachine") {
-    wubmachine?.pause();
-  } else {
-    engine.pauseJukebox();
-    engine.syncToPlaybackPosition();
-  }
+  engine.pauseJukebox();
+  engine.syncToPlaybackPosition();
   const { lastPlayStamp, playTimerMs } = useAppStore.getState();
   if (lastPlayStamp !== null) {
     useAppStore.setState({
@@ -157,10 +123,6 @@ export function startJukeboxPlayback(context: AppContext, resetSession: boolean)
     updateListenTimeDisplay();
     useAppStore.setState({ beatsPlayedText: "0" });
     useAppStore.setState({ lastBeatIndex: null });
-    useAppStore.setState({
-      autocanonizerMainSeconds: 0,
-      autocanonizerOtherSeconds: 0,
-    });
     jukebox.reset();
     pulseVizStats();
   } else {
@@ -185,19 +147,6 @@ export function togglePlayback(context: AppContext) {
     return;
   }
   try {
-    if (useAppStore.getState().playMode === "autocanonizer") {
-      const startIndex = useAppStore.getState().isPaused ? (useAppStore.getState().lastBeatIndex ?? 0) : 0;
-      startAutocanonizerPlayback(context, startIndex, {
-        resetSession: !useAppStore.getState().isPaused,
-      });
-      return;
-    }
-    if (useAppStore.getState().playMode === "wubmachine") {
-      startWubMachinePlayback(context, null, {
-        resetSession: !useAppStore.getState().isPaused,
-      });
-      return;
-    }
     if (useAppStore.getState().isPaused) {
       startJukeboxPlayback(context, false);
       return;
@@ -210,9 +159,6 @@ export function togglePlayback(context: AppContext) {
 
 export function startJukeboxFromBeat(context: AppContext, index: number) {
   const { cowbellOverlay, engine, player } = context;
-  if (useAppStore.getState().playMode !== "jukebox") {
-    return;
-  }
   if (isPlaybackBlockedForAudioMode()) {
     showPreparingToast();
     return;
@@ -246,91 +192,6 @@ export function startJukeboxFromBeat(context: AppContext, index: number) {
   if (!player.isPlaying()) {
     engine.play();
   }
-}
-
-export function startAutocanonizerPlayback(
-  context: AppContext,
-  index: number,
-  options?: { resetSession?: boolean },
-) {
-  const { autocanonizer, cowbellOverlay, engine, player } = context;
-  if (!autocanonizer) {
-    return false;
-  }
-  if (!autocanonizer.isReady()) {
-    console.warn("Autocanonizer not ready");
-    return false;
-  }
-  const resetSession = options?.resetSession ?? true;
-  player.stop();
-  cowbellOverlay.cancelScheduledHits();
-  engine.stopJukebox();
-  if (resetSession) {
-    useAppStore.setState({ playTimerMs: 0 });
-    useAppStore.setState({ lastPlayStamp: null });
-    updateListenTimeDisplay();
-    useAppStore.setState({ beatsPlayedText: "0" });
-    useAppStore.setState({ lastBeatIndex: null });
-    pulseVizStats();
-    autocanonizer.resetVisualization();
-  }
-  autocanonizer.startAtIndex(index);
-  trackPlay("autocanonizer", getCurrentTrackId(), useAppStore.getState().trackTitle);
-  if (resetSession || !useAppStore.getState().isRunning) {
-    useAppStore.setState({ lastPlayStamp: performance.now() });
-  }
-  useAppStore.setState({ isRunning: true });
-  useAppStore.setState({ isPaused: false });
-  startListenTimer();
-  updatePlayButton();
-  if (document.fullscreenElement) {
-    requestWakeLock();
-  }
-  return true;
-}
-
-// Plays the rendered remix from `seconds`, or from the paused position (the
-// start after a stop) when `seconds` is null.
-export function startWubMachinePlayback(
-  context: AppContext,
-  seconds: number | null,
-  options?: { resetSession?: boolean },
-) {
-  const { cowbellOverlay, engine, player, wubmachine } = context;
-  if (!wubmachine) {
-    return false;
-  }
-  if (isPlaybackBlockedForAudioMode()) {
-    showPreparingToast();
-    return false;
-  }
-  if (!wubmachine.isReady()) {
-    maybePrepareWubMachine(context);
-    return false;
-  }
-  const resetSession = options?.resetSession ?? true;
-  player.stop();
-  cowbellOverlay.cancelScheduledHits();
-  engine.stopJukebox();
-  if (resetSession) {
-    useAppStore.setState({ playTimerMs: 0 });
-    useAppStore.setState({ lastPlayStamp: null });
-    updateListenTimeDisplay();
-    pulseVizStats();
-  }
-  wubmachine.play(seconds ?? undefined);
-  trackPlay("wubmachine", getCurrentTrackId(), useAppStore.getState().trackTitle);
-  if (resetSession || !useAppStore.getState().isRunning) {
-    useAppStore.setState({ lastPlayStamp: performance.now() });
-  }
-  useAppStore.setState({ isRunning: true });
-  useAppStore.setState({ isPaused: false });
-  startListenTimer();
-  updatePlayButton();
-  if (document.fullscreenElement) {
-    requestWakeLock();
-  }
-  return true;
 }
 
 // The React transport buttons derive icon/label/disabled from the store;

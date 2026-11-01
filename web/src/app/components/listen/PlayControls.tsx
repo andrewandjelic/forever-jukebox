@@ -13,21 +13,16 @@ import type { TFunction } from "i18next";
 function playButtonLabel({
   isBlocked,
   isInstrumental,
-  isWubMachine,
   isRunning,
   isPaused,
   t,
 }: {
   isBlocked: boolean;
   isInstrumental: boolean;
-  isWubMachine: boolean;
   isRunning: boolean;
   isPaused: boolean;
   t: TFunction;
 }) {
-  if (isBlocked && isWubMachine) {
-    return t("playback.preparingWubMachine");
-  }
   if (isBlocked) {
     return isInstrumental
       ? t("playback.preparingInstrumental")
@@ -52,7 +47,6 @@ export function PlayControls() {
   const { t } = useTranslation();
   const isRunning = useAppStore((s) => s.isRunning);
   const isPaused = useAppStore((s) => s.isPaused);
-  const playMode = useAppStore((s) => s.playMode);
   const audioMode = useAppStore((s) => s.jukeboxAudioMode);
   const audioModePreparing = useAppStore((s) => s.audioModePreparing);
   const audioLoaded = useAppStore((s) => s.audioLoaded);
@@ -64,15 +58,11 @@ export function PlayControls() {
 
   // Derive the play button's label, icon and visibility from playback state.
   const isInstrumental = audioMode === "instrumental";
-  const isWubMachine = playMode === "wubmachine";
   const isBlocked =
-    audioModePreparing &&
-    (isWubMachine ||
-      (playMode === "jukebox" && (audioMode === "swing" || isInstrumental)));
+    audioModePreparing && (audioMode === "swing" || isInstrumental);
   const playLabel = playButtonLabel({
     isBlocked,
     isInstrumental,
-    isWubMachine,
     isRunning,
     isPaused,
     t,

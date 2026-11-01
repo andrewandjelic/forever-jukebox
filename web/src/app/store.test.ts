@@ -5,7 +5,6 @@ describe("app store", () => {
   it("exposes the Phase 3 slice fields with bootstrap defaults", () => {
     const s = useAppStore.getState();
     expect(s.activeTabId).toBe("top");
-    expect(s.playMode).toBe("jukebox");
     expect(s.topSongsTab).toBe("top");
     expect(s.searchTab).toBe("search");
     expect(s.isRunning).toBe(false);

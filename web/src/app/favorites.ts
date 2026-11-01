@@ -1,4 +1,3 @@
-import type { PlayMode } from "./context";
 import type { PlaylistTrack } from "./playlist";
 import i18n from "./i18n";
 
@@ -9,9 +8,6 @@ export type FavoriteTrack = {
   duration: number | null;
   sourceType: "youtube" | "soundcloud" | "bandcamp" | "upload";
   tuningParams?: string | null;
-  // Play mode the track was favorited in. Absent on favorites that predate
-  // autocanonizer support, which are therefore treated as jukebox.
-  playMode?: PlayMode;
 };
 
 export type FavoritesDisplaySort = {
@@ -31,6 +27,17 @@ export function configureMaxFavorites(value: number | null | undefined) {
       : DEFAULT_MAX_FAVORITES;
 }
 
+// Favorites saved while the Autocanonizer and Wub Machine existed may carry
+// the mode they were saved in; it is dropped and they play in the jukebox.
+function withoutPlayMode(item: FavoriteTrack): FavoriteTrack {
+  if (!item || typeof item !== "object" || !("playMode" in item)) {
+    return item;
+  }
+  const copy: FavoriteTrack & { playMode?: unknown } = { ...item };
+  delete copy.playMode;
+  return copy;
+}
+
 export function loadFavorites(): FavoriteTrack[] {
   const raw = localStorage.getItem(FAVORITES_KEY);
   if (!raw) {
@@ -41,7 +48,7 @@ export function loadFavorites(): FavoriteTrack[] {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return sortFavorites(parsed).slice(0, maxFavorites());
+    return sortFavorites(parsed.map(withoutPlayMode)).slice(0, maxFavorites());
   } catch {
     return [];
   }
@@ -168,11 +175,6 @@ export function saveFavoritesSyncCode(code: string) {
   localStorage.setItem(FAVORITES_SYNC_KEY, trimmed);
 }
 
-// Jukebox is the implicit default and is not stored.
-export function storedPlayMode(playMode: PlayMode): PlayMode | undefined {
-  return playMode === "jukebox" ? undefined : playMode;
-}
-
 export function favoriteToPlaylistTrack(
   item: FavoriteTrack,
   sourceType: FavoriteTrack["sourceType"],
@@ -184,7 +186,6 @@ export function favoriteToPlaylistTrack(
     artist: item.artist || "",
     duration: item.duration,
     tuningParams: item.tuningParams ?? null,
-    playMode: item.playMode,
   };
 }
 

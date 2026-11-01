@@ -120,10 +120,7 @@ function RangeRow({
 export function TuningModal() {
   const { t } = useTranslation();
   const open = useAppStore((s) => s.tuningModalOpen);
-  const storedTab = useAppStore((s) => s.tuningModalTab);
-  const playMode = useAppStore((s) => s.playMode);
-  const hasExtrasTab = playMode === "jukebox";
-  const tab = hasExtrasTab ? storedTab : "tuning";
+  const tab = useAppStore((s) => s.tuningModalTab);
   const tuningActive = tab === "tuning";
   const [form, setForm] = useState<TuningFormValues | null>(null);
   const [extras, setExtras] = useState<ExtrasFormValues | null>(null);
@@ -240,7 +237,6 @@ export function TuningModal() {
         name="audio-mode"
         value={option.value}
         checked={extras?.audioMode === option.value}
-        disabled={!hasExtrasTab}
         onChange={() => selectAudioMode(option.value)}
       />
       {t(option.labelKey)}
@@ -263,7 +259,7 @@ export function TuningModal() {
             <div className="modal-tabs" aria-label={t("tuning.sections")}>
               <button
                 id="tuning-tab-toggle"
-                className={hasExtrasTab ? "modal-tab" : "modal-tab hidden"}
+                className="modal-tab"
                 type="button"
                 aria-label={
                   tuningActive
@@ -431,7 +427,6 @@ export function TuningModal() {
                   id="extras-enabled"
                   type="checkbox"
                   checked={extras?.branchStatsEnabled ?? false}
-                  disabled={!hasExtrasTab}
                   onChange={(event) =>
                     setExtrasField("branchStatsEnabled", event.target.checked)
                   }
@@ -443,7 +438,6 @@ export function TuningModal() {
                   id="bring-home-enabled"
                   type="checkbox"
                   checked={extras?.bringItHomeMode ?? false}
-                  disabled={!hasExtrasTab}
                   onChange={(event) =>
                     setExtrasField("bringItHomeMode", event.target.checked)
                   }

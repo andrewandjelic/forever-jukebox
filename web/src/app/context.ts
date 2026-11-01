@@ -7,19 +7,14 @@ import type { Edge } from "@forever-jukebox/shared/types";
 import type { FavoriteTrack } from "./favorites";
 import type { PlaylistState } from "./playlist";
 import type { AppConfig } from "./api";
-import type { AutocanonizerController } from "@forever-jukebox/shared/autocanonizer/AutocanonizerController";
-import type { WubMachineController } from "@forever-jukebox/shared/wubmachine/WubMachineController";
 import type { JukeboxController } from "@forever-jukebox/shared/viz/JukeboxController";
 import type { CowbellOverlayService } from "@forever-jukebox/shared/audio/CowbellOverlayService";
 
 export type TabId = "top" | "search" | "play" | "faq";
 
-export type PlayMode = "jukebox" | "autocanonizer" | "wubmachine";
-
 export type AppState = {
   activeTabId: TabId;
   activeVizIndex: number;
-  playMode: PlayMode;
   topSongsTab: "top" | "trending" | "recent" | "reported" | "favorites";
   searchTab: "search" | "upload";
   favorites: FavoriteTrack[];
@@ -28,12 +23,6 @@ export type AppState = {
   playTimerMs: number;
   lastPlayStamp: number | null;
   lastBeatIndex: number | null;
-  autocanonizerMainSeconds: number;
-  autocanonizerOtherSeconds: number;
-  autocanonizerMainPan: number;
-  autocanonizerOtherPan: number;
-  wubMachineSeconds: number;
-  wubMachineDurationSec: number;
   vizData: ReturnType<JukeboxEngine["getVisualizationData"]>;
   isRunning: boolean;
   isPaused: boolean;
@@ -78,15 +67,11 @@ export type SleepTimerState = {
 export type AppContext = {
   engine: JukeboxEngine;
   player: BufferedAudioPlayer;
-  autocanonizer: AutocanonizerController | null;
-  wubmachine: WubMachineController | null;
   jukebox: JukeboxController | null;
   cowbellOverlay: CowbellOverlayService;
   defaultConfig: ReturnType<JukeboxEngine["getConfig"]>;
 };
 
 export type AttachedAppContext = AppContext & {
-  autocanonizer: AutocanonizerController;
-  wubmachine: WubMachineController;
   jukebox: JukeboxController;
 };

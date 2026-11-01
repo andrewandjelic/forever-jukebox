@@ -1,38 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { loadFirstTopTrack, setRangeValue } from "./helpers";
 
-test.describe("play mode switching", () => {
-  test("autocanonizer round trip: URL, controls, title, params restore", async ({
-    page,
-  }) => {
-    await loadFirstTopTrack(page);
-    // give the track some tuning first
-    await page.locator("#tuning").click();
-    await setRangeValue(page, "#threshold", "50");
-    await page.locator("#tuning-apply").click();
-    await expect(page).toHaveURL(/\?thresh=50$/);
-
-    await page.locator("#play-mode-select").selectOption("autocanonizer");
-    await expect(page).toHaveURL(/\?mode=autocanonizer$/);
-    await expect(page.locator("#tuning")).toHaveClass(/is-hidden/);
-    await expect(page.locator("#track-info")).toHaveClass(/is-hidden/);
-    await expect(page.locator("#viz-select")).toBeDisabled();
-    await expect(page.locator("#jukebox-viz")).toHaveClass(/is-canonizer/);
-    await expect(page.locator("#viz-beats-label")).toHaveClass(/is-hidden/);
-    await expect(page.locator("#viz-now-playing")).toContainText(
-      "(autocanonized)",
-    );
-    await expect(page.locator(".canonizer-finish")).toBeVisible();
-
-    await page.locator("#play-mode-select").selectOption("jukebox");
-    await expect(page).toHaveURL(/\?thresh=50$/); // tuning params restored
-    await expect(page.locator("#tuning")).not.toHaveClass(/is-hidden/);
-    await expect(page.locator("#viz-now-playing")).not.toContainText(
-      "(autocanonized)",
-    );
-  });
-
-  test("deep link with mode=autocanonizer starts in autocanonizer", async ({
+test.describe("removed play modes", () => {
+  test("a deep link with an old mode param plays in the jukebox", async ({
     page,
   }) => {
     const trackId = await loadFirstTopTrack(page);
@@ -40,31 +10,10 @@ test.describe("play mode switching", () => {
     await expect(page.locator("#viz-panel")).not.toHaveClass(/\bhidden\b/, {
       timeout: 45_000,
     });
-    await expect(page.locator("#play-mode-select")).toHaveValue(
-      "autocanonizer",
-    );
-    await expect(page.locator("#jukebox-viz")).toHaveClass(/is-canonizer/);
-  });
-
-  test("canonizer finish-out checkbox persists fj-canonizer-finish", async ({
-    page,
-  }) => {
-    await loadFirstTopTrack(page);
-    const checkbox = page.locator("#canonizer-finish");
-    // CSS shows the checkbox only while in autocanonizer mode
-    await expect(checkbox).toBeHidden();
-    await page.locator("#play-mode-select").selectOption("autocanonizer");
-    await expect(checkbox).toBeVisible();
-    await expect(checkbox).not.toBeChecked();
-    await checkbox.check();
-    expect(
-      await page.evaluate(() => localStorage.getItem("fj-canonizer-finish")),
-    ).toBe("true");
-    await page.reload();
-    await expect(page.locator("#viz-panel")).not.toHaveClass(/\bhidden\b/, {
-      timeout: 45_000,
-    });
-    await expect(page.locator("#canonizer-finish")).toBeChecked();
+    await expect(page.locator("#play-mode-select")).toHaveCount(0);
+    await expect(page.locator("#viz-layer")).toBeVisible();
+    await expect(page.locator("#viz-select")).toBeEnabled();
+    await expect(page.locator("#tuning")).not.toHaveClass(/is-hidden/);
   });
 });
 
