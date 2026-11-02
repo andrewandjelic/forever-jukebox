@@ -797,6 +797,10 @@ def download_source_audio(
 
     ydl_opts = {
         "quiet": True,
+        # quiet still draws the progress bar on stdout, and a server whose
+        # console has gone away fails every download on that write ([WinError
+        # 233]). progress_hook reports progress instead.
+        "noprogress": True,
         "skip_download": False,
         "format": "bestaudio/best",
         "noplaylist": True,
