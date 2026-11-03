@@ -1,4 +1,5 @@
 export const MATERIAL_SYMBOL_ICON_NAMES = [
+  "3d_rotation",
   "add_circle",
   "arrow_downward",
   "arrow_drop_down",
@@ -33,6 +34,7 @@ export const MATERIAL_SYMBOL_ICON_NAMES = [
   "star",
   "timer",
   "tune",
+  "videocam",
   "volume_off",
   "volume_up",
 ] as const;
