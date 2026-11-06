@@ -575,6 +575,9 @@ class CanvasViz {
   private readonly overlayCtx: CanvasRenderingContext2D;
 
   private size = { width: 0, height: 0 };
+  // Where the layout sits inside the canvas: the container's box, between
+  // the viz's control bars, while the canvas itself runs under them.
+  private band = { x: 0, y: 0, width: 0, height: 0 };
   private data: VisualizationData | null = null;
   private positions: Array<{ x: number; y: number }> = [];
   private center = { x: 0, y: 0 };
@@ -909,12 +912,25 @@ class CanvasViz {
     if (rect.width === 0 || rect.height === 0) {
       return;
     }
+    // Cover the whole viz box (the container's parent) so ripples, trails and
+    // stars reach its edges instead of stopping at the control bars.
+    const parent = this.container.parentElement?.getBoundingClientRect();
+    const outer = parent && parent.width > 0 && parent.height > 0 ? parent : rect;
+    const x = (rect.left ?? 0) - (outer.left ?? 0);
+    const y = (rect.top ?? 0) - (outer.top ?? 0);
+    this.band = { x, y, width: rect.width, height: rect.height };
+    for (const canvas of [this.baseCanvas, this.overlayCanvas]) {
+      canvas.style.left = `${-x}px`;
+      canvas.style.top = `${-y}px`;
+      canvas.style.width = `${outer.width}px`;
+      canvas.style.height = `${outer.height}px`;
+    }
     const dpr = window.devicePixelRatio || 1;
-    this.size = { width: rect.width, height: rect.height };
-    this.baseCanvas.width = rect.width * dpr;
-    this.baseCanvas.height = rect.height * dpr;
-    this.overlayCanvas.width = rect.width * dpr;
-    this.overlayCanvas.height = rect.height * dpr;
+    this.size = { width: outer.width, height: outer.height };
+    this.baseCanvas.width = outer.width * dpr;
+    this.baseCanvas.height = outer.height * dpr;
+    this.overlayCanvas.width = outer.width * dpr;
+    this.overlayCanvas.height = outer.height * dpr;
     this.baseCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (this.data) {
@@ -929,16 +945,21 @@ class CanvasViz {
     if (!this.data) {
       return;
     }
-    const { width, height } = this.size;
-    this.center = { x: width / 2, y: height / 2 };
-    this.basePositions = this.positioner(
-      this.data,
-      width,
-      height,
-      this.travelPhase,
-    );
+    const { x, y, width, height } = this.band;
+    this.center = { x: x + width / 2, y: y + height / 2 };
+    this.basePositions = this.layout(this.data);
     this.positions = this.placePositions();
     this.bendCache.clear();
+  }
+
+  // The positioner's layout, moved into the band.
+  private layout(data: VisualizationData) {
+    const { x, y, width, height } = this.band;
+    return this.positioner(data, width, height, this.travelPhase).map((p) => ({
+      ...p,
+      x: p.x + x,
+      y: p.y + y,
+    }));
   }
 
   private computeEdgeGeometry() {
@@ -1765,15 +1786,9 @@ class CanvasViz {
         (Math.PI * 2);
     }
     if (this.travel) {
-      const { width, height } = this.size;
       this.travelPhase =
         (this.travelPhase + (elapsed / (this.travel * this.beatMs)) * level) % 1;
-      this.basePositions = this.positioner(
-        this.data,
-        width,
-        height,
-        this.travelPhase,
-      );
+      this.basePositions = this.layout(this.data);
     }
     this.tumbleAngle =
       (this.tumbleAngle +
@@ -2865,7 +2880,9 @@ export class JukeboxViz {
   static createClassicPositioner(): Positioner {
     return (data: VisualizationData, width: number, height: number) => {
       const count = data.beats.length;
-      const radius = Math.min(width, height) * 0.48;
+      // Leaves room for the waveform ring's spikes (WAVE_RING_RATIO) and the
+      // playhead dot, which would otherwise clip at the canvas edges.
+      const radius = Math.min(width, height) * 0.42;
       const cx = width / 2;
       const cy = height / 2;
       return Array.from({ length: count }, (_, i) => {

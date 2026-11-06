@@ -2332,6 +2332,25 @@ body.listen-active #app {
   max-width: none;
 }
 
+/* The viz fills the page, so there's nothing to scroll clear of the floating
+   Jay-Z button; on wide screens it sits in the footer's empty corner. Narrow
+   screens keep the room, since the footer text runs under the button. */
+@media (min-width: 720px) {
+  body.listen-active #app {
+    padding-bottom: 0;
+  }
+}
+
+/* Trim the chrome around the viz so it gets the height. */
+body.listen-active #play-menu {
+  padding: 4px 0 12px;
+}
+
+body.listen-active .site-footer {
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
 body.listen-active [data-tab-panel="play"]:not(.hidden),
 body.listen-active #viz-panel:not(.hidden) {
   flex: 1 1 auto;
@@ -2474,6 +2493,14 @@ body.listen-active #viz-panel .viz {
   justify-content: space-between;
   align-items: center;
   margin: 12px 12px 0;
+}
+
+/* The viz canvas runs under both bars (JukeboxViz resize), so they stack
+   above it. */
+.viz-top,
+.viz-bottom {
+  position: relative;
+  z-index: 1;
 }
 
 .viz-actions {

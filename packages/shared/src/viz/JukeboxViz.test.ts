@@ -121,6 +121,9 @@ describe("JukeboxViz", () => {
       100
     );
     expect(points.length).toBe(4);
+    // Spiked ring (radius * 1.08) stays inside the canvas.
+    const radius = Math.hypot(points[0].x - 50, points[0].y - 50);
+    expect(radius * 1.08).toBeLessThan(48);
   });
 
   it("tracks jump line updates", () => {
