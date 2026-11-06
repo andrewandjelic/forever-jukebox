@@ -4645,10 +4645,23 @@ body[data-style="fuzz"]:not(.theme-light) .viz::before {
   to { translate: 300px 300px; }
 }
 
-/* The orb, with rays bursting from it over a shaded centre, turning slowly.
-   The orb swells with the beat; the rays run from the centre, so the swell
-   leaves them in place. */
+/* Rays burst from the middle, turning slowly. The layer runs half a viewport
+   past every edge of the box, so it still covers the box when turned. */
 body[data-style="fuzz"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: -50vmax;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(244, 239, 228, 0.09) 0deg 0.7deg, transparent 0.7deg 6deg);
+  animation: fuzz-spin 80s linear infinite;
+  will-change: transform;
+}
+
+/* The orb on its shaded centre, turning with the rays and swelling with the
+   beat. It sits in .viz-layer, the band between the control bars where the
+   ring is laid out, so it stays centred in the ring. */
+body[data-style="fuzz"]:not(.theme-light) .viz-layer::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -4656,8 +4669,7 @@ body[data-style="fuzz"]:not(.theme-light) .viz::after {
   pointer-events: none;
   background:
     url("./fuzz-orb.svg") 50% 50% / contain no-repeat,
-    radial-gradient(circle closest-side at 50% 50%, #120E0C 0 34%, rgba(18, 14, 12, 0) 70%),
-    repeating-conic-gradient(from 0deg at 50% 50%, rgba(244, 239, 228, 0.09) 0deg 0.7deg, transparent 0.7deg 6deg);
+    radial-gradient(circle closest-side at 50% 50%, #120E0C 0 40%, rgba(18, 14, 12, 0) 78%);
   transform: scale(calc(1 + var(--pound, 0) * 0.05));
   animation: fuzz-spin 80s linear infinite;
   transition: opacity 1.2s ease;
@@ -4665,7 +4677,7 @@ body[data-style="fuzz"]:not(.theme-light) .viz::after {
 }
 
 /* Riding, the playhead runs through the middle: the orb steps back. */
-body[data-style="fuzz"]:not(.theme-light) .viz:has(.viz-ride-button.is-on)::after {
+body[data-style="fuzz"]:not(.theme-light) .viz:has(.viz-ride-button.is-on) .viz-layer::before {
   opacity: 0.3;
 }
 
@@ -4673,14 +4685,17 @@ body[data-style="fuzz"]:not(.theme-light) .viz:has(.viz-ride-button.is-on)::afte
   to { rotate: 360deg; }
 }
 
-/* The arcs sway forward with the beat. */
+/* The arcs sway forward with the beat. The layer is isolated so the orb stays
+   under the arcs even when reduced motion drops the transform. */
 body[data-style="fuzz"]:not(.theme-light) .viz-layer {
+  isolation: isolate;
   transform: scale(calc(1 + var(--pound, 0) * 0.012));
 }
 
 @media (prefers-reduced-motion: reduce) {
   body[data-style="fuzz"]:not(.theme-light) .viz::before,
   body[data-style="fuzz"]:not(.theme-light) .viz::after,
+  body[data-style="fuzz"]:not(.theme-light) .viz-layer::before,
   body[data-style="fuzz"]:not(.theme-light) .viz-layer {
     transform: none;
     animation: none;
