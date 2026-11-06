@@ -47,6 +47,14 @@ describe("styleForGenres", () => {
     expect(styleForGenres(g(["Electronic---Dubstep", 0.5]))).toBe("inferno");
   });
 
+  it("gives stoner, desert and sludge rock the Fuzz style", () => {
+    expect(styleForGenres(g(["Rock---Stoner Rock", 0.4], ["Rock---Doom Metal", 0.2]))).toBe("fuzz");
+    expect(styleForGenres(g(["Rock---Desert Rock", 0.3]))).toBe("fuzz");
+    expect(styleForGenres(g(["Rock---Sludge Metal", 0.4]))).toBe("fuzz");
+    // Psychedelic rock without the stoner tag stays Psychedelic.
+    expect(styleForGenres(g(["Rock---Psychedelic Rock", 0.4]))).toBe("psychedelic");
+  });
+
   it("adds up related styles, so several weaker matches can beat one stronger", () => {
     // Smuglianka: Opera alone outscores Military, but Military + Marches win.
     expect(styleForGenres(g(["Classical---Opera", 0.21], ["Brass & Military---Military", 0.2], ["Brass & Military---Marches", 0.15]))).toBe("soviet");

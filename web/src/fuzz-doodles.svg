@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <!-- Fuzz style: a tile of psychedelic ink doodles (spiral, eye, mushroom,
+       waves, flame, planet, sparkles, moon, bolt), white line on black. -->
+  <g fill="none" stroke="#F4EFE4" stroke-opacity="0.22" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 52a3 3 0 0 1 6 0a6 6 0 0 1-12 0a9 9 0 0 1 18 0a12 12 0 0 1-24 0a15 15 0 0 1 30 0a18 18 0 0 1-36 0"/>
+    <path d="M168 48Q200 22 232 48Q200 74 168 48Z"/>
+    <circle cx="200" cy="48" r="11"/>
+    <path d="M178 36l-5-8M190 31l-2-9M200 30v-10M210 31l2-9M222 36l5-8"/>
+    <path d="M28 182C30 150 90 150 92 182Z"/>
+    <path d="M50 182C48 196 46 208 44 214H76C74 208 72 196 70 182"/>
+    <circle cx="46" cy="170" r="4"/>
+    <circle cx="62" cy="163" r="5"/>
+    <circle cx="78" cy="171" r="3.5"/>
+    <path d="M108 112q9-9 18 0t18 0t18 0t18 0t18 0M108 124q9-9 18 0t18 0t18 0t18 0t18 0M108 136q9-9 18 0t18 0t18 0t18 0t18 0"/>
+    <path d="M250 206c-18-10-16-34 0-52c-2 14 14 20 10 34c-2 10-6 14-10 18Z"/>
+    <path d="M250 196c-6-6-4-16 2-22"/>
+    <circle cx="150" cy="232" r="14"/>
+    <ellipse cx="150" cy="232" rx="28" ry="7" transform="rotate(-18 150 232)"/>
+    <path d="M112 22l3 9l9 3l-9 3l-3 9l-3-9l-9-3l9-3ZM272 92l2 7l7 2l-7 2l-2 7l-2-7l-7-2l7-2ZM22 262l2 7l7 2l-7 2l-2 7l-2-7l-7-2l7-2ZM206 128l3 9l9 3l-9 3l-3 9l-3-9l-9-3l9-3Z"/>
+    <circle cx="256" cy="262" r="5"/>
+    <circle cx="256" cy="262" r="11"/>
+    <circle cx="256" cy="262" r="17"/>
+    <path d="M100 252a16 16 0 1 0 0 30a12 12 0 1 1 0-30Z"/>
+    <path d="M150 62l-10 18h10l-8 18"/>
+    <path d="M14 108c8-12 16 12 24 0s16 12 24 0"/>
+  </g>
+  <g fill="#F4EFE4" fill-opacity="0.22">
+    <circle cx="200" cy="48" r="4"/>
+    <circle cx="92" cy="72" r="2"/>
+    <circle cx="276" cy="30" r="2"/>
+    <circle cx="128" cy="180" r="2"/>
+    <circle cx="20" cy="220" r="2"/>
+    <circle cx="208" cy="208" r="2"/>
+    <circle cx="282" cy="150" r="2"/>
+    <circle cx="160" cy="290" r="2"/>
+  </g>
+</svg>

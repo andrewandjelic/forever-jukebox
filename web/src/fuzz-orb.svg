@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="-250 -250 500 500">
+  <!-- Fuzz style: a swirling red-and-blue orb, ringed in white and black ink.
+       The canvas is padded so `background-size: contain` makes the orb about
+       two fifths of the visualizer's short side, inside the beat ring. -->
+  <defs>
+    <path id="arm" d="M0 0C18-34 60-58 96-26C66-36 30-16 0 0Z"/>
+    <clipPath id="ball"><circle r="96"/></clipPath>
+  </defs>
+  <g opacity="0.5">
+  <g clip-path="url(#ball)">
+    <circle r="96" fill="#0D1B6E"/>
+    <g stroke="#000" stroke-width="3" stroke-linejoin="round">
+      <use href="#arm" fill="#D3161F"/>
+      <use href="#arm" fill="#2F5BEA" transform="rotate(36)"/>
+      <use href="#arm" fill="#D3161F" transform="rotate(72)"/>
+      <use href="#arm" fill="#2F5BEA" transform="rotate(108)"/>
+      <use href="#arm" fill="#D3161F" transform="rotate(144)"/>
+      <use href="#arm" fill="#2F5BEA" transform="rotate(180)"/>
+      <use href="#arm" fill="#D3161F" transform="rotate(216)"/>
+      <use href="#arm" fill="#2F5BEA" transform="rotate(252)"/>
+      <use href="#arm" fill="#D3161F" transform="rotate(288)"/>
+      <use href="#arm" fill="#2F5BEA" transform="rotate(324)"/>
+    </g>
+    <g fill="none" stroke="#F4EFE4" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.75">
+      <path d="M14-10C34-30 58-38 80-30"/>
+      <path d="M14-10C34-30 58-38 80-30" transform="rotate(72)"/>
+      <path d="M14-10C34-30 58-38 80-30" transform="rotate(144)"/>
+      <path d="M14-10C34-30 58-38 80-30" transform="rotate(216)"/>
+      <path d="M14-10C34-30 58-38 80-30" transform="rotate(288)"/>
+    </g>
+    <circle r="96" fill="none" stroke="#000" stroke-opacity="0.55" stroke-width="40"/>
+  </g>
+  <circle r="98" fill="none" stroke="#F4EFE4" stroke-width="4"/>
+  <circle r="103" fill="none" stroke="#000" stroke-width="6"/>
+  </g>
+</svg>

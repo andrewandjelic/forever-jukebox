@@ -4530,6 +4530,163 @@ body[data-style="irie"]:not(.theme-light) .viz-layer {
   }
 }
 
+/* ===== Fuzz skin: a psychedelic ink drawing for stoner, desert and sludge
+   rock. Bone-white doodles on black, rays bursting from a swirling red and
+   blue orb, every strand outlined in black ink, and fat red poster
+   lettering. The orb turns slowly and swells with each heavy beat
+   (beatPound.ts, 0.3 s decay). ===== */
+body[data-style="fuzz"]:not(.theme-light) {
+  --bg: #070707;
+  --text: #F4EFE4;
+  --text-rgb: 244, 239, 228;
+  --muted: #B5AFA4;
+  --accent: #E3262B;
+  --title-accent: #E3262B;
+  --title-glow: rgba(36, 72, 216, 0.5);
+  --surface-panel: rgba(8, 8, 8, 0.92);
+  --surface-hero: rgba(6, 6, 6, 0.94);
+  --surface-control: #121212;
+  --surface-control-hover: #1E1A1A;
+  --border-panel: rgba(244, 239, 228, 0.3);
+  --border-hero: rgba(244, 239, 228, 0.45);
+  --border-control: rgba(244, 239, 228, 0.35);
+  --viz-bg: radial-gradient(circle at 50% 50%, #17120F 0%, #0B0909 58%, #030303 100%);
+  --viz-shadow: rgba(0, 0, 0, 0.9);
+  --edge-selected: #FF3B30;
+  --beat-highlight: #FFFFFF;
+  --wave-1: #2448D8;
+  --wave-2: #F4EFE4;
+  --wave-3: #E3262B;
+  /* The orb's colors: beats step from blue through bone white to red. */
+  --beat-colors: #2448D8, #4F86FF, #F4EFE4, #FF5A3C, #D3161F;
+  --beat-spread: even;
+  /* Every strand inked in black, like the outlines of the drawing. */
+  --arc-halo: rgba(0, 0, 0, 0.9);
+  --arc-width: 0.7;
+  --arc-glow: 0.3;
+  /* A little smoke. */
+  --viz-trails: 0.3;
+  background:
+    radial-gradient(ellipse at 50% 30%, transparent 0 30%, rgba(0, 0, 0, 0.8) 100%),
+    url("./fuzz-doodles.svg") 0 0 / 300px 300px,
+    #070707;
+  background-attachment: fixed;
+}
+
+body[data-style="fuzz"]:not(.theme-light) .hero,
+body[data-style="fuzz"]:not(.theme-light) .panel {
+  border-width: 2px;
+  border-radius: 18px;
+  box-shadow: 0 0 0 3px #000, 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+body[data-style="fuzz"]:not(.theme-light) .hero-title {
+  border: none;
+  box-shadow: none;
+}
+
+/* Fat red poster letters, outlined blue, then white, then black. The rings
+   are text shadows, which draw once: a stack of drop-shadow filters is
+   redrawn every frame and halved the visualizer's frame rate, and a text
+   stroke painted under the fill gets covered by the fill's shadows. */
+body[data-style="fuzz"]:not(.theme-light) .hero-title-neon,
+body[data-style="fuzz"]:not(.theme-light) .hero-title-jukebox {
+  font-family: "Spicy Rice", serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  letter-spacing: 0.06em;
+  color: var(--title-accent);
+  text-shadow:
+    2.5px 0 #2448D8, 1.8px 1.8px #2448D8, 0 2.5px #2448D8, -1.8px 1.8px #2448D8, -2.5px 0 #2448D8, -1.8px -1.8px #2448D8, 0 -2.5px #2448D8, 1.8px -1.8px #2448D8,
+    4px 0 #F4EFE4, 3.5px 2px #F4EFE4, 2px 3.5px #F4EFE4, 0 4px #F4EFE4, -2px 3.5px #F4EFE4, -3.5px 2px #F4EFE4, -4px 0 #F4EFE4, -3.5px -2px #F4EFE4, -2px -3.5px #F4EFE4, 0 -4px #F4EFE4, 2px -3.5px #F4EFE4, 3.5px -2px #F4EFE4,
+    6px 0 #000, 5.2px 3px #000, 3px 5.2px #000, 0 6px #000, -3px 5.2px #000, -5.2px 3px #000, -6px 0 #000, -5.2px -3px #000, -3px -5.2px #000, 0 -6px #000, 3px -5.2px #000, 5.2px -3px #000;
+  filter: none;
+  animation: none;
+}
+
+body[data-style="fuzz"]:not(.theme-light) button,
+body[data-style="fuzz"]:not(.theme-light) .tab-btn {
+  border-radius: 999px;
+}
+
+body[data-style="fuzz"]:not(.theme-light) button:hover,
+body[data-style="fuzz"]:not(.theme-light) .tab-btn:hover {
+  border-color: #4F86FF;
+  box-shadow: 0 0 12px rgba(79, 134, 255, 0.45);
+}
+
+body[data-style="fuzz"]:not(.theme-light) .tab-btn.active {
+  background: #B3141B;
+  border-color: #4F86FF;
+  color: var(--text);
+}
+
+body[data-style="fuzz"]:not(.theme-light) .viz {
+  isolation: isolate;
+  border: 2px solid rgba(244, 239, 228, 0.6);
+  border-radius: 18px;
+  box-shadow: 0 0 0 3px #000, inset 0 0 90px rgba(0, 0, 0, 0.7);
+}
+
+/* The doodles drift slowly by one tile, then repeat seamlessly. The layer
+   is a tile larger than the box, and it only moves (no repaint). */
+body[data-style="fuzz"]:not(.theme-light) .viz::before {
+  content: "";
+  position: absolute;
+  inset: -300px 0 0 -300px;
+  z-index: -1;
+  pointer-events: none;
+  background: url("./fuzz-doodles.svg") 0 0 / 300px 300px;
+  animation: fuzz-drift 90s linear infinite;
+  will-change: transform;
+}
+
+@keyframes fuzz-drift {
+  to { translate: 300px 300px; }
+}
+
+/* The orb, with rays bursting from it over a shaded centre, turning slowly.
+   The orb swells with the beat; the rays run from the centre, so the swell
+   leaves them in place. */
+body[data-style="fuzz"]:not(.theme-light) .viz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url("./fuzz-orb.svg") 50% 50% / contain no-repeat,
+    radial-gradient(circle closest-side at 50% 50%, #120E0C 0 34%, rgba(18, 14, 12, 0) 70%),
+    repeating-conic-gradient(from 0deg at 50% 50%, rgba(244, 239, 228, 0.09) 0deg 0.7deg, transparent 0.7deg 6deg);
+  transform: scale(calc(1 + var(--pound, 0) * 0.05));
+  animation: fuzz-spin 80s linear infinite;
+  transition: opacity 1.2s ease;
+  will-change: transform, opacity;
+}
+
+/* Riding, the playhead runs through the middle: the orb steps back. */
+body[data-style="fuzz"]:not(.theme-light) .viz:has(.viz-ride-button.is-on)::after {
+  opacity: 0.3;
+}
+
+@keyframes fuzz-spin {
+  to { rotate: 360deg; }
+}
+
+/* The arcs sway forward with the beat. */
+body[data-style="fuzz"]:not(.theme-light) .viz-layer {
+  transform: scale(calc(1 + var(--pound, 0) * 0.012));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-style="fuzz"]:not(.theme-light) .viz::before,
+  body[data-style="fuzz"]:not(.theme-light) .viz::after,
+  body[data-style="fuzz"]:not(.theme-light) .viz-layer {
+    transform: none;
+    animation: none;
+  }
+}
+
 /* ===== Jay-Z head-bob button (JayZBob.tsx) ===== */
 /* Room to scroll page content clear of the floating button. */
 #app {
