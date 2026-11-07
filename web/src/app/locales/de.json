@@ -104,7 +104,13 @@
     "wrappingUp": "Wird abgeschlossen",
     "queuedNext": "In der Warteschlange • Als Nächstes",
     "queuedAhead_one": "In der Warteschlange • {{count}} vor dir",
-    "queuedAhead_other": "In der Warteschlange • {{count}} vor dir"
+    "queuedAhead_other": "In der Warteschlange • {{count}} vor dir",
+    "details": "Details",
+    "hideDetails": "Details ausblenden",
+    "copyDetails": "Details kopieren",
+    "detailsCopied": "Details kopiert",
+    "noDetails": "Zu diesem Fehler wurden keine Details aufgezeichnet.",
+    "detailsFailed": "Details konnten nicht geladen werden: {{error}}"
   },
   "errors": {
     "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut oder erstelle ein Issue auf GitHub.",

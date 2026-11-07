@@ -13,7 +13,11 @@ export function retryTrack(jobId: string): void {
   }
   // Hide the link immediately and mark this retry in flight, so a repeat
   // failure of the same job consumes the offer instead of re-showing it.
-  useAppStore.setState({ analysisRetryJobId: null, retryInFlightJobId: jobId });
+  useAppStore.setState({
+    analysisRetryJobId: null,
+    analysisFailedJobId: null,
+    retryInFlightJobId: jobId,
+  });
   void loadTrackByJobId(getAppContext(), deps, jobId);
 }
 

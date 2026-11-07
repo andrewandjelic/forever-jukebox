@@ -280,6 +280,7 @@ export async function tryLoadExistingTrackByName(
           }),
         false,
       );
+      useAppStore.setState({ analysisFailedJobId: jobId });
       if (isRetryableFetchFailure(response)) {
         // A fresh search always re-offers the retry link and starts a new
         // retry cycle, even for a job the user retried earlier.

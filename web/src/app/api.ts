@@ -262,6 +262,18 @@ export async function fetchAudio(jobId: string, signal?: AbortSignal) {
   return response.arrayBuffer();
 }
 
+// A failed job's log (logs/<id>.log on the server); null when it has none.
+export async function fetchJobLog(jobId: string): Promise<string | null> {
+  const response = await fetch(`/api/logs/${encodeURIComponent(jobId)}`);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status})`);
+  }
+  return response.text();
+}
+
 function clientAnalysisUrl(jobId: string, action: string) {
   return `/api/analysis/${encodeURIComponent(jobId)}/client/${action}`;
 }
@@ -287,11 +299,36 @@ export async function submitClientAnalysis(jobId: string, analysis: unknown) {
   });
 }
 
-export async function failClientAnalysis(jobId: string, error: string) {
+// What the server's failure log records beside the error.
+export type ClientFailureContext = {
+  stage?: string;
+  percent?: number;
+  duration_s?: number;
+  stack?: string;
+  browser?: string;
+  cpu_threads?: number;
+  device_memory_gb?: number;
+};
+
+export async function failClientAnalysis(
+  jobId: string,
+  error: string,
+  context: ClientFailureContext = {},
+) {
   await fetchJson(clientAnalysisUrl(jobId, "fail"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ error: error.slice(0, 500) }),
+    body: JSON.stringify({
+      ...context,
+      error: error.slice(0, 500),
+      stage: context.stage?.slice(0, 40),
+      percent:
+        context.percent === undefined
+          ? undefined
+          : Math.min(100, Math.max(0, Math.round(context.percent))),
+      stack: context.stack?.slice(0, 4000),
+      browser: context.browser?.slice(0, 400),
+    }),
   });
 }
 

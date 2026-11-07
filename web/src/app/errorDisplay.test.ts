@@ -27,6 +27,13 @@ describe("errorDisplay", () => {
     )).toBe("Sorry, the max track length for this server is 12 minutes.");
   });
 
+  it("keeps a browser analysis failure's reason on a YouTube track", () => {
+    expect(formatErrorForDisplay(
+      "ERROR: Browser analysis failed: Array buffer allocation failed",
+      { sourceProvider: "youtube" },
+    )).toBe("Browser analysis failed: Array buffer allocation failed");
+  });
+
   it("uses source-specific copy for fetch failures", () => {
     expect(formatErrorForDisplay(
       "ERROR: Unable to download video data.",

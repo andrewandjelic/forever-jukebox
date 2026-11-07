@@ -2750,6 +2750,38 @@ body.listen-active #viz-panel .viz {
   text-decoration: underline;
 }
 
+/* A failed load's log, opened from the status row's Details button. */
+.status-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.status-details-log {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-panel);
+  border-radius: 8px;
+  background: rgba(var(--text-rgb), 0.05);
+  color: var(--text);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.status-details-note {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .spinner {
   width: 16px;
   height: 16px;

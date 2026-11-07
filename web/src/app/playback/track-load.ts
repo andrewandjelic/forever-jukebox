@@ -78,10 +78,13 @@ let pollController: AbortController | null = null;
 // Show the retry link for a transient fetch failure, unless this failure is
 // the result of a retry the user already triggered for the same job — in
 // which case the offer is consumed so the button only appears once.
-function offerRetryLinkForFailure(
+// Offers the failure's Details, and a one-click retry when it may be
+// transient.
+function offerFailureActions(
   response: AnalysisResponse | null,
   jobId: string,
 ): void {
+  useAppStore.setState({ analysisFailedJobId: jobId });
   const retried = useAppStore.getState().retryInFlightJobId === jobId;
   if (retried) {
     useAppStore.setState({ retryInFlightJobId: null });
@@ -429,7 +432,7 @@ export async function pollAnalysis(
             }),
           false,
         );
-        offerRetryLinkForFailure(response, jobId);
+        offerFailureActions(response, jobId);
         return;
       } else if (isAnalysisComplete(response)) {
         if (!useAppStore.getState().audioLoaded) {
@@ -492,7 +495,7 @@ async function continueTrackLoadWithResponse(
         }),
       false,
     );
-    offerRetryLinkForFailure(response, response.id);
+    offerFailureActions(response, response.id);
     return false;
   }
   if (isAnalysisComplete(response)) {

@@ -104,7 +104,13 @@
     "wrappingUp": "Terminando",
     "queuedNext": "En cola • Siguiente",
     "queuedAhead_one": "En cola • {{count}} por delante de ti",
-    "queuedAhead_other": "En cola • {{count}} por delante de ti"
+    "queuedAhead_other": "En cola • {{count}} por delante de ti",
+    "details": "Detalles",
+    "hideDetails": "Ocultar detalles",
+    "copyDetails": "Copiar detalles",
+    "detailsCopied": "Detalles copiados",
+    "noDetails": "No se registraron detalles de este error.",
+    "detailsFailed": "No se pudieron cargar los detalles: {{error}}"
   },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo o reporta un problema en GitHub.",

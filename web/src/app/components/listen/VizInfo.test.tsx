@@ -1,6 +1,7 @@
 import { Profiler } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { fetchJobLog } from "../../api";
 import { useAppStore } from "../../store";
 import { loadPlaylistIndex } from "../../playlist-actions";
 import { StatusPanel } from "./StatusPanel";
@@ -8,6 +9,11 @@ import { VizInfo } from "./VizInfo";
 
 vi.mock("../../playlist-actions", () => ({
   loadPlaylistIndex: vi.fn(async () => true),
+}));
+
+vi.mock("../../api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../api")>()),
+  fetchJobLog: vi.fn(),
 }));
 
 describe("VizInfo", () => {
@@ -163,6 +169,8 @@ describe("StatusPanel", () => {
         lastJobId: null,
         playlist: { tracks: [], currentIndex: -1 },
         playlistModalOpen: false,
+        analysisRetryJobId: null,
+        analysisFailedJobId: null,
       });
     });
   });
@@ -291,5 +299,53 @@ describe("StatusPanel", () => {
       useAppStore.setState({ lastTrackId: "a" });
     });
     expect(button.classList.contains("hidden")).toBe(true);
+  });
+
+  it("offers a failed load's log under Details", async () => {
+    vi.mocked(fetchJobLog).mockResolvedValue(
+      "Job job-1 failed during browser analysis\n  Error: RangeError: Array buffer allocation failed\n",
+    );
+    act(() => {
+      useAppStore.setState({
+        analysisStatusText: () => "Browser analysis failed: Array buffer allocation failed",
+        analysisFailedJobId: "job-1",
+      });
+    });
+    render(<StatusPanel />);
+
+    act(() => {
+      screen.getByRole("button", { name: "Details" }).click();
+    });
+
+    expect(await screen.findByText(/failed during browser analysis/)).toBeTruthy();
+    expect(fetchJobLog).toHaveBeenCalledWith("job-1");
+    expect(screen.getByRole("button", { name: "Hide details" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Copy details" })).toBeTruthy();
+  });
+
+  it("says so when a failure left no log", async () => {
+    vi.mocked(fetchJobLog).mockResolvedValue(null);
+    act(() => {
+      useAppStore.setState({ analysisFailedJobId: "job-1" });
+    });
+    render(<StatusPanel />);
+
+    act(() => {
+      screen.getByRole("button", { name: "Details" }).click();
+    });
+
+    expect(await screen.findByText("No details were recorded for this failure.")).toBeTruthy();
+  });
+
+  it("offers Details only for a failed load that has settled", () => {
+    render(<StatusPanel />);
+    expect(screen.queryByRole("button", { name: "Details" })).toBeNull();
+
+    act(() => {
+      useAppStore.setState({ analysisFailedJobId: "job-1", analysisSpinning: true });
+    });
+    expect(screen.queryByRole("button", { name: "Details" })).toBeNull();
   });
 });
