@@ -44,6 +44,10 @@ folder. Search looks on YouTube; for exact title and artist matches, connect
 a free Spotify developer app under **Settings** (the gear), which walks you
 through it.
 
+If a song fails, click **Details** next to the error to see what went wrong,
+then **Copy details** to paste it into a message or a bug report. Every
+failure is also kept in `api/storage/logs/errors.log`.
+
 If you don't have them yet, the installers are at
 [python.org](https://www.python.org/downloads/) and
 [nodejs.org](https://nodejs.org/en/download) (choose the LTS version).

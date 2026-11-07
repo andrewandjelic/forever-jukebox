@@ -135,6 +135,38 @@ class ClientAnalysisTest(unittest.TestCase):
             "ERROR: Browser analysis failed: Array buffer allocation failed",
         )
 
+    def test_failure_context_goes_to_the_job_log(self) -> None:
+        self._queue_job("job-1")
+        self._claim("job-1")
+
+        self.client.post(
+            "/api/analysis/job-1/client/fail",
+            json={
+                "error": "RangeError: Array buffer allocation failed",
+                "stage": "decoding",
+                "percent": 2,
+                "duration_s": 4051.2,
+                "browser": "Mozilla/5.0 Chrome/142",
+                "cpu_threads": 8,
+                "device_memory_gb": 8,
+                "stack": "RangeError: Array buffer allocation failed\n    at decode",
+            },
+        )
+
+        log = (self.storage / "logs" / "job-1.log").read_text(encoding="utf-8")
+        self.assertIn("failed during browser analysis", log)
+        for expected in (
+            "Error:        RangeError: Array buffer allocation failed",
+            "Step:         decoding",
+            "Reached:      2%",
+            "Track length: 67:31",
+            "CPU threads:  8",
+            "Memory:       about 8 GB",
+            "    at decode",
+        ):
+            self.assertIn(expected, log)
+        self.assertIn("job-1", (self.storage / "logs" / "errors.log").read_text(encoding="utf-8"))
+
     def test_disabled_without_the_flag(self) -> None:
         self._queue_job("job-1")
         with patch.dict(os.environ, {"ALLOW_CLIENT_ANALYSIS": ""}):

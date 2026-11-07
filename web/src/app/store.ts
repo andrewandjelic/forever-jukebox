@@ -139,6 +139,9 @@ type ShellSlice = {
   // Job id offered for a one-click retry when a load failed with a
   // transient source fetch error; null hides the retry link.
   analysisRetryJobId: string | null;
+  // Job id of a failed load, whose failure log the status row offers under
+  // Details; null hides the button.
+  analysisFailedJobId: string | null;
   // Job id of a user-initiated retry currently loading. If this job fails
   // again the retry link is consumed rather than re-offered, so the button
   // only appears once per fresh load (a new search/reload re-enables it).
@@ -239,6 +242,7 @@ const createUiSlice: Slice<
     | "analysisSpinning"
     | "analysisProgressText"
     | "analysisRetryJobId"
+    | "analysisFailedJobId"
     | "retryInFlightJobId"
     | "listenTimeText"
     | "listenMultiplierTenths"
@@ -303,6 +307,7 @@ const createUiSlice: Slice<
     analysisSpinning: false,
     analysisProgressText: "",
     analysisRetryJobId: null,
+    analysisFailedJobId: null,
     retryInFlightJobId: null,
     listenTimeText: "00:00:00",
     listenMultiplierTenths: null,

@@ -31,6 +31,7 @@ from ..db import (
     youtube_jobs_finished_between,
 )
 from ..env import env_positive_float
+from ..failure_log import record_failure
 from ..paths import DB_PATH, STORAGE_ROOT
 from ..utils import get_logger
 from ..ytdlp_config import apply_ejs_config
@@ -653,13 +654,6 @@ def maybe_notify_youtube_failures(db_path: Path = DB_PATH) -> None:
     )
 
 
-def _write_failure_log(job_id: str, message: str) -> None:
-    log_dir = STORAGE_ROOT / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"{job_id}.log"
-    log_path.write_text(f"Job failed: {message}\n", encoding="utf-8")
-
-
 class _OwnershipLost(RuntimeError):
     """Raised to abort a download whose job was restarted under a new attempt."""
 
@@ -690,7 +684,7 @@ def cleanup_failure(
         logger.info("Discarded stale download failure for job %s", job_id)
         return
     if job is not None:
-        _write_failure_log(job_id, message)
+        record_failure(STORAGE_ROOT, job, job_id, "download", message)
     for candidate in (STORAGE_ROOT / "audio").glob(f"{job_id}.*"):
         if candidate.is_file():
             candidate.unlink()
@@ -710,7 +704,6 @@ def cleanup_failure(
         error_code=failure_code_for(message),
         stage="download",
     )
-    logger.info("Job %s failed: %s", job_id, message)
 
 
 def delete_job_artifacts(job_id: str, storage_root: Path = STORAGE_ROOT) -> None:

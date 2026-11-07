@@ -19,6 +19,7 @@ from api.db import (
     set_job_progress,
     set_job_status,
 )
+from api.failure_log import record_failure
 from api.routes.jobs_runtime import failure_code_for, log_event, maybe_notify_youtube_failures
 from api.utils import (
     analysis_path_for,
@@ -196,18 +197,12 @@ def _extract_track_duration_seconds(job_id: str) -> float | None:
 
 
 def cleanup_failed_job(job, error: Exception) -> None:
-    log_dir = STORAGE_ROOT / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / f"{job.id}.log"
     output_lines: list[str] = []
     if isinstance(error, JobFailure):
         output_lines = error.output_lines
-    with log_path.open("w", encoding="utf-8") as log_file:
-        log_file.write(f"Job failed: {error}\n")
-        if output_lines:
-            log_file.write("\n--- Engine output ---\n")
-            for line in output_lines:
-                log_file.write(line)
+    record_failure(
+        STORAGE_ROOT, job, job.id, "analysis", str(error), {"Engine output": "".join(output_lines)}
+    )
     input_path = audio_path_for(STORAGE_ROOT, job.id)
     if input_path is not None and input_path.is_file():
         input_path.unlink()
@@ -222,7 +217,6 @@ def cleanup_failed_job(job, error: Exception) -> None:
         error_code=failure_code_for(str(error)),
         stage="analysis",
     )
-    logger.info("Job %s failed: %s (log: %s)", job.id, error, log_path)
 
 
 def run_worker_loop() -> None:

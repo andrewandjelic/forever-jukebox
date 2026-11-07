@@ -24,12 +24,14 @@ export function setAnalysisStatus(
           analysisStatusText: message,
           analysisSpinning: true,
           analysisRetryJobId: null,
+          analysisFailedJobId: null,
         }
       : {
           analysisStatusText: message,
           analysisSpinning: false,
           analysisProgressText: "",
           analysisRetryJobId: null,
+          analysisFailedJobId: null,
         },
   );
 }
@@ -45,6 +47,7 @@ export function setLoadingProgress(
     analysisProgressText:
       typeof progress === "number" ? `${Math.round(progress)}%` : "",
     analysisRetryJobId: null,
+    analysisFailedJobId: null,
   });
 }
 

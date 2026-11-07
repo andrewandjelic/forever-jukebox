@@ -1,4 +1,5 @@
 import {
+  type ClientFailureContext,
   claimClientAnalysis,
   failClientAnalysis,
   fetchAudio,
@@ -58,26 +59,55 @@ function overallPercent(stage: string, progress: number): number {
   return 10;
 }
 
+// Where an attempt got to, for the server's failure log.
+type AttemptState = { stage: string; durationS?: number };
+
 async function analyzeAudio(
   jobId: string,
   report: (percent: number, force?: boolean) => void,
+  attempt: AttemptState,
 ): Promise<unknown> {
+  attempt.stage = "loading the engine";
   // Loaded on first use: the engine (ffmpeg.wasm, Essentia, madmom) is large.
   const [{ prepareAnalysisAudioWithFfmpeg }, { AnalysisWorkerClient }] = await Promise.all([
     import("@pwa/core/infrastructure/audio/ffmpegAudio"),
     import("@pwa/core/infrastructure/analysis/AnalysisWorkerClient"),
   ]);
+  attempt.stage = "fetching audio";
   const bytes = await fetchAudio(jobId);
   report(2);
+  attempt.stage = "decoding";
   const audio = await prepareAnalysisAudioWithFfmpeg(new File([bytes], jobId));
+  attempt.durationS = audio.duration;
   report(10, true);
   return new AnalysisWorkerClient().analyze({
     mono22050: audio.mono22050,
     mono44100: audio.mono44100,
     duration: audio.duration,
     trackMeta: { duration: audio.duration },
-    onProgress: ({ stage, progress }) => report(overallPercent(stage, progress)),
+    onProgress: ({ stage, progress }) => {
+      attempt.stage = stage;
+      report(overallPercent(stage, progress));
+    },
   });
+}
+
+function failureContext(
+  err: unknown,
+  attempt: AttemptState,
+  percent: number,
+): ClientFailureContext {
+  // deviceMemory is Chromium-only, and not in TypeScript's DOM types.
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return {
+    stage: attempt.stage,
+    percent,
+    duration_s: attempt.durationS,
+    stack: err instanceof Error ? err.stack : undefined,
+    browser: navigator.userAgent,
+    cpu_threads: navigator.hardwareConcurrency || undefined,
+    device_memory_gb: memory,
+  };
 }
 
 async function analyzeJob(jobId: string): Promise<void> {
@@ -97,19 +127,28 @@ async function analyzeJob(jobId: string): Promise<void> {
   };
   report(0, true);
   const heartbeat = window.setInterval(() => report(percent, true), HEARTBEAT_MS);
+  const attempt: AttemptState = { stage: "starting" };
   try {
     let analysis: unknown;
     try {
-      analysis = await analyzeAudio(jobId, report).catch(() =>
+      analysis = await analyzeAudio(jobId, report, attempt).catch(() =>
         // One retry covers transient failures, such as a worker script that
         // failed to load while the dev server restarted.
-        analyzeAudio(jobId, report),
+        analyzeAudio(jobId, report, attempt),
       );
     } catch (err) {
       // Only the analysis itself fails the job; a rejected submit below may
       // mean another tab took the claim over.
-      const message = err instanceof Error ? err.message : String(err);
-      await failClientAnalysis(jobId, message).catch(() => undefined);
+      // The name says what kind of failure it was (RangeError: out of memory).
+      const message =
+        err instanceof Error && err.name && err.name !== "Error"
+          ? `${err.name}: ${err.message}`
+          : err instanceof Error
+            ? err.message
+            : String(err);
+      await failClientAnalysis(jobId, message, failureContext(err, attempt, percent)).catch(
+        () => undefined,
+      );
       throw err;
     }
     await submitClientAnalysis(jobId, analysis);

@@ -104,7 +104,13 @@
     "wrappingUp": "Wrapping up",
     "queuedNext": "Queued • Next in line",
     "queuedAhead_one": "Queued • {{count}} ahead of you",
-    "queuedAhead_other": "Queued • {{count}} ahead of you"
+    "queuedAhead_other": "Queued • {{count}} ahead of you",
+    "details": "Details",
+    "hideDetails": "Hide details",
+    "copyDetails": "Copy details",
+    "detailsCopied": "Details copied",
+    "noDetails": "No details were recorded for this failure.",
+    "detailsFailed": "Couldn't load the details: {{error}}"
   },
   "errors": {
     "generic": "Something went wrong. Please try again or report an issue on GitHub.",

@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from ..db import claim_job_for_client, get_job, set_job_progress, set_job_status
 from ..env import env_flag
+from ..failure_log import record_failure
 from ..models import ClientFailureRequest, ClientProgressRequest
 from ..paths import DB_PATH, STORAGE_ROOT
 from ..route_responses import error_responses
@@ -105,11 +106,28 @@ async def submit_client_analysis(job_id: str, request: Request) -> JSONResponse:
     return JSONResponse({"status": "complete"})
 
 
+def _failure_details(payload: ClientFailureRequest) -> dict[str, object]:
+    details: dict[str, object] = {"Step": payload.stage}
+    if payload.percent is not None:
+        details["Reached"] = f"{payload.percent}%"
+    if payload.duration_s is not None:
+        minutes, seconds = divmod(round(payload.duration_s), 60)
+        details["Track length"] = f"{minutes}:{seconds:02d}"
+    details["Browser"] = payload.browser
+    details["CPU threads"] = payload.cpu_threads
+    if payload.device_memory_gb is not None:
+        details["Memory"] = f"about {payload.device_memory_gb:g} GB"
+    details["Stack"] = payload.stack
+    return details
+
+
 @router.post("/api/analysis/{job_id}/client/fail", responses=error_responses(403, 404, 409))
 def fail_client_analysis(job_id: str, payload: ClientFailureRequest) -> JSONResponse:
     job = _claimed_job(job_id)
     _require_processing(job)
-    error = f"{BROWSER_ANALYSIS_FAILED_PREFIX} {payload.error.strip() or 'unknown error'}"
+    reason = payload.error.strip() or "unknown error"
+    error = f"{BROWSER_ANALYSIS_FAILED_PREFIX} {reason}"
+    record_failure(STORAGE_ROOT, job, job_id, "browser analysis", reason, _failure_details(payload))
     set_job_status(DB_PATH, job_id, "failed", error)
     log_event(
         "job_failed",

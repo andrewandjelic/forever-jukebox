@@ -108,6 +108,15 @@ class SpotifyCredentials(BaseModel):
 
 class ClientFailureRequest(BaseModel):
     error: str = Field(max_length=500)
+    # Context for the failure log, all optional so older pages still report.
+    stage: str | None = Field(default=None, max_length=40)
+    percent: int | None = Field(default=None, ge=0, le=100)
+    duration_s: float | None = Field(default=None, ge=0)
+    stack: str | None = Field(default=None, max_length=4000)
+    browser: str | None = Field(default=None, max_length=400)
+    cpu_threads: int | None = Field(default=None, ge=0, le=4096)
+    # navigator.deviceMemory, which browsers round (and cap) for privacy.
+    device_memory_gb: float | None = Field(default=None, ge=0, le=1024)
 
 
 # Vetted windows only: a free-form value here would be one typo from a near-total sweep.
