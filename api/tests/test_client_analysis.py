@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from api.db import _connect, create_job, get_job, init_db
 from api.routes import client_analysis
+from api.routes.jobs_runtime import normalize_job_error
 from api.utils import read_analysis_json, resolve_analysis_path
 
 ANALYSIS = {
@@ -118,6 +119,21 @@ class ClientAnalysisTest(unittest.TestCase):
         job = get_job(self.db_path, "job-1")
         self.assertEqual(job.status, "failed")
         self.assertIn("out of memory", job.error)
+
+    def test_failure_reason_reaches_the_listener(self) -> None:
+        # Collapsed to the generic error, the web app would show a YouTube
+        # track's failed analysis as "YouTube fetch failed".
+        self._queue_job("job-1")
+        self._claim("job-1")
+        self.client.post(
+            "/api/analysis/job-1/client/fail",
+            json={"error": "Array buffer\n allocation failed"},
+        )
+
+        self.assertEqual(
+            normalize_job_error(get_job(self.db_path, "job-1").error),
+            "ERROR: Browser analysis failed: Array buffer allocation failed",
+        )
 
     def test_disabled_without_the_flag(self) -> None:
         self._queue_job("job-1")

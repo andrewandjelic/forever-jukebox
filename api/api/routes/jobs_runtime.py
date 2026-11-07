@@ -47,6 +47,7 @@ ERROR_YOUTUBE_UNREACHABLE = "ERROR: Unable to reach YouTube"
 ERROR_YOUTUBE_LIVE = "ERROR: Live YouTube videos are not supported."
 ERROR_TRACK_TOO_LONG = "ERROR: This track exceeds the server length limit."
 ERROR_GENERIC = "ERROR: Something went wrong. Please try again or report an issue on GitHub."
+BROWSER_ANALYSIS_FAILED_PREFIX = "Browser analysis failed:"
 # Lowercase yt-dlp error text shared by classification, notification, and retry.
 HTTP_403_ERROR_TEXT = "http error 403"
 
@@ -216,6 +217,11 @@ def normalize_job_error(raw: str | None) -> str:
         or "madmom-beats-lite extraction empty" in lowered
     ):
         return ERROR_NO_BEATS_DETECTED
+    # The visitor's own browser wrote this (client_analysis), so its reason is
+    # safe to show. Collapsed to the generic error, the web app would report a
+    # failed analysis of a YouTube track as a failed YouTube fetch.
+    if lowered.startswith(BROWSER_ANALYSIS_FAILED_PREFIX.lower()):
+        return f"ERROR: {' '.join(raw.split())[:300]}"
     if "engine exited" in lowered:
         return ERROR_ENGINE
     if "video unavailable" in lowered or "this video is not available" in lowered:

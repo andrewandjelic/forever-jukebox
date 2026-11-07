@@ -20,7 +20,7 @@ from ..models import ClientFailureRequest, ClientProgressRequest
 from ..paths import DB_PATH, STORAGE_ROOT
 from ..route_responses import error_responses
 from ..utils import analysis_path_for, audio_path_for
-from .jobs_runtime import log_event
+from .jobs_runtime import BROWSER_ANALYSIS_FAILED_PREFIX, log_event
 
 router = APIRouter()
 
@@ -109,7 +109,7 @@ async def submit_client_analysis(job_id: str, request: Request) -> JSONResponse:
 def fail_client_analysis(job_id: str, payload: ClientFailureRequest) -> JSONResponse:
     job = _claimed_job(job_id)
     _require_processing(job)
-    error = f"Browser analysis failed: {payload.error.strip() or 'unknown error'}"
+    error = f"{BROWSER_ANALYSIS_FAILED_PREFIX} {payload.error.strip() or 'unknown error'}"
     set_job_status(DB_PATH, job_id, "failed", error)
     log_event(
         "job_failed",
