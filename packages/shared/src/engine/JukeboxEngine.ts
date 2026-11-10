@@ -257,8 +257,11 @@ export class JukeboxEngine {
       lastBranchPoint: this.graph.lastBranchPoint,
       anchorEdgeId,
       userAnchorEdgeId,
-      // 1 per beat with singing in it, when the track has a vocal map.
-      sung: this.analysis.vocals?.sung ?? null,
+      // 1 per beat with singing in it, while jumps are keeping sung lines
+      // whole: the dots show what the rule is working from.
+      sung: this.config.respectVocals
+        ? (this.analysis.vocals?.sung ?? null)
+        : null,
     };
   }
 
