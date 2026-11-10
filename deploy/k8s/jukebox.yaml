@@ -1,0 +1,66 @@
+# forever-jukebox on Kubernetes: a disk, the app, and a stable address for it.
+#   kubectl apply -f deploy/k8s/jukebox.yaml
+#   kubectl port-forward service/jukebox 8000:8000    then open http://localhost:8000
+
+# The disk that outlives the container: songs, analysis results and the jobs database.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jukebox-storage
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+# The app itself: which image to run, how many copies, and what to attach to it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jukebox
+spec:
+  replicas: 1 # the job queue is a SQLite file on the disk above, so only one copy can run
+  strategy:
+    type: Recreate # stop the old copy before starting the new one; two cannot share the disk
+  selector:
+    matchLabels:
+      app: jukebox
+  template:
+    metadata:
+      labels:
+        app: jukebox
+    spec:
+      containers:
+        - name: jukebox
+          image: ghcr.io/andrewandjelic/forever-jukebox:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: jukebox-secrets # Spotify keys, if added; without them search uses YouTube
+                optional: true
+          readinessProbe: # no traffic is sent to the app until this port answers
+            tcpSocket:
+              port: 8000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+          volumeMounts:
+            - name: storage
+              mountPath: /app/api/storage
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: jukebox-storage
+---
+# A stable address for the app inside the cluster. ClusterIP keeps it off the internet.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jukebox
+spec:
+  selector:
+    app: jukebox
+  ports:
+    - port: 8000
