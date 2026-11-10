@@ -447,6 +447,7 @@ const createTrackSlice: Slice<
     | "lastSourceId"
     | "lastSourceProvider"
     | "trackTitle"
+    | "pendingTrackTitle"
     | "trackArtist"
     | "trackGenres"
     | "trackDurationSec"
@@ -464,6 +465,7 @@ const createTrackSlice: Slice<
   lastSourceId: null,
   lastSourceProvider: null,
   trackTitle: null,
+  pendingTrackTitle: null,
   trackArtist: null,
   trackGenres: null,
   trackDurationSec: null,

@@ -4,6 +4,7 @@ import { startUrlAnalysis, uploadAudio } from "./api";
 import { ensureBrowserAnalysis } from "./browser-analysis";
 import { addToPlaylist } from "./playlist-actions";
 import { getLoadGeneration, isStaleLoad, resetForNewTrack } from "./playback";
+import { requestAutoplay } from "./autoplay";
 import { useAppStore } from "./store";
 import {
   formatErrorForDisplay,
@@ -179,6 +180,7 @@ export async function uploadAudioFile(
       duration: null,
       tuningParams: null,
     });
+    requestAutoplay(context);
     resetForNewTrack(context);
     useAppStore.setState({ lastJobId: response.id });
     useAppStore.setState({ pendingAutoFavoriteId: response.id });
@@ -282,6 +284,7 @@ export async function uploadFromUrl(
       duration: null,
       tuningParams: null,
     });
+    requestAutoplay(context);
     resetForNewTrack(context);
     useAppStore.setState({ lastTrackId: listenId });
     useAppStore.setState({ lastJobId: response.id });

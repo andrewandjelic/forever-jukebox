@@ -277,7 +277,8 @@ describe("StatusPanel", () => {
     expect(saved.classList.contains("hidden")).toBe(true);
     expect(button.textContent).toContain("Solo Track");
     button.click();
-    expect(loadPlaylistIndex).toHaveBeenCalledWith(0);
+    // Continuing is a request to hear it, so it plays once loaded.
+    expect(loadPlaylistIndex).toHaveBeenCalledWith(0, { playAfterLoad: true });
 
     act(() => {
       useAppStore.setState({

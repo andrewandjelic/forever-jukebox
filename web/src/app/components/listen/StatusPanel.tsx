@@ -73,6 +73,7 @@ export function StatusPanel() {
   const audioLoadInFlight = useAppStore((s) => s.audioLoadInFlight);
   const lastTrackId = useAppStore((s) => s.lastTrackId);
   const lastJobId = useAppStore((s) => s.lastJobId);
+  const pendingTitle = useAppStore((s) => s.pendingTrackTitle);
 
   const audioModePreparing = useAppStore((s) => s.audioModePreparing);
 
@@ -92,6 +93,11 @@ export function StatusPanel() {
 
   return (
     <div className={panelHidden ? "panel hidden" : "panel"} id="play-status">
+      {pendingTitle && !panelHidden ? (
+        <div className="status-title" id="analysis-title">
+          {pendingTitle}
+        </div>
+      ) : null}
       <div className="status-row">
       <div
         className={spinning ? "spinner" : "spinner hidden"}
@@ -151,7 +157,7 @@ export function StatusPanel() {
         type="button"
         onClick={() => {
           if (resumeIndex !== null) {
-            void loadPlaylistIndex(resumeIndex);
+            void loadPlaylistIndex(resumeIndex, { playAfterLoad: true });
           }
         }}
       >

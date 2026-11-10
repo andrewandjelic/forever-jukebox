@@ -191,6 +191,7 @@ export function resetForNewTrack(
   useAppStore.setState({ audioLoaded: false });
   useAppStore.setState({ analysisLoaded: false });
   useAppStore.setState({ audioLoadInFlight: false });
+  useAppStore.setState({ pendingTrackTitle: null });
   useAppStore.setState({ lastJobId: null });
   useAppStore.setState({ lastTrackId: null });
   useAppStore.setState({ lastSourceId: null });

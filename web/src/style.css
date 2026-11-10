@@ -2716,6 +2716,15 @@ body.listen-active #viz-panel .viz {
   animation: none;
 }
 
+/* Which song is on its way, above the progress line. */
+.status-title {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .status-row {
   display: flex;
   align-items: center;
