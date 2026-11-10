@@ -533,9 +533,15 @@ interface VisualizationData {
   lastBranchPoint: number;
   anchorEdgeId: number | null;
   userAnchorEdgeId: number | null;
+  sung?: Uint8Array | null;
 }
 
 const ANCHOR_HIGHLIGHT_COLOR = "#ff2d2d";
+// Beats with singing in them get a dot this far inside the layout, toward its
+// middle, so the vocal reads as a second dotted line with gaps at the pauses.
+const SUNG_MARK_INSET_PX = 13;
+const SUNG_MARK_RADIUS = 1.8;
+const SUNG_MARK_COLOR = "rgba(255, 255, 255, 0.85)";
 
 interface JumpLine {
   from: number;
@@ -1205,6 +1211,39 @@ class CanvasViz {
     const warp = this.warpAmount();
     const pulse = 1 + BEAT_PULSE * this.beatPulse();
     const { x: wx, y: wy } = this.warpCenter;
+    const sung = this.data.sung;
+    if (sung && warp === 0 && !this.dotScale) {
+      let cx = 0;
+      let cy = 0;
+      let placed = 0;
+      for (const p of this.positions) {
+        if (Number.isFinite(p.x)) {
+          cx += p.x;
+          cy += p.y;
+          placed += 1;
+        }
+      }
+      cx /= Math.max(1, placed);
+      cy /= Math.max(1, placed);
+      this.baseCtx.fillStyle = SUNG_MARK_COLOR;
+      for (let i = 0; i < this.positions.length; i += 1) {
+        const p = this.positions[i];
+        if (!sung[i] || !Number.isFinite(p.x)) {
+          continue;
+        }
+        const reach = Math.hypot(cx - p.x, cy - p.y) || 1;
+        const inset = Math.min(SUNG_MARK_INSET_PX, reach / 2) / reach;
+        this.baseCtx.beginPath();
+        this.baseCtx.arc(
+          p.x + (cx - p.x) * inset,
+          p.y + (cy - p.y) * inset,
+          SUNG_MARK_RADIUS,
+          0,
+          Math.PI * 2,
+        );
+        this.baseCtx.fill();
+      }
+    }
     for (let i = 0; i < this.positions.length; i += 1) {
       const p = this.positions[i];
       if (!Number.isFinite(p.x)) {

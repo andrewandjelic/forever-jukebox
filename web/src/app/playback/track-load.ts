@@ -240,6 +240,7 @@ export function resetForNewTrack(
     lastBranchPoint: -1,
     anchorEdgeId: null,
     userAnchorEdgeId: null,
+    sung: null,
   };
   jukebox?.setData(emptyVizData);
   jukebox?.reset();

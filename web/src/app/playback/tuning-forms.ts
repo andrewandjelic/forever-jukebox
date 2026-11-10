@@ -262,6 +262,9 @@ export type TuningFormValues = {
   minLongBranchPercent: number;
   removeSequentialBranches: boolean;
   highlightAnchorBranch: boolean;
+  respectVocals: boolean;
+  // False when the track has no vocal map, so the option cannot do anything.
+  hasVocalMap: boolean;
 };
 
 // Snapshot the engine config for the React tuning form (the read half of
@@ -295,6 +298,8 @@ export function getTuningFormValues(context: AppContext): TuningFormValues {
       : 0,
     removeSequentialBranches: config.removeSequentialBranches,
     highlightAnchorBranch: useAppStore.getState().highlightAnchorBranch,
+    respectVocals: config.respectVocals ?? false,
+    hasVocalMap: engine.hasVocalMap(),
   };
 }
 
@@ -326,6 +331,9 @@ export function changedTuningControls(
   }
   if (previous.highlightAnchorBranch !== next.highlightAnchorBranch) {
     controls.push("anchor_highlight");
+  }
+  if (previous.respectVocals !== next.respectVocals) {
+    controls.push("respect_vocals");
   }
   return controls;
 }
@@ -363,6 +371,7 @@ export function applyTuningChanges(
         ? form.minLongBranchPercent
         : DEFAULT_MIN_LONG_BRANCH_PERCENT,
     removeSequentialBranches: form.removeSequentialBranches,
+    respectVocals: form.respectVocals,
   });
   useAppStore.setState({ highlightAnchorBranch: form.highlightAnchorBranch });
   storeAnchorHighlight(useAppStore.getState().highlightAnchorBranch);

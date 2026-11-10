@@ -415,6 +415,24 @@ export function TuningModal() {
                 />{" "}
                 {t("tuning.highlightAnchor")}
               </label>
+              <label
+                title={
+                  form?.hasVocalMap === false
+                    ? t("tuning.respectVocalsUnavailable")
+                    : t("tuning.respectVocalsHint")
+                }
+              >
+                <input
+                  id="respect-vocals"
+                  type="checkbox"
+                  checked={form?.respectVocals ?? false}
+                  disabled={form?.hasVocalMap === false}
+                  onChange={(event) =>
+                    setFormField("respectVocals", event.target.checked)
+                  }
+                />{" "}
+                {t("tuning.respectVocals")}
+              </label>
             </div>
           </div>
           <div

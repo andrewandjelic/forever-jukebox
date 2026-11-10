@@ -96,6 +96,14 @@ describe("tuning params", () => {
     );
   });
 
+  it("carries the keep-sung-lines-whole option", () => {
+    const context = createContext();
+    applyTuningParamsToEngine(context, new URLSearchParams("rv=1"));
+    expect(context.engine.getConfig().respectVocals).toBe(true);
+    syncTuningParamsState(context);
+    expect(useAppStore.getState().tuningParams).toBe("rv=1");
+  });
+
   it("applies minimum jump distance percentages from params", () => {
     const context = createContext();
     applyTuningParamsToEngine(context, new URLSearchParams("bl=30"));

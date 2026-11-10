@@ -38,6 +38,7 @@ export const DEFAULT_JUKEBOX_CONFIG: JukeboxConfig = {
   randomBranchChanceDelta: 0.02,
   minLongBranch: 0,
   minLongBranchPercent: DEFAULT_MIN_LONG_BRANCH_PERCENT,
+  respectVocals: false,
 };
 
 const TICK_INTERVAL_MS = 50;
@@ -256,7 +257,14 @@ export class JukeboxEngine {
       lastBranchPoint: this.graph.lastBranchPoint,
       anchorEdgeId,
       userAnchorEdgeId,
+      // 1 per beat with singing in it, when the track has a vocal map.
+      sung: this.analysis.vocals?.sung ?? null,
     };
+  }
+
+  // Whether this track's analysis says where the singing is.
+  hasVocalMap(): boolean {
+    return (this.analysis?.vocals ?? null) !== null;
   }
 
   play() {

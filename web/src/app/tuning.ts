@@ -20,6 +20,7 @@ const TUNING_PARAM_KEYS = [
   "lg",
   "bl",
   "sq",
+  "rv",
   "thresh",
   "bp",
   "d",
@@ -163,6 +164,9 @@ function parseTuningParams(
   if (params.get("sq") === "0") {
     config.removeSequentialBranches = true;
   }
+  if (params.get("rv") === "1") {
+    config.respectVocals = true;
+  }
   if (params.has("thresh")) {
     config.currentThreshold = parsePinnedThreshold(params.get("thresh")) ?? 0;
   }
@@ -261,6 +265,9 @@ function buildTuningParams(state: {
   }
   if (config.removeSequentialBranches) {
     params.set("sq", "0");
+  }
+  if (config.respectVocals) {
+    params.set("rv", "1");
   }
   if (config.currentThreshold !== 0) {
     params.set("thresh", `${Math.round(config.currentThreshold)}`);

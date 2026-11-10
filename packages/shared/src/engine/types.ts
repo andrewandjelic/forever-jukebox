@@ -1,3 +1,5 @@
+import type { VocalMap } from "./vocals";
+
 export interface TrackMeta {
   title?: string;
   artist?: string;
@@ -52,6 +54,10 @@ export interface TrackAnalysis {
   tatums: QuantumBase[];
   segments: Segment[];
   track?: TrackMeta;
+  // Where the singing is, when the analysis carries a vocal map.
+  vocals?: VocalMap | null;
+  // Whether the cached nearest neighbors were picked under the vocal rule.
+  neighborsRespectVocals?: boolean;
 }
 
 export interface JukeboxConfig {
@@ -66,6 +72,9 @@ export interface JukeboxConfig {
   randomBranchChanceDelta: number;
   minLongBranch: number;
   minLongBranchPercent?: number;
+  // Only jump where it keeps sung lines whole. Needs a vocal map; without
+  // one it changes nothing.
+  respectVocals?: boolean;
 }
 
 export interface JukeboxGraphState {
