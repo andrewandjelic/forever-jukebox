@@ -289,6 +289,7 @@ describe("changedTuningControls", () => {
     respectVocals: false,
     hasVocalMap: false,
     vocalsAvailable: false,
+    minBeatsBetweenJumps: 0,
   };
 
   it("reports nothing when the form is unchanged", () => {

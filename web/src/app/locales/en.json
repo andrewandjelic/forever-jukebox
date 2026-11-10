@@ -291,7 +291,11 @@
     "audioIntensity": "Intensity",
     "playbackStyles": "Playback Styles",
     "remixToys": "Remix Toys",
-    "respectVocalsFirstTime": "The first time on a song, finding the vocals takes about a minute while it plays. Remembered for every song."
+    "respectVocalsFirstTime": "The first time on a song, finding the vocals takes about a minute while it plays. Remembered for every song.",
+    "minWait": "Minimum Time Between Jumps:",
+    "minWaitHint": "After a jump, at least this much plays before the next one. Keeps a song that repeats itself from jumping in bursts.",
+    "minWaitOff": "No minimum",
+    "minWaitBeats": "{{count}} beats"
   },
   "vocals": {
     "working": "Finding the vocals in this song. It keeps playing; jumps will keep sung lines whole in about a minute.",

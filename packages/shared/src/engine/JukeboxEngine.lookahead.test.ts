@@ -50,7 +50,7 @@ function makeAnalysis(): TrackAnalysis {
   return { sections: [], bars: [], beats, tatums: [], segments: [], track: {} };
 }
 
-function makeEngine(seed: number) {
+function makeEngine(seed: number, overrides: Partial<typeof DEFAULT_JUKEBOX_CONFIG> = {}) {
   const player: JukeboxPlayer = {
     play: vi.fn(),
     pause: vi.fn(),
@@ -63,7 +63,7 @@ function makeEngine(seed: number) {
     getPlaybackRate: () => 1,
     isPlaying: () => true,
   };
-  const config = { ...DEFAULT_JUKEBOX_CONFIG };
+  const config = { ...DEFAULT_JUKEBOX_CONFIG, ...overrides };
   const analysis = makeAnalysis();
   const graph = buildJumpGraph(analysis, config);
   const engine = new JukeboxEngine(player, { randomMode: "seeded", seed, config });
@@ -161,5 +161,52 @@ describe("JukeboxEngine jump look-ahead", () => {
     engine.setForceBranch(false);
     engine.updateConfig({ maxRandomBranchChance: 0.4 });
     expect(engine.getUpcomingJump()).toBeNull();
+  });
+});
+
+describe("JukeboxEngine minimum wait between jumps", () => {
+  // Plays `steps` beats and returns each jump: the step it happened on and
+  // the beat it left before.
+  function jumpsOver(steps: number, minBeatsBetweenJumps: number) {
+    const { engine, internals } = makeEngine(11, { minBeatsBetweenJumps });
+    const jumps: Array<{ step: number; from: number }> = [];
+    for (let step = 0; step < steps; step += 1) {
+      const before = internals.currentBeatIndex;
+      const upcoming = engine.getUpcomingJump();
+      internals.advanceBeat(step);
+      const now = internals.currentBeatIndex;
+      const sequential =
+        now === before + 1 || before < 0 || (before === BEATS - 1 && now === 0);
+      if (!sequential) {
+        // The look-ahead still names every jump before it happens.
+        expect(upcoming, `step ${step}`).toEqual({ fromIndex: before + 1, toIndex: now });
+        jumps.push({ step, from: before + 1 });
+      }
+    }
+    return { jumps, loopBack: internals.graph.lastBranchPoint };
+  }
+
+  it("lets every landing play for at least that many beats", () => {
+    const { jumps, loopBack } = jumpsOver(2000, 8);
+    expect(jumps.length).toBeGreaterThan(20);
+    for (let i = 1; i < jumps.length; i += 1) {
+      if (jumps[i].from === loopBack) {
+        // The loop-back jump is never held back.
+        continue;
+      }
+      expect(jumps[i].step - jumps[i - 1].step, `jump ${i}`).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it("spaces the jumps out compared with no wait", () => {
+    const closeTogether = (jumps: Array<{ step: number }>) =>
+      jumps.filter((jump, i) => i > 0 && jump.step - jumps[i - 1].step < 8).length;
+    const free = jumpsOver(2000, 0);
+    const held = jumpsOver(2000, 8);
+    expect(closeTogether(free.jumps)).toBeGreaterThan(10);
+    expect(closeTogether(held.jumps)).toBeLessThanOrEqual(
+      held.jumps.filter((jump) => jump.from === held.loopBack).length,
+    );
+    expect(held.jumps.length).toBeLessThan(free.jumps.length);
   });
 });

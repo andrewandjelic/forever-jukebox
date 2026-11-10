@@ -22,6 +22,7 @@ import { applyExtrasAndSync } from "../../playback-ui";
 import { isInstrumentalModeAvailable } from "@forever-jukebox/shared/audio/instrumentalRenderer";
 import { getAppContext } from "../../runtime";
 import { useAppStore } from "../../store";
+import { MIN_WAIT_BEATS_OPTIONS } from "../../tuning";
 import { Modal } from "../Modal";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -352,6 +353,33 @@ export function TuningModal() {
                   {t("tuning.minJumpDistanceHint")}
                 </div>
               }
+            />
+            <RangeRow
+              id="min-wait"
+              label={t("tuning.minWait")}
+              valueText={
+                (form?.minBeatsBetweenJumps ?? 0) > 0
+                  ? t("tuning.minWaitBeats", {
+                      count: form?.minBeatsBetweenJumps ?? 0,
+                    })
+                  : t("tuning.minWaitOff")
+              }
+              min={0}
+              max={MIN_WAIT_BEATS_OPTIONS.length - 1}
+              step={1}
+              value={Math.max(
+                0,
+                (MIN_WAIT_BEATS_OPTIONS as readonly number[]).indexOf(
+                  form?.minBeatsBetweenJumps ?? 0,
+                ),
+              )}
+              onChange={(index) =>
+                setFormField(
+                  "minBeatsBetweenJumps",
+                  MIN_WAIT_BEATS_OPTIONS[index] ?? 0,
+                )
+              }
+              hint={<div className="hint">{t("tuning.minWaitHint")}</div>}
             />
             <RangeRow
               id="min-prob"
