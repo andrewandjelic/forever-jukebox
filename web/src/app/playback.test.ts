@@ -241,6 +241,7 @@ function createContext(overrides?: Partial<AppContext>): TestAppContext {
     refresh: vi.fn(),
     reset: vi.fn(),
     update: vi.fn(),
+    setUpcomingJump: vi.fn(),
   };
   const cowbellOverlay = {
     enable: vi.fn(),
@@ -448,6 +449,7 @@ describe("playback tuning", () => {
         resizeActive: vi.fn(),
         reset: vi.fn(),
         update: vi.fn(),
+        setUpcomingJump: vi.fn(),
       } as unknown as AppContext["jukebox"],
     });
     applyTuningChanges(

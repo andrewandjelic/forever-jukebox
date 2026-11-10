@@ -56,6 +56,12 @@ export class JukeboxController {
     this.viz.resizeActive();
   }
 
+  // The jump the engine has decided to take next, or nulls when none is in
+  // sight: its arc lights up as the playhead closes in.
+  setUpcomingJump(from: number | null, to: number | null) {
+    this.viz.setUpcomingJump(from, to);
+  }
+
   update(index: number, animate: boolean, previousIndex: number | null) {
     this.viz.update(index, animate, previousIndex);
   }

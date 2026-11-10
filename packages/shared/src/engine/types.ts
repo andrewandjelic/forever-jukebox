@@ -88,4 +88,8 @@ export interface JukeboxState {
   currentThreshold: number;
   lastBranchPoint: number;
   curRandomBranchChance: number;
+  // The jump the engine has already decided to take, if any: the beat it
+  // will leave before (the arc's source) and the beat it will land on.
+  nextJumpFromIndex?: number | null;
+  nextJumpToIndex?: number | null;
 }
