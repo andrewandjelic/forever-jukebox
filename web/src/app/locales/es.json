@@ -297,7 +297,14 @@
     "working": "Buscando la voz en esta canción. Sigue sonando; en un minuto los saltos mantendrán enteras las frases cantadas.",
     "ready": "Voz encontrada. Los saltos ya mantienen enteras las frases cantadas.",
     "failed": "No se pudo encontrar la voz en esta canción.",
-    "progress": "(buscando la voz: {{percent}} %)"
+    "progress": "(buscando la voz: {{percent}} %)",
+    "button": "Frases enteras",
+    "buttonWorking": "Frases enteras {{percent}} %",
+    "about": "Sobre mantener enteras las frases cantadas",
+    "tip": "Solo se salta donde la voz hace una pausa o donde suena igual a ambos lados, así cada frase cantada suena entera. La línea de puntos dentro del anillo muestra la voz.",
+    "tipRemembered": "Sigue activado para todas las canciones hasta que lo apagues.",
+    "tipFirstTime": "Una canción se analiza la primera vez que suena con esto activado: cerca de un minuto, mientras suena.",
+    "tipWorking": "Buscando la voz en esta canción: {{percent}} %."
   },
   "settings": {
     "title": "Configuración",

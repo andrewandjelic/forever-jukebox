@@ -46,6 +46,7 @@ function createContext(
     },
     getGraphState: () => null,
     getUserAnchorEdgeId: () => null,
+    hasVocalMap: () => false,
   };
   return {
     defaultConfig,

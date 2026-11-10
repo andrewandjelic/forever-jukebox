@@ -1,6 +1,7 @@
 import type { AppContext } from "./context";
 import { isInstrumentalModeAvailable } from "@forever-jukebox/shared/audio/instrumentalRenderer";
 import { useAppStore } from "./store";
+import { syncVocalState } from "./vocalMapFlow";
 import {
   DEFAULT_MIN_LONG_BRANCH_PERCENT,
   parsePinnedThreshold,
@@ -382,6 +383,7 @@ export function resetAudioModeToOff(player: AppContext["player"]) {
 }
 
 export function syncTuningParamsState(context: AppContext): string | null {
+  syncVocalState(context);
   const params = getTuningParamsFromEngine(context);
   const result = serializeParams(params);
   useAppStore.setState({ tuningParams: result.length > 0 ? result : null });

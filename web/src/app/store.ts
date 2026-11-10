@@ -450,6 +450,8 @@ const createTrackSlice: Slice<
     | "pendingTrackTitle"
     | "vocalMapStatus"
     | "vocalMapPercent"
+    | "keepSungLines"
+    | "trackHasVocalMap"
     | "trackArtist"
     | "trackGenres"
     | "trackDurationSec"
@@ -470,6 +472,8 @@ const createTrackSlice: Slice<
   pendingTrackTitle: null,
   vocalMapStatus: "idle",
   vocalMapPercent: 0,
+  keepSungLines: false,
+  trackHasVocalMap: false,
   trackArtist: null,
   trackGenres: null,
   trackDurationSec: null,

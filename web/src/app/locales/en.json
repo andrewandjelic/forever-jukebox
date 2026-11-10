@@ -297,7 +297,14 @@
     "working": "Finding the vocals in this song. It keeps playing; jumps will keep sung lines whole in about a minute.",
     "ready": "Vocals found. Jumps now keep sung lines whole.",
     "failed": "Could not find the vocals in this song.",
-    "progress": "(finding the vocals: {{percent}}%)"
+    "progress": "(finding the vocals: {{percent}}%)",
+    "button": "Whole lines",
+    "buttonWorking": "Whole lines {{percent}}%",
+    "about": "About keeping sung lines whole",
+    "tip": "Jumps only happen where the singing pauses, or where the voice matches on both sides, so each sung line plays whole. The dotted line inside the ring shows the singing.",
+    "tipRemembered": "Stays on for every song until you turn it off.",
+    "tipFirstTime": "A song is mapped the first time you play it with this on: about a minute, while it plays.",
+    "tipWorking": "Finding the vocals in this song: {{percent}}%."
   },
   "settings": {
     "title": "Settings",

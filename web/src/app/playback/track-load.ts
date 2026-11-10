@@ -41,7 +41,7 @@ import {
   type PlaylistTrack,
 } from "../playlist";
 import { useAppStore, type LocalizedText } from "../store";
-import { cancelVocalMap } from "../vocalMapFlow";
+import { cancelVocalMap, syncVocalState } from "../vocalMapFlow";
 import {
   bumpLoadGeneration,
   getLoadGeneration,
@@ -215,6 +215,10 @@ export function resetForNewTrack(
     clearTuningParamsFromUrl(true);
   }
   engine.updateConfig({ ...defaultConfig });
+  useAppStore.setState({
+    keepSungLines: defaultConfig.respectVocals ?? false,
+    trackHasVocalMap: false,
+  });
   syncVolumeUI(context);
   useAppStore.setState({
     analysisStatusText: () => i18n.t("status.noTrack"),
@@ -299,6 +303,7 @@ export function applyAnalysisResult(
   }
   applyTuningParamsFromUrl(context);
   engine.loadAnalysis(response.result);
+  syncVocalState(context);
   cowbellOverlay.setSectionStartBeatIndices(engine.getSectionStartBeatIndices());
   applyDeletedEdgesFromUrl(context);
   applyAnchorBranchFromUrl(context);

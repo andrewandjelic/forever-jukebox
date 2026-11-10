@@ -42,6 +42,20 @@ export function vocalMapsBuildable(): boolean {
   return canBuildVocalMaps();
 }
 
+// Mirrors what the engine holds into the store, for the controls that show
+// it: call after anything that changes the option or the loaded song's map.
+export function syncVocalState(context: AppContext) {
+  const keepSungLines = context.engine.getConfig().respectVocals ?? false;
+  const trackHasVocalMap = context.engine.hasVocalMap();
+  const state = useAppStore.getState();
+  if (
+    state.keepSungLines !== keepSungLines ||
+    state.trackHasVocalMap !== trackHasVocalMap
+  ) {
+    useAppStore.setState({ keepSungLines, trackHasVocalMap });
+  }
+}
+
 let job: VocalMapJob | null = null;
 // Called with the app context after a map lands on a song whose jumps are
 // already keeping sung lines whole, to redraw what the new graph changed.
@@ -113,6 +127,7 @@ export function ensureVocalMap(
         throw new Error("The vocal map does not fit this song's beats");
       }
       useAppStore.setState({ vocalMapStatus: "ready", vocalMapPercent: 100 });
+      syncVocalState(context);
       if (context.engine.getConfig().respectVocals) {
         onGraphChanged?.(context);
         showToast(i18n.t("vocals.ready"));

@@ -357,6 +357,26 @@ export function refreshJumpGraphViews(context: AppContext) {
   updateTrackInfo(context);
 }
 
+// Turns "Keep sung lines whole" on or off, for this song and every one
+// after it. A song without a vocal map starts getting one.
+export function setKeepSungLines(context: AppContext, enabled: boolean) {
+  const { engine } = context;
+  if ((engine.getConfig().respectVocals ?? false) === enabled) {
+    return;
+  }
+  engine.updateConfig({ respectVocals: enabled });
+  storeVocalPreference(enabled);
+  context.defaultConfig.respectVocals = enabled;
+  engine.rebuildGraph();
+  refreshJumpGraphViews(context);
+  syncTuningParamsState(context);
+  writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
+  trackEvent("tune", { control: "respect_vocals" });
+  if (enabled && !engine.hasVocalMap()) {
+    ensureVocalMap(context, { announce: true });
+  }
+}
+
 export function applyTuningChanges(
   context: AppContext,
   form: TuningFormValues,
