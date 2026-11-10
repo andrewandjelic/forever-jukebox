@@ -55,6 +55,7 @@ const TUNING_FORM: TuningFormValues = {
   highlightAnchorBranch: false,
   respectVocals: false,
   hasVocalMap: false,
+  vocalsAvailable: false,
 };
 
 const EXTRAS_FORM: ExtrasFormValues = {

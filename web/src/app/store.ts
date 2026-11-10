@@ -448,6 +448,8 @@ const createTrackSlice: Slice<
     | "lastSourceProvider"
     | "trackTitle"
     | "pendingTrackTitle"
+    | "vocalMapStatus"
+    | "vocalMapPercent"
     | "trackArtist"
     | "trackGenres"
     | "trackDurationSec"
@@ -466,6 +468,8 @@ const createTrackSlice: Slice<
   lastSourceProvider: null,
   trackTitle: null,
   pendingTrackTitle: null,
+  vocalMapStatus: "idle",
+  vocalMapPercent: 0,
   trackArtist: null,
   trackGenres: null,
   trackDurationSec: null,

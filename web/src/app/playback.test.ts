@@ -288,6 +288,7 @@ describe("changedTuningControls", () => {
     highlightAnchorBranch: false,
     respectVocals: false,
     hasVocalMap: false,
+    vocalsAvailable: false,
   };
 
   it("reports nothing when the form is unchanged", () => {

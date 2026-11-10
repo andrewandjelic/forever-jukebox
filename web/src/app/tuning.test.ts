@@ -104,6 +104,22 @@ describe("tuning params", () => {
     expect(useAppStore.getState().tuningParams).toBe("rv=1");
   });
 
+  it("writes the option only where it differs from the listener's default", () => {
+    const context = createContext();
+    context.defaultConfig.respectVocals = true;
+    context.engine.updateConfig({ respectVocals: true });
+    syncTuningParamsState(context);
+    expect(useAppStore.getState().tuningParams).toBeNull();
+
+    context.engine.updateConfig({ respectVocals: false });
+    syncTuningParamsState(context);
+    expect(useAppStore.getState().tuningParams).toBe("rv=0");
+
+    // A link that says so still turns it off for someone who keeps it on.
+    applyTuningParamsToEngine(context, new URLSearchParams("rv=0"));
+    expect(context.engine.getConfig().respectVocals).toBe(false);
+  });
+
   it("applies minimum jump distance percentages from params", () => {
     const context = createContext();
     applyTuningParamsToEngine(context, new URLSearchParams("bl=30"));

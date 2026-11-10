@@ -274,6 +274,23 @@ export async function fetchJobLog(jobId: string): Promise<string | null> {
   return response.text();
 }
 
+// Stores a vocal map the browser built for a finished job, so later loads
+// have it. False when the server does not take them (browser analysis off).
+export async function saveVocalMap(jobId: string, map: unknown): Promise<boolean> {
+  const response = await fetch(`/api/analysis/${encodeURIComponent(jobId)}/vocals`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(map),
+  });
+  if (response.status === 403) {
+    return false;
+  }
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status})`);
+  }
+  return true;
+}
+
 function clientAnalysisUrl(jobId: string, action: string) {
   return `/api/analysis/${encodeURIComponent(jobId)}/client/${action}`;
 }

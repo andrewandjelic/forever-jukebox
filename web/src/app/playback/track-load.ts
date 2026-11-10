@@ -41,6 +41,7 @@ import {
   type PlaylistTrack,
 } from "../playlist";
 import { useAppStore, type LocalizedText } from "../store";
+import { cancelVocalMap } from "../vocalMapFlow";
 import {
   bumpLoadGeneration,
   getLoadGeneration,
@@ -172,6 +173,7 @@ export function resetForNewTrack(
   cowbellOverlay.disable();
   cowbellOverlay.setSectionStartBeatIndices([]);
   cancelInstrumentalRender();
+  cancelVocalMap();
   useAppStore.setState({
     audioModeRenderToken: useAppStore.getState().audioModeRenderToken + (1),
   });

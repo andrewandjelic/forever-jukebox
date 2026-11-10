@@ -121,6 +121,8 @@ export function TuningModal() {
   const { t } = useTranslation();
   const open = useAppStore((s) => s.tuningModalOpen);
   const tab = useAppStore((s) => s.tuningModalTab);
+  const vocalMapStatus = useAppStore((s) => s.vocalMapStatus);
+  const vocalMapPercent = useAppStore((s) => s.vocalMapPercent);
   const tuningActive = tab === "tuning";
   const [form, setForm] = useState<TuningFormValues | null>(null);
   const [extras, setExtras] = useState<ExtrasFormValues | null>(null);
@@ -417,21 +419,29 @@ export function TuningModal() {
               </label>
               <label
                 title={
-                  form?.hasVocalMap === false
+                  form?.vocalsAvailable === false
                     ? t("tuning.respectVocalsUnavailable")
-                    : t("tuning.respectVocalsHint")
+                    : form?.hasVocalMap === false
+                      ? t("tuning.respectVocalsFirstTime")
+                      : t("tuning.respectVocalsHint")
                 }
               >
                 <input
                   id="respect-vocals"
                   type="checkbox"
                   checked={form?.respectVocals ?? false}
-                  disabled={form?.hasVocalMap === false}
+                  disabled={form?.vocalsAvailable === false}
                   onChange={(event) =>
                     setFormField("respectVocals", event.target.checked)
                   }
                 />{" "}
                 {t("tuning.respectVocals")}
+                {vocalMapStatus === "working" ? (
+                  <span className="hint" id="vocal-map-progress">
+                    {" "}
+                    {t("vocals.progress", { percent: vocalMapPercent })}
+                  </span>
+                ) : null}
               </label>
             </div>
           </div>

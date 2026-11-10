@@ -283,14 +283,21 @@
     "percentOfTrack": ">{{percent}}% of track",
     "highlightAnchor": "Highlight forced anchor jump",
     "respectVocals": "Keep sung lines whole",
-    "respectVocalsHint": "Only jumps where the singing pauses, or where the voice matches on both sides.",
-    "respectVocalsUnavailable": "This song has no vocal map yet.",
+    "respectVocalsHint": "Only jumps where the singing pauses, or where the voice matches on both sides. Remembered for every song.",
+    "respectVocalsUnavailable": "This song has no vocal map, and this browser cannot make one (it needs WebGPU on a computer).",
     "showBranchStats": "Show selected branch stats",
     "bringItHome": "Bring It Home mode",
     "audioMode": "Audio Mode",
     "audioIntensity": "Intensity",
     "playbackStyles": "Playback Styles",
-    "remixToys": "Remix Toys"
+    "remixToys": "Remix Toys",
+    "respectVocalsFirstTime": "The first time on a song, finding the vocals takes about a minute while it plays. Remembered for every song."
+  },
+  "vocals": {
+    "working": "Finding the vocals in this song. It keeps playing; jumps will keep sung lines whole in about a minute.",
+    "ready": "Vocals found. Jumps now keep sung lines whole.",
+    "failed": "Could not find the vocals in this song.",
+    "progress": "(finding the vocals: {{percent}}%)"
   },
   "settings": {
     "title": "Settings",

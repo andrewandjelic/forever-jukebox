@@ -4,6 +4,11 @@ import { storeAnchorHighlight } from "../anchorHighlight";
 import { storeBranchStatsEnabled } from "../extrasMode";
 import { useAppStore } from "../store";
 import {
+  ensureVocalMap,
+  storeVocalPreference,
+  vocalMapsBuildable,
+} from "../vocalMapFlow";
+import {
   appendAudioModeParams,
   getAnchorBranchIdFromUrl,
   getDeletedEdgeIdsFromUrl,
@@ -263,8 +268,10 @@ export type TuningFormValues = {
   removeSequentialBranches: boolean;
   highlightAnchorBranch: boolean;
   respectVocals: boolean;
-  // False when the track has no vocal map, so the option cannot do anything.
   hasVocalMap: boolean;
+  // False when the track has no vocal map and this browser cannot make one,
+  // so the option cannot do anything.
+  vocalsAvailable: boolean;
 };
 
 // Snapshot the engine config for the React tuning form (the read half of
@@ -300,6 +307,7 @@ export function getTuningFormValues(context: AppContext): TuningFormValues {
     highlightAnchorBranch: useAppStore.getState().highlightAnchorBranch,
     respectVocals: config.respectVocals ?? false,
     hasVocalMap: engine.hasVocalMap(),
+    vocalsAvailable: engine.hasVocalMap() || vocalMapsBuildable(),
   };
 }
 
@@ -338,6 +346,17 @@ export function changedTuningControls(
   return controls;
 }
 
+// Redraws everything that shows the jump graph, after the engine rebuilt it.
+export function refreshJumpGraphViews(context: AppContext) {
+  const { engine, jukebox } = context;
+  useAppStore.setState({ vizData: engine.getVisualizationData() });
+  const data = useAppStore.getState().vizData;
+  if (data) {
+    jukebox?.setData(data);
+  }
+  updateTrackInfo(context);
+}
+
 export function applyTuningChanges(
   context: AppContext,
   form: TuningFormValues,
@@ -373,6 +392,12 @@ export function applyTuningChanges(
     removeSequentialBranches: form.removeSequentialBranches,
     respectVocals: form.respectVocals,
   });
+  if (previousForm.respectVocals !== form.respectVocals) {
+    // Remembered for every song from here on, and the baseline the URL's
+    // tuning params are written against.
+    storeVocalPreference(form.respectVocals);
+    context.defaultConfig.respectVocals = form.respectVocals;
+  }
   useAppStore.setState({ highlightAnchorBranch: form.highlightAnchorBranch });
   storeAnchorHighlight(useAppStore.getState().highlightAnchorBranch);
   jukebox?.setAnchorHighlightEnabled(useAppStore.getState().highlightAnchorBranch);
@@ -400,6 +425,10 @@ export function applyTuningChanges(
   syncTuningParamsState(context);
   writeTuningParamsToUrl(useAppStore.getState().tuningParams, true);
   closeTuning();
+  if (form.respectVocals && !engine.hasVocalMap()) {
+    // The rule takes effect as soon as the song's vocals have been found.
+    ensureVocalMap(context, { announce: true });
+  }
   return {
     ...form,
     threshold: nextThreshold,

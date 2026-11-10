@@ -139,7 +139,11 @@ function useEffectsMode(activeTab: string) {
       return undefined;
     }
     return watchFrameRate(
-      () => useAppStore.getState().isRunning && !useAppStore.getState().isPaused,
+      // Not while a vocal map is being built: that borrows the graphics card.
+      () =>
+        useAppStore.getState().isRunning &&
+        !useAppStore.getState().isPaused &&
+        useAppStore.getState().vocalMapStatus !== "working",
       () => {
         markAutoSwitchedToLite();
         useAppStore.setState({ effectsAutoLite: true });

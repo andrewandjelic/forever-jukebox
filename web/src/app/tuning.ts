@@ -164,8 +164,11 @@ function parseTuningParams(
   if (params.get("sq") === "0") {
     config.removeSequentialBranches = true;
   }
+  // Absent, the listener's own remembered choice (the default) stands.
   if (params.get("rv") === "1") {
     config.respectVocals = true;
+  } else if (params.get("rv") === "0") {
+    config.respectVocals = false;
   }
   if (params.has("thresh")) {
     config.currentThreshold = parsePinnedThreshold(params.get("thresh")) ?? 0;
@@ -266,8 +269,8 @@ function buildTuningParams(state: {
   if (config.removeSequentialBranches) {
     params.set("sq", "0");
   }
-  if (config.respectVocals) {
-    params.set("rv", "1");
+  if ((config.respectVocals ?? false) !== (defaults.respectVocals ?? false)) {
+    params.set("rv", config.respectVocals ? "1" : "0");
   }
   if (config.currentThreshold !== 0) {
     params.set("thresh", `${Math.round(config.currentThreshold)}`);

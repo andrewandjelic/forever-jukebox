@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { happyPathAnalysis } from "./__fixtures__/analysisFixtures";
 import { normalizeAnalysis } from "./analysis";
 import { buildJumpGraph } from "./graph";
-import { DEFAULT_JUKEBOX_CONFIG } from "./JukeboxEngine";
+import { DEFAULT_JUKEBOX_CONFIG, JukeboxEngine } from "./JukeboxEngine";
 import type { TrackAnalysis } from "./types";
 import {
   VOCAL_GAP,
@@ -94,6 +94,68 @@ describe("isVocalJumpAllowed", () => {
     const same = analysisWith({ 5: [200, 200, 200, 200], 9: [200, 200, 200, 200] }).vocals!;
     expect(isVocalJumpAllowed(same, 5, 9)).toBe(true);
     expect(isVocalJumpAllowed(same, 5, 1)).toBe(false);
+  });
+});
+
+describe("a vocal map that arrives after the analysis", () => {
+  const held = { 5: [200, 200, 200, 200], 9: [100, 100, 100, 100] };
+  const lateMap = () => {
+    const states = Array.from({ length: BEATS }, (_item, idx) =>
+      idx in held ? VOCAL_SUSTAINED : VOCAL_GAP,
+    );
+    const prints = Array.from(
+      { length: BEATS },
+      (_item, idx) => (held as Record<number, number[]>)[idx] ?? QUIET,
+    );
+    return vocalsObject(states, prints);
+  };
+  const player = {
+    play: () => undefined,
+    pause: () => undefined,
+    stop: () => undefined,
+    seek: () => undefined,
+    scheduleJump: () => true,
+    cancelScheduledJump: () => undefined,
+    getCurrentTime: () => 0,
+    getAudioTime: () => 0,
+    getPlaybackRate: () => 1,
+    isPlaying: () => false,
+  };
+  const touching = (engine: JukeboxEngine, beat: number) =>
+    (engine.getVisualizationData()?.edges ?? []).filter(
+      (edge) => edge.src.which === beat || edge.dest.which === beat,
+    ).length;
+
+  it("takes effect at once when sung lines are being kept whole", () => {
+    const engine = new JukeboxEngine(player, { config: { respectVocals: true } });
+    engine.loadAnalysis(happyPathAnalysis());
+    expect(engine.hasVocalMap()).toBe(false);
+    expect(touching(engine, 5)).toBeGreaterThan(0);
+
+    expect(engine.setVocalMap(lateMap())).toBe(true);
+
+    expect(engine.hasVocalMap()).toBe(true);
+    expect(touching(engine, 5)).toBe(0);
+    expect(engine.getVisualizationData()?.sung).toHaveLength(BEATS);
+  });
+
+  it("is kept for later when the rule is off", () => {
+    const engine = new JukeboxEngine(player);
+    engine.loadAnalysis(happyPathAnalysis());
+    const before = engine.getVisualizationData()?.edges.length;
+
+    expect(engine.setVocalMap(lateMap())).toBe(true);
+
+    expect(engine.getVisualizationData()?.edges.length).toBe(before);
+    expect(engine.getVisualizationData()?.sung).toBeNull();
+  });
+
+  it("is refused when it does not fit the track", () => {
+    const engine = new JukeboxEngine(player);
+    expect(engine.setVocalMap(lateMap())).toBe(false);
+    engine.loadAnalysis(happyPathAnalysis());
+    expect(engine.setVocalMap({ ...lateMap(), state: "0" })).toBe(false);
+    expect(engine.hasVocalMap()).toBe(false);
   });
 });
 

@@ -49,6 +49,9 @@ export type AppState = {
   trackTitle: string | null;
   // What a song still being fetched or analyzed is called, when known.
   pendingTrackTitle: string | null;
+  // Where the loaded song's vocal map stands, and how far along it is.
+  vocalMapStatus: "idle" | "working" | "ready" | "failed";
+  vocalMapPercent: number;
   trackArtist: string | null;
   trackGenres: Array<{ label: string; score: number }> | null;
   deleteEligible: boolean;

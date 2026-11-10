@@ -7,6 +7,8 @@ the browser sends.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import gzip
 import json
 from datetime import datetime, timedelta, timezone
@@ -20,7 +22,12 @@ from ..failure_log import record_failure
 from ..models import ClientFailureRequest, ClientProgressRequest
 from ..paths import DB_PATH, STORAGE_ROOT
 from ..route_responses import error_responses
-from ..utils import analysis_path_for, audio_path_for
+from ..utils import (
+    analysis_path_for,
+    audio_path_for,
+    read_analysis_json,
+    resolve_analysis_path,
+)
 from .jobs_runtime import BROWSER_ANALYSIS_FAILED_PREFIX, log_event
 
 router = APIRouter()
@@ -30,6 +37,8 @@ router = APIRouter()
 CLIENT_CLAIM_STALE_AFTER = timedelta(minutes=2)
 MAX_CLIENT_RESULT_BYTES = 64 * 1024 * 1024
 _REQUIRED_LISTS = ("sections", "bars", "beats", "tatums", "segments")
+# A vocal map is a few dozen bytes per beat; this allows a very long track.
+MAX_VOCAL_MAP_BYTES = 4 * 1024 * 1024
 
 
 def client_analysis_enabled() -> bool:
@@ -136,3 +145,75 @@ def fail_client_analysis(job_id: str, payload: ClientFailureRequest) -> JSONResp
         stage="browser_analysis",
     )
     return JSONResponse({"status": "failed"})
+
+
+def _is_digits(value: object, length: int, highest: str) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all("0" <= char <= highest for char in value)
+    )
+
+
+def _vocal_map_for(data: object, beat_count: int) -> dict[str, object] | None:
+    """The map's own fields if it is well formed for a track of beat_count beats."""
+    if not isinstance(data, dict) or data.get("version") != 1 or beat_count <= 0:
+        return None
+    if not _is_digits(data.get("state"), beat_count, "4"):
+        return None
+    if not _is_digits(data.get("sung"), beat_count, "1"):
+        return None
+    encoded = data.get("print")
+    if not isinstance(encoded, str):
+        return None
+    try:
+        size = len(base64.b64decode(encoded, validate=True))
+    except (binascii.Error, ValueError):
+        return None
+    width, remainder = divmod(size, beat_count)
+    if remainder or width < 2 or width % 2:
+        return None
+    return {key: data[key] for key in ("version", "state", "sung", "print")}
+
+
+@router.put("/api/analysis/{job_id}/vocals", responses=error_responses(403, 404, 409, 413, 422))
+async def store_vocal_map(job_id: str, request: Request) -> JSONResponse:
+    """Adds a vocal map the browser built to a finished job's analysis.
+
+    The map says where the singing is, beat by beat, so jumps can keep sung
+    lines whole. The first map a track gets is kept.
+    """
+    job = _claimed_job(job_id)
+    if job.status != "complete":
+        raise HTTPException(status_code=409, detail="Job has no analysis yet.")
+    path = resolve_analysis_path(STORAGE_ROOT, job_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    body = await request.body()
+    if len(body) > MAX_VOCAL_MAP_BYTES:
+        raise HTTPException(status_code=413, detail="Vocal map is too large.")
+    try:
+        submitted = json.loads(body)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Vocal map is not valid JSON.") from None
+
+    data = read_analysis_json(path)
+    nested = isinstance(data, dict) and isinstance(data.get("analysis"), dict)
+    root = data["analysis"] if nested and data["analysis"].get("beats") else data
+    beats = root.get("beats") if isinstance(root, dict) else None
+    vocals = _vocal_map_for(submitted, len(beats) if isinstance(beats, list) else 0)
+    if vocals is None:
+        raise HTTPException(status_code=422, detail="Vocal map does not fit this track.")
+    if root.get("vocals"):
+        return JSONResponse({"stored": False})
+
+    root["vocals"] = vocals
+    tmp_path = path.with_name(path.name + ".tmp")
+    if path.suffix == ".gz":
+        with gzip.open(tmp_path, "wt", encoding="utf-8") as handle:
+            json.dump(data, handle)
+    else:
+        tmp_path.write_text(json.dumps(data), encoding="utf-8")
+    tmp_path.replace(path)
+    log_event("vocal_map_stored", job_id=job_id)
+    return JSONResponse({"stored": True})
