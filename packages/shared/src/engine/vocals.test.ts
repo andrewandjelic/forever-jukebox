@@ -5,7 +5,9 @@ import { buildJumpGraph } from "./graph";
 import { DEFAULT_JUKEBOX_CONFIG, JukeboxEngine } from "./JukeboxEngine";
 import type { TrackAnalysis } from "./types";
 import {
+  MAX_LINE_BEATS,
   VOCAL_GAP,
+  VOCAL_ONSET,
   VOCAL_SUSTAINED,
   isVocalJumpAllowed,
   parseVocalMap,
@@ -72,6 +74,41 @@ describe("parseVocalMap", () => {
 
   it("leaves a track without a map alone", () => {
     expect(normalizeAnalysis(happyPathAnalysis()).vocals).toBeNull();
+  });
+});
+
+describe("a voice that never pauses", () => {
+  // `beats` boundaries with singing running through every one, a new note
+  // starting on every fourth, between two silent beats.
+  const unbroken = (beats: number) => {
+    const states = [
+      VOCAL_GAP,
+      ...Array.from({ length: beats }, (_item, idx) =>
+        idx % 4 === 0 ? VOCAL_ONSET : VOCAL_SUSTAINED,
+      ),
+      VOCAL_GAP,
+    ];
+    return parseVocalMap(
+      vocalsObject(states, states.map(() => QUIET)),
+      states.length,
+    )!;
+  };
+
+  it("is a sung line up to a few bars, closed until it ends", () => {
+    const line = unbroken(MAX_LINE_BEATS);
+    expect(Array.from(line.open)).toEqual([
+      1,
+      ...Array.from({ length: MAX_LINE_BEATS }, () => 0),
+      1,
+    ]);
+  });
+
+  it("is a texture beyond that, open wherever a new note starts", () => {
+    const texture = unbroken(MAX_LINE_BEATS + 8);
+    const inside = Array.from(texture.open).slice(1, -1);
+    expect(inside).toEqual(
+      Array.from({ length: MAX_LINE_BEATS + 8 }, (_item, idx) => (idx % 4 === 0 ? 1 : 0)),
+    );
   });
 });
 

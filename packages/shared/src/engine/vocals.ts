@@ -17,10 +17,17 @@ const PRINT_DB_PER_STEP = 0.5;
 const SAME_VOICE_RATIO = 0.16;
 // Beats sampled on each side when estimating that typical difference.
 const REFERENCE_SAMPLE = 72;
+// A voice that runs through this many beats without a pause is not a sung
+// line: it is a texture, such as a pad or a chopped sample held under the
+// whole section. Sung lines measured so far run to 16 beats, rapped verses
+// to 29; the textures run past 50.
+export const MAX_LINE_BEATS = 32;
 
 export interface VocalMap {
   // One VOCAL_* state per beat, for the boundary at the beat's start.
   state: Uint8Array;
+  // 1 where a jump may leave or land without splitting a sung line.
+  open: Uint8Array;
   // 1 where there is singing during the beat.
   sung: Uint8Array;
   // The voice's spectrum just before and just after each beat's start:
@@ -87,6 +94,39 @@ export function voiceDistance(map: VocalMap, beatA: number, beatB: number): numb
   );
 }
 
+function isPause(state: number): boolean {
+  return state === VOCAL_GAP || state === VOCAL_START || state === VOCAL_END;
+}
+
+// Where a jump may leave or land. Normally that is wherever the singing
+// pauses. Inside a texture (see MAX_LINE_BEATS) there are no pauses to wait
+// for, so the start of each new note or syllable will do there; a held note
+// is still never cut.
+function openBoundaries(state: Uint8Array): Uint8Array {
+  const open = new Uint8Array(state.length);
+  let runStart = -1;
+  const endRun = (end: number) => {
+    if (runStart >= 0 && end - runStart > MAX_LINE_BEATS) {
+      for (let i = runStart; i < end; i += 1) {
+        if (state[i] === VOCAL_ONSET) {
+          open[i] = 1;
+        }
+      }
+    }
+    runStart = -1;
+  };
+  for (let i = 0; i < state.length; i += 1) {
+    if (isPause(state[i])) {
+      open[i] = 1;
+      endRun(i);
+    } else if (runStart < 0) {
+      runStart = i;
+    }
+  }
+  endRun(state.length);
+  return open;
+}
+
 // The typical distance between unrelated beats, from an even sample of pairs.
 function referenceDistance(map: VocalMap): number {
   const count = map.state.length;
@@ -124,25 +164,29 @@ export function parseVocalMap(value: unknown, beatCount: number): VocalMap | nul
   if (!Number.isInteger(width) || width < 2 || width % 2 !== 0) {
     return null;
   }
-  const map: VocalMap = { state, sung, print, width, sameVoiceMax: 0 };
+  const map: VocalMap = {
+    state,
+    open: openBoundaries(state),
+    sung,
+    print,
+    width,
+    sameVoiceMax: 0,
+  };
   map.sameVoiceMax = referenceDistance(map) * SAME_VOICE_RATIO;
   return map;
 }
 
-function isOpen(state: number): boolean {
-  return state === VOCAL_GAP || state === VOCAL_START || state === VOCAL_END;
-}
-
 // A jump plays `destIndex` in place of `seedIndex`, so the audio is cut where
 // the seed beat starts and resumes where the destination starts. It keeps
-// sung lines whole when no singing runs through either point, or when the
-// voice sounds the same at both (the same note in another chorus).
+// sung lines whole when both points are open (the singing pauses there, or a
+// new note starts inside a long texture), or when the voice sounds the same
+// at both (the same note in another chorus).
 export function isVocalJumpAllowed(
   map: VocalMap,
   seedIndex: number,
   destIndex: number,
 ): boolean {
-  if (isOpen(map.state[seedIndex]) && isOpen(map.state[destIndex])) {
+  if (map.open[seedIndex] && map.open[destIndex]) {
     return true;
   }
   return voiceDistance(map, seedIndex, destIndex) <= map.sameVoiceMax;
