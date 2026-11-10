@@ -1,0 +1,5 @@
+# Terraform's local working files and state (state can hold secrets; never commit it)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
