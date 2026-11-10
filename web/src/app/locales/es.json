@@ -294,6 +294,15 @@
     "open": "Abrir configuración",
     "language": "Idioma",
     "theme": "Tema",
+    "effects": "Efectos visuales",
+    "effectsHint": "Lite desactiva el desenfoque, el brillo y los fondos en movimiento. Va mucho más fluido en equipos sin una tarjeta gráfica potente.",
+    "effectsAutoNowLite": "En modo Lite: este equipo no podía mantener fluido el aspecto completo. Elige Completo para recuperarlo.",
+    "effectsAutoSwitched": "Se cambió a efectos más ligeros para que todo vaya fluido. Puedes cambiarlo en Ajustes.",
+    "effectsOptions": {
+      "auto": "Automático",
+      "full": "Completo",
+      "lite": "Lite"
+    },
     "sleepTimer": "Temporizador",
     "reportBug": "Informar de un error",
     "cachedAudio": "Audio en caché",

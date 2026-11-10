@@ -4926,3 +4926,63 @@ body[data-style="fuzz"]:not(.theme-light) .viz-layer {
   color: var(--accent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
 }
+
+/* ---- Lite effects ----
+   For machines where the full look drops frames: chosen under Settings >
+   Visual effects, or switched on automatically when the page cannot keep up.
+   The costly things go: blurred glass, layers blended over the moving
+   visualizer, and backdrops that repaint every frame. */
+body.lite-effects {
+  /* Read by the visualizer: no canvas glows, one canvas pixel per CSS pixel. */
+  --viz-lite: 1;
+}
+
+body.lite-effects *,
+body.lite-effects *::before,
+body.lite-effects *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* The drifting, pulsing and color-cycling layers of each style hold still. */
+body.lite-effects::before,
+body.lite-effects .hero,
+body.lite-effects .panel,
+body.lite-effects .hero-title,
+body.lite-effects .hero-title-jukebox,
+body.lite-effects .hero-title-neon,
+body.lite-effects .viz::before,
+body.lite-effects .viz::after,
+body.lite-effects .viz-layer,
+body.lite-effects .viz-layer::before,
+body.lite-effects .viz canvas {
+  animation: none !important;
+}
+
+/* A filter on the canvas is recomputed for every frame it draws, and scaling
+   its layer on each beat resamples the whole canvas. */
+body.lite-effects .viz canvas {
+  filter: none !important;
+}
+
+body.lite-effects .viz-layer,
+body.lite-effects[data-style="doom"] .viz::before,
+body.lite-effects[data-style="irie"] .viz::before,
+body.lite-effects[data-style="fuzz"] .viz-layer::before {
+  transform: none !important;
+}
+
+/* Layers blended over the visualizer are re-blended every frame. Without
+   their blend mode they would simply cover it, so they go. */
+body.lite-effects[data-style="cyberpunk"] .viz::after,
+body.lite-effects[data-style="psychedelic"] .viz::after,
+body.lite-effects[data-style="moth"] .viz::after,
+body.lite-effects[data-style="irie"] .viz::after {
+  display: none !important;
+}
+
+/* A still backdrop under the visualizer is otherwise redrawn with every
+   canvas frame; as a layer of its own it is drawn once. */
+body.lite-effects[data-style="irie"] .viz::before {
+  will-change: transform;
+}

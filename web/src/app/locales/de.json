@@ -294,6 +294,15 @@
     "open": "Einstellungen öffnen",
     "language": "Sprache",
     "theme": "Darstellung",
+    "effects": "Visuelle Effekte",
+    "effectsHint": "Lite schaltet Unschärfe, Leuchten und bewegte Hintergründe ab. Auf Computern ohne starke Grafikkarte läuft es deutlich flüssiger.",
+    "effectsAutoNowLite": "Läuft in Lite: Dieser Computer konnte die volle Darstellung nicht flüssig halten. Wähle Voll, um sie zurückzuholen.",
+    "effectsAutoSwitched": "Auf leichtere Darstellung umgestellt, damit alles flüssig bleibt. Das lässt sich in den Einstellungen ändern.",
+    "effectsOptions": {
+      "auto": "Automatisch",
+      "full": "Voll",
+      "lite": "Lite"
+    },
     "sleepTimer": "Sleep-Timer",
     "reportBug": "Fehler melden",
     "cachedAudio": "Gecachte Audiodaten",

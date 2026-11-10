@@ -5,6 +5,7 @@ import type { SpotifySearchItem, YoutubeSearchItem } from "./api";
 import type { AppState, SleepTimerState, TabId } from "./context";
 import type { FavoritesDisplaySort } from "./favorites";
 import type { ThemeName } from "./themeConfig";
+import type { EffectsMode } from "./effects";
 import type { MaterialSymbolIconName } from "./material-icons";
 import { DEFAULT_VISUALIZATION_INDEX } from "./constants";
 import { emptyPlaylist } from "./playlist";
@@ -107,6 +108,9 @@ function createDefaultTopSongsLists(): Record<
 // Shell/panel UI state that has no AppState counterpart.
 type ShellSlice = {
   theme: ThemeName;
+  effectsMode: EffectsMode;
+  // Auto found this machine too slow for the full look during this visit.
+  effectsAutoLite: boolean;
   navigationRequest: NavigationRequest | null;
   isPlayTabPulsing: boolean;
   vizStatsPulseId: number;
@@ -158,6 +162,7 @@ type ShellSlice = {
 type Actions = {
   setActiveTab: (tab: TabId) => void;
   setTheme: (theme: ThemeName) => void;
+  setEffectsMode: (mode: EffectsMode) => void;
   setPlayTabPulsing: (pulsing: boolean) => void;
   setFooterCredit: (credit: FooterCredit | null) => void;
   // Navigation requests are consumed by the React router boundary in
@@ -215,6 +220,8 @@ const createUiSlice: Slice<
     | "activeVizIndex"
     | "selectedEdge"
     | "theme"
+    | "effectsMode"
+    | "effectsAutoLite"
     | "navigationRequest"
     | "isPlayTabPulsing"
     | "vizStatsPulseId"
@@ -275,6 +282,8 @@ const createUiSlice: Slice<
     activeVizIndex: DEFAULT_VISUALIZATION_INDEX,
     selectedEdge: null,
     theme: "dark",
+    effectsMode: "auto",
+    effectsAutoLite: false,
     navigationRequest: null,
     isPlayTabPulsing: false,
     vizStatsPulseId: 0,
@@ -316,6 +325,7 @@ const createUiSlice: Slice<
     branchStats: null,
     setActiveTab: (activeTabId) => set({ activeTabId }),
     setTheme: (theme) => set({ theme }),
+    setEffectsMode: (effectsMode) => set({ effectsMode }),
     setPlayTabPulsing: (isPlayTabPulsing) => set({ isPlayTabPulsing }),
     setFooterCredit: (footerCredit) => set({ footerCredit }),
     navigateToTabWithState: (tabId, options) => {

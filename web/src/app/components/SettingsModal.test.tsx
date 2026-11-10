@@ -192,6 +192,26 @@ describe("SettingsModal", () => {
     expect(useAppStore.getState().theme).toBe("light");
   });
 
+  it("applies the chosen effects level, and says when auto has gone lite", async () => {
+    act(() => {
+      useAppStore.setState({ effectsMode: "auto", effectsAutoLite: true });
+    });
+    render(<SettingsModal />);
+    act(() => {
+      useAppStore.setState({ settingsModalOpen: true });
+    });
+    expect(screen.getByText(/Running lite/)).toBeTruthy();
+    await userEvent.selectOptions(
+      document.getElementById("settings-effects") as HTMLSelectElement,
+      "full",
+    );
+    expect(useAppStore.getState().effectsMode).toBe("full");
+    expect(screen.queryByText(/Running lite/)).toBeNull();
+    act(() => {
+      useAppStore.setState({ effectsMode: "auto", effectsAutoLite: false });
+    });
+  });
+
   it("closes from the backdrop", async () => {
     render(<SettingsModal />);
     act(() => {

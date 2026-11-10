@@ -703,6 +703,8 @@ class CanvasViz {
     // strands stay apart where they cross: a dark halo gives a "neon black"
     // look ("" = off, arcs glow additively as usual).
     arcHalo: "",
+    // Lite effects: no canvas glows, and one canvas pixel per CSS pixel.
+    lite: false,
   };
 
   constructor(
@@ -783,7 +785,12 @@ class CanvasViz {
     if (!this.data) {
       return;
     }
+    const wasLite = this.theme.lite;
     this.updateTheme();
+    if (this.theme.lite !== wasLite) {
+      // The canvases are sized for the pixel ratio the mode allows.
+      this.resize();
+    }
     this.rebuildBeatColors();
     this.drawBase();
     this.drawOverlay();
@@ -925,7 +932,11 @@ class CanvasViz {
       canvas.style.width = `${outer.width}px`;
       canvas.style.height = `${outer.height}px`;
     }
-    const dpr = window.devicePixelRatio || 1;
+    // Lite effects draws at most one canvas pixel per CSS pixel: on a
+    // high-density screen that is up to four times less to fill each frame.
+    const dpr = this.theme.lite
+      ? Math.min(1, window.devicePixelRatio || 1)
+      : window.devicePixelRatio || 1;
     this.size = { width: outer.width, height: outer.height };
     this.baseCanvas.width = outer.width * dpr;
     this.baseCanvas.height = outer.height * dpr;
@@ -1045,6 +1056,7 @@ class CanvasViz {
         .map((color) => color.trim())
         .filter(Boolean),
     };
+    this.theme.lite = cssNumber("--viz-lite", 0) > 0;
     this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
     this.theme.arcColor = styles.getPropertyValue("--arc-color").trim();
@@ -1292,7 +1304,9 @@ class CanvasViz {
     // glow sits between the line and the halo, so the halo widens to fit it.
     // Only the colors in --arc-halo-colors get the halo (all when unset); they
     // draw last, over the additive glow of the rest.
-    const glow = this.theme.arcGlow;
+    // Lite effects keeps each strand's halo but not the two wide glow strokes
+    // under it, which are most of what a haloed arc fills.
+    const glow = this.theme.lite ? 0 : this.theme.arcGlow;
     const haloExtra = HALO_WIDTH + (glow > 0 ? GLOW_WIDTH * 2 : 0);
     const haloFor = (color: string) =>
       arcHalo !== "" &&
@@ -1448,7 +1462,7 @@ class CanvasViz {
         ctx.lineWidth = 4;
         ctx.strokeStyle = gradient;
         ctx.shadowColor = c1;
-        ctx.shadowBlur = 12 + energy * 24;
+        ctx.shadowBlur = this.theme.lite ? 0 : 12 + energy * 24;
         ctx.beginPath();
         ring.forEach((pt, k) =>
           k === 0 || !Number.isFinite(ring[k - 1].x)
@@ -2220,7 +2234,7 @@ class CanvasViz {
           this.overlayCtx.save();
           this.overlayCtx.lineCap = "round";
           this.overlayCtx.shadowColor = this.theme.beatHighlight;
-          this.overlayCtx.shadowBlur = 24 * alpha * flash;
+          this.overlayCtx.shadowBlur = this.theme.lite ? 0 : 24 * alpha * flash;
           if (this.shouldBendEdge(from, to, this.jumpLine.from, this.jumpLine.to)) {
             const control = this.resolveControlPointForPair(
               from,

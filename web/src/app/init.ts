@@ -3,6 +3,12 @@ import { BufferedAudioPlayer } from "@forever-jukebox/shared/audio/BufferedAudio
 import { CowbellOverlayService } from "@forever-jukebox/shared/audio/CowbellOverlayService";
 import { JukeboxController } from "@forever-jukebox/shared/viz/JukeboxController";
 import { applyThemeVariables, resolveStoredTheme } from "./theme";
+import {
+  applyEffectsClass,
+  hasAutoSwitchedToLite,
+  isLiteEffects,
+  resolveStoredEffectsMode,
+} from "./effects";
 import { resolveStoredAnchorHighlight } from "./anchorHighlight";
 import { resolveStoredBranchStatsEnabled } from "./extrasMode";
 import { resolveStoredVolumePct } from "./volume";
@@ -66,6 +72,9 @@ export function initRuntime(): void {
   const initialTheme = resolveStoredTheme();
   applyThemeVariables(initialTheme);
   document.body.classList.toggle("theme-light", initialTheme === "light");
+  const effectsMode = resolveStoredEffectsMode();
+  const effectsAutoLite = hasAutoSwitchedToLite();
+  applyEffectsClass(isLiteEffects(effectsMode, effectsAutoLite));
   const player = new BufferedAudioPlayer();
   const volumePct = resolveStoredVolumePct();
   player.setVolume(volumePct / 100);
@@ -81,6 +90,8 @@ export function initRuntime(): void {
   // persisted bits here, pre-render.
   useAppStore.setState({
     theme: initialTheme,
+    effectsMode,
+    effectsAutoLite,
     favorites: loadFavorites(),
     playlist: loadPlaylist(),
     favoritesSyncCode: loadFavoritesSyncCode(),
