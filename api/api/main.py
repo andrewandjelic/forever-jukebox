@@ -35,7 +35,9 @@ from .routes.media import router as media_router
 from .routes.search import router as search_router
 
 app = FastAPI(title="Forever Jukebox Analysis API")
-app.add_middleware(GZipMiddleware, minimum_size=1024)
+# Level 4, not the default 9: on a song's analysis it is under 4% larger and
+# takes a quarter of the time (23 ms against 83 ms for a nine-minute track).
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=4)
 app.include_router(admin_router)
 app.include_router(client_analysis_router)
 app.include_router(config_router)
