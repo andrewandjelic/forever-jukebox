@@ -3,6 +3,12 @@ import { BufferedAudioPlayer } from "@forever-jukebox/shared/audio/BufferedAudio
 import { CowbellOverlayService } from "@forever-jukebox/shared/audio/CowbellOverlayService";
 import { JukeboxController } from "@forever-jukebox/shared/viz/JukeboxController";
 import { applyThemeVariables, resolveStoredTheme } from "./theme";
+import {
+  applyEffectsClass,
+  hasAutoSwitchedToLite,
+  isLiteEffects,
+  resolveStoredEffectsMode,
+} from "./effects";
 import { resolveStoredAnchorHighlight } from "./anchorHighlight";
 import { resolveStoredBranchStatsEnabled } from "./extrasMode";
 import { resolveStoredVolumePct } from "./volume";
@@ -20,6 +26,7 @@ import {
   loadAudioFromJob,
   pollAnalysis,
   resetForNewTrack,
+  togglePlayback,
   updateVizVisibility,
 } from "./playback";
 import { setSearchRuntime, type SearchDeps } from "./search";
@@ -56,6 +63,7 @@ import {
 } from "./favorites";
 import { loadPlaylist } from "./playlist";
 import i18n from "./i18n";
+import { cancelAutoplay, consumeAutoplay } from "./autoplay";
 
 type PlaybackDeps = Parameters<typeof pollAnalysis>[1];
 
@@ -66,6 +74,9 @@ export function initRuntime(): void {
   const initialTheme = resolveStoredTheme();
   applyThemeVariables(initialTheme);
   document.body.classList.toggle("theme-light", initialTheme === "light");
+  const effectsMode = resolveStoredEffectsMode();
+  const effectsAutoLite = hasAutoSwitchedToLite();
+  applyEffectsClass(isLiteEffects(effectsMode, effectsAutoLite));
   const player = new BufferedAudioPlayer();
   const volumePct = resolveStoredVolumePct();
   player.setVolume(volumePct / 100);
@@ -81,6 +92,8 @@ export function initRuntime(): void {
   // persisted bits here, pre-render.
   useAppStore.setState({
     theme: initialTheme,
+    effectsMode,
+    effectsAutoLite,
     favorites: loadFavorites(),
     playlist: loadPlaylist(),
     favoritesSyncCode: loadFavoritesSyncCode(),
@@ -104,6 +117,27 @@ export function initRuntime(): void {
   // mutates this same `context`, so the viz controllers become visible through
   // getAppContext() once they're attached.
   setAppRuntime(context);
+  // A song the listener picked starts by itself once its audio and its
+  // analysis are both in. Deferred a tick so the load finishes writing the
+  // track's details first.
+  useAppStore.subscribe((state, previous) => {
+    if (state.analysisFailedJobId && !previous.analysisFailedJobId) {
+      cancelAutoplay();
+    }
+    const ready = state.audioLoaded && state.analysisLoaded;
+    if (!ready || (previous.audioLoaded && previous.analysisLoaded)) {
+      return;
+    }
+    if (!consumeAutoplay()) {
+      return;
+    }
+    window.setTimeout(() => {
+      const now = useAppStore.getState();
+      if (now.audioLoaded && now.analysisLoaded && !now.isRunning) {
+        togglePlayback(context);
+      }
+    }, 0);
+  });
   // Navigation lives in the store now; the flows still take it as a dep (so
   // they stay unit-testable), resolved at call time via these thin wrappers.
   const navigateToTabWithState = (

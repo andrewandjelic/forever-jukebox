@@ -8,6 +8,7 @@ import {
   supportedLanguageOptions,
 } from "../i18n";
 import { trackEvent } from "../analytics";
+import { EFFECTS_MODES, type EffectsMode } from "../effects";
 import { SLEEP_TIMER_OPTIONS, setSleepTimer } from "../playback";
 import { useAppStore } from "../store";
 import type { ThemeName } from "../themeConfig";
@@ -127,6 +128,9 @@ export function SettingsModal() {
   const open = useAppStore((state) => state.settingsModalOpen);
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
+  const effectsMode = useAppStore((state) => state.effectsMode);
+  const effectsAutoLite = useAppStore((state) => state.effectsAutoLite);
+  const setEffectsMode = useAppStore((state) => state.setEffectsMode);
   const configuredDurationMs = useAppStore(
     (state) => state.sleepTimer.configuredDurationMs,
   );
@@ -285,6 +289,41 @@ export function SettingsModal() {
               ))}
             </div>
           </fieldset>
+        </section>
+
+        <section className="settings-section">
+          <label className="settings-field" htmlFor="settings-effects">
+            <span className="label-line">{t("settings.effects")}</span>
+            <span className="viz-select-wrap settings-select-wrap">
+              <select
+                id="settings-effects"
+                className="viz-select settings-select"
+                value={effectsMode}
+                onChange={(event) => {
+                  const next = event.target.value as EffectsMode;
+                  trackEvent("effects", { mode: next });
+                  setEffectsMode(next);
+                }}
+              >
+                {EFFECTS_MODES.map((option) => (
+                  <option key={option} value={option}>
+                    {t(`settings.effectsOptions.${option}`)}
+                  </option>
+                ))}
+              </select>
+              <span
+                className="material-symbols-outlined viz-select-arrow"
+                aria-hidden="true"
+              >
+                arrow_drop_down
+              </span>
+            </span>
+            <span className="hint">
+              {effectsMode === "auto" && effectsAutoLite
+                ? t("settings.effectsAutoNowLite")
+                : t("settings.effectsHint")}
+            </span>
+          </label>
         </section>
 
         <section className="settings-section">

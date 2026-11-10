@@ -294,6 +294,15 @@
     "open": "Open settings",
     "language": "Language",
     "theme": "Theme",
+    "effects": "Visual effects",
+    "effectsHint": "Lite turns off blur, glow and moving backdrops. It runs much faster on computers without a strong graphics card.",
+    "effectsAutoNowLite": "Running lite: this computer could not keep the full look smooth. Pick Full to bring it back.",
+    "effectsAutoSwitched": "Switched to lighter visuals to keep things smooth. You can change this in Settings.",
+    "effectsOptions": {
+      "auto": "Auto",
+      "full": "Full",
+      "lite": "Lite"
+    },
     "sleepTimer": "Sleep Timer",
     "reportBug": "Report a bug",
     "cachedAudio": "Cached Audio",

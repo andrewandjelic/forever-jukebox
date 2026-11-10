@@ -200,6 +200,12 @@ export function initializePlayback(): void {
           highlightJump && typeof engineState.lastJumpToIndex === "number"
             ? engineState.lastJumpToIndex
             : engineState.currentBeatIndex;
+        // The jump the engine has already decided on, so its arc can light
+        // up as the playhead closes in.
+        jukebox.setUpcomingJump(
+          engineState.nextJumpFromIndex ?? null,
+          engineState.nextJumpToIndex ?? null,
+        );
         jukebox.update(jumpTo, highlightJump, jumpFrom);
         if (jumpTo !== engineState.currentBeatIndex) {
           jukebox.update(engineState.currentBeatIndex, false, jumpTo);

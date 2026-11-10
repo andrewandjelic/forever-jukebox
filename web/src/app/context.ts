@@ -47,6 +47,8 @@ export type AppState = {
   selectedEdge: Edge | null;
   trackDurationSec: number | null;
   trackTitle: string | null;
+  // What a song still being fetched or analyzed is called, when known.
+  pendingTrackTitle: string | null;
   trackArtist: string | null;
   trackGenres: Array<{ label: string; score: number }> | null;
   deleteEligible: boolean;

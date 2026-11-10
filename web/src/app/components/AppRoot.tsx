@@ -6,6 +6,13 @@ import { getAppContext, handleRoute } from "../runtime";
 import { useAppStore } from "../store";
 import { tabFromPathname } from "../tabs";
 import { applyTheme } from "../theme";
+import {
+  applyEffectsMode,
+  markAutoSwitchedToLite,
+  watchFrameRate,
+} from "../effects";
+import i18n from "../i18n";
+import { showToast } from "../ui";
 import { titleForAppView } from "../document-title";
 import {
   handleKeydown as playbackHandleKeydown,
@@ -54,6 +61,9 @@ function useTabEffects() {
     useAppStore
       .getState()
       .setPlayTabPulsing(useAppStore.getState().isRunning && activeTab !== "play");
+    // Off the Listen tab the visualizer has nothing to show, so it stops
+    // drawing; the music and the jumps carry on.
+    jukebox?.setVisible(activeTab === "play");
     if (activeTab === "play") {
       jukebox?.resizeActive();
     } else if (useAppStore.getState().shiftBranching) {
@@ -112,6 +122,33 @@ function useThemeEffect() {
   }, [theme]);
 }
 
+// Applies the effects level, and in auto mode watches the frame pace while a
+// song plays on the Listen tab: a page that cannot keep up drops to lite.
+function useEffectsMode(activeTab: string) {
+  const mode = useAppStore((s) => s.effectsMode);
+  const autoLite = useAppStore((s) => s.effectsAutoLite);
+  const watching = useAppStore(
+    (s) => s.effectsMode === "auto" && !s.effectsAutoLite && s.isRunning,
+  );
+  useEffect(() => {
+    applyEffectsMode(getAppContext(), mode, autoLite);
+  }, [mode, autoLite]);
+  const listening = activeTab === "play";
+  useEffect(() => {
+    if (!watching || !listening) {
+      return undefined;
+    }
+    return watchFrameRate(
+      () => useAppStore.getState().isRunning && !useAppStore.getState().isPaused,
+      () => {
+        markAutoSwitchedToLite();
+        useAppStore.setState({ effectsAutoLite: true });
+        showToast(i18n.t("settings.effectsAutoSwitched"));
+      },
+    );
+  }, [watching, listening]);
+}
+
 // Window-level hotkeys (playback shortcuts, delete-confirm, playlist modal).
 function useGlobalHotkeys() {
   useEffect(() => {
@@ -144,6 +181,7 @@ export function AppRoot() {
   useRouteSync();
   useTabEffects();
   useThemeEffect();
+  useEffectsMode(activeTab);
   useGlobalHotkeys();
   usePlaylistAddEnabled();
   useListenLayout(activeTab);

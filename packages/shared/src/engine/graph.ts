@@ -98,6 +98,17 @@ function calculateNearestNeighborsForQuantum(
     }
 
     const q2 = quanta[i];
+    const pdistance =
+      q1.indexInParent !== undefined &&
+      q2.indexInParent !== undefined &&
+      q1.indexInParent === q2.indexInParent
+        ? 0
+        : 100;
+    // A beat at a different place in its bar starts that far away, so with
+    // the usual cut-off it can never qualify: skip comparing its segments.
+    if (pdistance >= maxThreshold) {
+      continue;
+    }
     let sum = 0;
     for (let j = 0; j < q1.overlappingSegments.length; j += 1) {
       const seg1 = q1.overlappingSegments[j];
@@ -110,13 +121,6 @@ function calculateNearestNeighborsForQuantum(
       }
       sum += distance;
     }
-
-    const pdistance =
-      q1.indexInParent !== undefined &&
-      q2.indexInParent !== undefined &&
-      q1.indexInParent === q2.indexInParent
-        ? 0
-        : 100;
 
     const totalDistance = sum / q1.overlappingSegments.length + pdistance;
     if (totalDistance < maxThreshold) {

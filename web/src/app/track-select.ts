@@ -1,4 +1,5 @@
 import { isLikelyJobId } from "./identity";
+import { requestAutoplay } from "./autoplay";
 import { loadTrackById, loadTrackByJobId } from "./playback";
 import type { PlaylistTrack } from "./playlist";
 import { getAppContext, getPlaybackDeps } from "./runtime";
@@ -18,6 +19,7 @@ export function retryTrack(jobId: string): void {
     analysisFailedJobId: null,
     retryInFlightJobId: jobId,
   });
+  requestAutoplay(getAppContext());
   void loadTrackByJobId(getAppContext(), deps, jobId);
 }
 
@@ -30,6 +32,7 @@ export function selectTrack(
     return;
   }
   const context = getAppContext();
+  requestAutoplay(context);
   useAppStore
     .getState()
     .navigateToTabWithState("play", { trackId, tuningParams: null });

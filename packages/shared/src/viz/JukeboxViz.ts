@@ -63,6 +63,23 @@ const MOTION_EASE = 0.99;
 const JUMP_FLASH_FIXED = 0.4;
 // Arc brightness on the flat views (riding has its own, RIDE_ARC_DIM).
 const FLAT_ARC_DIM = 0.7;
+// The arc of the jump the engine has decided to take brightens and swings
+// harder as the playhead closes in on it, starting this many beats out. Arcs
+// the playhead will simply pass stay as they are: the point is to show where
+// the music is about to go.
+export const APPROACH_BEATS = 12;
+// At the jump its wave swings this many times wider than usual.
+const APPROACH_SWING = 3.5;
+// How quickly the effect settles on a newly decided jump (ms to cover ~63%).
+const APPROACH_EASE_MS = 140;
+
+// How strongly to light the coming jump: 0 when it is APPROACH_BEATS or more
+// away, rising to 1 as the playhead arrives. Eased so the build is slow at
+// first and urgent at the end.
+export function approachLevel(beatsAway: number, reach = APPROACH_BEATS) {
+  const closeness = 1 - Math.min(1, Math.max(0, beatsAway / reach));
+  return closeness * closeness;
+}
 const RETURN_EASE = 0.985;
 // Click-and-drag turns the layout on top of the tumble. Drags are slow
 // (radians per pixel), the view eases toward where you dragged it
@@ -673,6 +690,13 @@ class CanvasViz {
   private rippleDue = false;
   // Live edges grouped by color so each frame needs one stroke per color.
   private edgesByColor = new Map<string, Edge[]>();
+  // Every arc by "source-destination", for finding the one about to be taken.
+  private edgeByPair = new Map<string, Edge>();
+  // The jump the engine has decided to take next, if any.
+  private upcomingJump: { from: number; to: number } | null = null;
+  // The arc being lit for it, how strongly (0-1), and when that was last
+  // updated.
+  private approach = { key: "", level: 0, at: 0 };
 
   private edgeGeometry = new WeakMap<
     Edge,
@@ -703,6 +727,8 @@ class CanvasViz {
     // strands stay apart where they cross: a dark halo gives a "neon black"
     // look ("" = off, arcs glow additively as usual).
     arcHalo: "",
+    // Lite effects: no canvas glows, and one canvas pixel per CSS pixel.
+    lite: false,
   };
 
   constructor(
@@ -783,15 +809,27 @@ class CanvasViz {
     if (!this.data) {
       return;
     }
+    const wasLite = this.theme.lite;
     this.updateTheme();
+    if (this.theme.lite !== wasLite) {
+      // The canvases are sized for the pixel ratio the mode allows.
+      this.resize();
+    }
     this.rebuildBeatColors();
     this.drawBase();
     this.drawOverlay();
   }
 
+  // The engine reports its state on every tick, several times around each
+  // beat. This only records what changed and asks for one redraw on the next
+  // frame; drawing here would repaint every arc once per tick, on top of the
+  // frame loop, and keep painting in a hidden tab.
   update(currentIndex: number, lastJumped: boolean, previousIndex: number | null) {
-    this.rippleDue = currentIndex !== this.currentIndex;
-    if (this.rippleDue) {
+    const beatChanged = currentIndex !== this.currentIndex;
+    const jumped = lastJumped && previousIndex !== null;
+    if (beatChanged) {
+      // Stays set until a frame draws the ripple.
+      this.rippleDue = true;
       this.beatAt = performance.now();
       if (this.burstPending !== null) {
         this.burst(this.burstPending);
@@ -805,14 +843,16 @@ class CanvasViz {
       };
     }
     this.currentIndex = currentIndex;
-    if (lastJumped && previousIndex !== null) {
+    if (jumped) {
       this.jumpLine = {
         from: previousIndex,
         to: currentIndex,
         at: performance.now(),
       };
     }
-    this.drawOverlay();
+    if (beatChanged || jumped) {
+      this.requestOverlayAnimation();
+    }
   }
 
   reset() {
@@ -925,7 +965,11 @@ class CanvasViz {
       canvas.style.width = `${outer.width}px`;
       canvas.style.height = `${outer.height}px`;
     }
-    const dpr = window.devicePixelRatio || 1;
+    // Lite effects draws at most one canvas pixel per CSS pixel: on a
+    // high-density screen that is up to four times less to fill each frame.
+    const dpr = this.theme.lite
+      ? Math.min(1, window.devicePixelRatio || 1)
+      : window.devicePixelRatio || 1;
     this.size = { width: outer.width, height: outer.height };
     this.baseCanvas.width = outer.width * dpr;
     this.baseCanvas.height = outer.height * dpr;
@@ -990,6 +1034,12 @@ class CanvasViz {
     const { edges, beats } = this.data;
     this.beatColors = computeBeatColors(beats, this.theme.beatPalette);
     this.edgesByColor = new Map();
+    this.edgeByPair = new Map();
+    for (const edge of edges) {
+      if (!edge.deleted) {
+        this.edgeByPair.set(`${edge.src.which}-${edge.dest.which}`, edge);
+      }
+    }
     const step = Math.max(1, Math.ceil(edges.length / MAX_WAVE_EDGES));
     for (let i = 0; i < edges.length; i += step) {
       const edge = edges[i];
@@ -1045,6 +1095,7 @@ class CanvasViz {
         .map((color) => color.trim())
         .filter(Boolean),
     };
+    this.theme.lite = cssNumber("--viz-lite", 0) > 0;
     this.theme.trails = Math.min(0.95, Math.max(0, cssNumber("--viz-trails", 0)));
     this.theme.intensity = Math.min(1, Math.max(0.1, cssNumber("--viz-intensity", 1)));
     this.theme.arcColor = styles.getPropertyValue("--arc-color").trim();
@@ -1214,12 +1265,79 @@ class CanvasViz {
     }
   }
 
+  // The jump the engine has decided to take next: the beat it will leave
+  // before and the beat it will land on. Null when none is in sight.
+  setUpcomingJump(from: number | null, to: number | null) {
+    this.upcomingJump = from === null || to === null ? null : { from, to };
+  }
+
+  // Eases the approach effect toward how close the playhead is to the jump
+  // that has been decided. Returns its arc and the level, or null when there
+  // is nothing to light.
+  private updateApproach(playing: boolean) {
+    const now = performance.now();
+    const jump = this.upcomingJump;
+    let key = "";
+    let target = 0;
+    if (playing && jump && this.currentIndex >= 0) {
+      const phase = Math.min(1, Math.max(0, (now - this.beatAt) / this.beatMs));
+      const beatsAway = jump.from - this.currentIndex - phase;
+      if (beatsAway >= 0 && beatsAway <= APPROACH_BEATS + 1) {
+        key = `${jump.from}-${jump.to}`;
+        target = approachLevel(beatsAway);
+      }
+    }
+    if (key !== this.approach.key) {
+      // A newly decided jump fades in from nothing instead of popping.
+      this.approach = { key, level: 0, at: now };
+    }
+    const elapsed = Math.max(0, now - this.approach.at);
+    this.approach.level +=
+      (target - this.approach.level) * (1 - Math.exp(-elapsed / APPROACH_EASE_MS));
+    this.approach.at = now;
+    const edge = key ? this.edgeByPair.get(key) : undefined;
+    return edge && this.approach.level > 0.02
+      ? { edge, level: this.approach.level }
+      : null;
+  }
+
+  // Redraws the arc of the coming jump over the rest: a soft glow under a
+  // bright core, swinging wider the closer the playhead gets.
+  private drawApproachingJump(
+    ctx: CanvasRenderingContext2D,
+    shaped: Float32Array | null,
+    edge: Edge,
+    level: number,
+    style: string | CanvasGradient,
+    alpha: number,
+    width: number,
+  ) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = style;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    if (!this.traceWaveEdge(ctx, edge, shaped, 1 + (APPROACH_SWING - 1) * level)) {
+      return;
+    }
+    // Wide and faint, then narrower and stronger, then the line itself.
+    ctx.globalAlpha = Math.min(1, alpha * 0.22 * level);
+    ctx.lineWidth = width + 12 * level;
+    ctx.stroke();
+    ctx.globalAlpha = Math.min(1, alpha * 0.45 * level);
+    ctx.lineWidth = width + 5 * level;
+    ctx.stroke();
+    ctx.globalAlpha = Math.min(1, alpha * (0.8 + 1.4 * level));
+    ctx.lineWidth = width * (1 + 0.8 * level);
+    ctx.stroke();
+  }
+
   // Traces one live arc into the current path, rippling with the audio.
-  // False when its beats have no position.
+  // False when its beats have no position. `swing` scales how far it ripples.
   private traceWaveEdge(
     ctx: CanvasRenderingContext2D,
     edge: Edge,
     shaped: Float32Array | null,
+    swing = 1,
   ) {
     const from = this.positions[edge.src.which];
     const to = this.positions[edge.dest.which];
@@ -1231,10 +1349,11 @@ class CanvasViz {
       geometry?.bend && geometry.control
         ? { x: geometry.control[0], y: geometry.control[1] }
         : { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-    const amplitude = Math.min(
-      WAVE_ARC_MAX_PX,
-      Math.hypot(to.x - from.x, to.y - from.y) * WAVE_ARC_RATIO,
-    );
+    const amplitude =
+      Math.min(
+        WAVE_ARC_MAX_PX,
+        Math.hypot(to.x - from.x, to.y - from.y) * WAVE_ARC_RATIO,
+      ) * swing;
     traceWaveCurve(ctx, from, control, to, shaped, edge.id * 37, amplitude);
     return true;
   }
@@ -1292,7 +1411,9 @@ class CanvasViz {
     // glow sits between the line and the halo, so the halo widens to fit it.
     // Only the colors in --arc-halo-colors get the halo (all when unset); they
     // draw last, over the additive glow of the rest.
-    const glow = this.theme.arcGlow;
+    // Lite effects keeps each strand's halo but not the two wide glow strokes
+    // under it, which are most of what a haloed arc fills.
+    const glow = this.theme.lite ? 0 : this.theme.arcGlow;
     const haloExtra = HALO_WIDTH + (glow > 0 ? GLOW_WIDTH * 2 : 0);
     const haloFor = (color: string) =>
       arcHalo !== "" &&
@@ -1301,6 +1422,8 @@ class CanvasViz {
     const groups = [...this.edgesByColor].sort(
       ([a], [b]) => Number(haloFor(a)) - Number(haloFor(b)),
     );
+    // On the flat views the arc of the coming jump is drawn separately, lit.
+    const approach = flat ? this.updateApproach(wave !== null) : null;
     for (const [color, colorEdges] of groups) {
       const halo = haloFor(color) ? arcHalo : "";
       ctx.globalCompositeOperation = halo ? "source-over" : "lighter";
@@ -1309,6 +1432,9 @@ class CanvasViz {
       // Group by distance band so each band strokes in one go.
       const bands: Edge[][] = ARC_DEPTH_BANDS.map(() => []);
       for (const edge of colorEdges) {
+        if (approach && edge === approach.edge) {
+          continue;
+        }
         const a = this.world[edge.src.which];
         const b = this.world[edge.dest.which];
         if (a && b) {
@@ -1387,6 +1513,17 @@ class CanvasViz {
         ctx.stroke();
       });
     }
+    if (approach) {
+      this.drawApproachingJump(
+        ctx,
+        shaped,
+        approach.edge,
+        approach.level,
+        this.theme.arcColor || this.beatColors[approach.edge.src.which] || gradient,
+        arcAlpha,
+        arcWidth * ARC_DEPTH_BANDS[0].width,
+      );
+    }
     ctx.globalCompositeOperation = "lighter";
 
     if (this.waveRing && this.positions.length > 0) {
@@ -1448,7 +1585,7 @@ class CanvasViz {
         ctx.lineWidth = 4;
         ctx.strokeStyle = gradient;
         ctx.shadowColor = c1;
-        ctx.shadowBlur = 12 + energy * 24;
+        ctx.shadowBlur = this.theme.lite ? 0 : 12 + energy * 24;
         ctx.beginPath();
         ring.forEach((pt, k) =>
           k === 0 || !Number.isFinite(ring[k - 1].x)
@@ -2220,7 +2357,7 @@ class CanvasViz {
           this.overlayCtx.save();
           this.overlayCtx.lineCap = "round";
           this.overlayCtx.shadowColor = this.theme.beatHighlight;
-          this.overlayCtx.shadowBlur = 24 * alpha * flash;
+          this.overlayCtx.shadowBlur = this.theme.lite ? 0 : 24 * alpha * flash;
           if (this.shouldBendEdge(from, to, this.jumpLine.from, this.jumpLine.to)) {
             const control = this.resolveControlPointForPair(
               from,
@@ -2871,6 +3008,7 @@ export class JukeboxViz {
   private selectedEdge: Edge | null = null;
   private lastUpdate: LastUpdate | null = null;
   private anchorHighlightEnabled = false;
+  private upcomingJump: [number | null, number | null] = [null, null];
   private followCam = false;
   private motion = false;
   private waveformSource: WaveformSource | null = null;
@@ -2924,6 +3062,7 @@ export class JukeboxViz {
       ...(definition.options ?? {}),
     });
     viz.setAnchorHighlightEnabled(this.anchorHighlightEnabled);
+    viz.setUpcomingJump(...this.upcomingJump);
     if (this.waveformSource) {
       viz.setWaveformSource(this.waveformSource);
     }
@@ -2990,6 +3129,12 @@ export class JukeboxViz {
   setAnchorHighlightEnabled(enabled: boolean) {
     this.anchorHighlightEnabled = enabled;
     this.activeViz?.setAnchorHighlightEnabled(enabled);
+  }
+
+  // The jump the engine has decided to take next (see CanvasViz).
+  setUpcomingJump(from: number | null, to: number | null) {
+    this.upcomingJump = [from, to];
+    this.activeViz?.setUpcomingJump(from, to);
   }
 
   // Whether layout `index` offers the follow cam.

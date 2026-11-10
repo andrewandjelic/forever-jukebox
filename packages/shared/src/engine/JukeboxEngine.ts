@@ -47,8 +47,20 @@ const PLAYBACK_SYNC_TOLERANCE_SECONDS = 0.25;
 // leave the two a few ulps apart when the audio clock lands exactly on it.
 const BOUNDARY_TIE_TOLERANCE_SECONDS = 1e-6;
 const MAX_ABSOLUTE_PLAY_VELOCITY = 16;
+// How many beats ahead jumps are decided. The decisions are the same ones,
+// made in the same order, only earlier: early enough for the visualizer to
+// show the jump that is on its way.
+export const JUMP_LOOKAHEAD_BEATS = 12;
 
 type UpdateListener = (state: JukeboxState) => void;
+
+// A decision made ahead of time for the beat `seedIndex`: whether to jump
+// instead of playing it and where to, and the branch chance after deciding.
+type PlannedDecision = {
+  seedIndex: number;
+  selection: { index: number; jumped: boolean };
+  chanceAfter: number;
+};
 
 type PendingAdvance = {
   boundaryAudioTime: number;
@@ -118,6 +130,8 @@ export class JukeboxEngine {
   private playVelocity = 1;
   private freezeCurrentBeat = false;
   private pendingAdvance: PendingAdvance | null = null;
+  // Decisions for the beats after the pending one, in play order.
+  private planned: PlannedDecision[] = [];
   private readonly deletedEdgeKeys = new Set<string>();
   private userAnchorEdgeId: number | null = null;
   private readonly rng: () => number;
@@ -182,6 +196,7 @@ export class JukeboxEngine {
 
   updateConfig(partial: Partial<JukeboxConfig>) {
     this.config = { ...this.config, ...partial };
+    this.planned = [];
   }
 
   setUserAnchorEdge(edge: Edge | null) {
@@ -341,7 +356,29 @@ export class JukeboxEngine {
   }
 
   setForceBranch(enabled: boolean) {
-    this.forceBranch = this.bringItHomeMode ? false : enabled;
+    const next = this.bringItHomeMode ? false : enabled;
+    if (next !== this.forceBranch) {
+      this.planned = [];
+    }
+    this.forceBranch = next;
+  }
+
+  // The jump the engine has already decided to take, if any: `fromIndex` is
+  // the beat it will leave before (where the arc starts) and `toIndex` the
+  // beat it will land on. Null while only plain playback is in sight.
+  getUpcomingJump(): { fromIndex: number; toIndex: number } | null {
+    const pending = this.pendingAdvance;
+    if (
+      pending?.shouldJump &&
+      pending.selectedBranch &&
+      pending.jumpFromIndex !== null
+    ) {
+      return { fromIndex: pending.jumpFromIndex, toIndex: pending.chosenIndex };
+    }
+    const ahead = this.planned.find((entry) => entry.selection.jumped);
+    return ahead
+      ? { fromIndex: ahead.seedIndex, toIndex: ahead.selection.index }
+      : null;
   }
 
   setBringItHomeMode(enabled: boolean) {
@@ -708,12 +745,21 @@ export class JukeboxEngine {
         }
         const seedIndex = this.wrapBeatIndex(rawSeedIndex, beatsCount);
         chosenIndex = seedIndex;
+        // A decision made ahead of time for this beat, if the plan is still
+        // in step with what is playing.
+        const ahead =
+          this.planned[0]?.seedIndex === seedIndex ? this.planned.shift() : null;
+        if (!ahead) {
+          this.planned = [];
+        }
         if (
           !this.bringItHomeMode &&
           (this.forceBranch || this.isPastIntro(seedIndex))
         ) {
           const seed = this.beats[seedIndex];
           if (!this.hasJumpScheduleLead(sourceBoundaryTime)) {
+            // Too late to schedule a jump here, planned or not.
+            this.planned = [];
             return {
               boundaryAudioTime,
               chosenIndex: naturalNextIndex,
@@ -724,19 +770,24 @@ export class JukeboxEngine {
               sourceBoundaryTime: null,
             };
           }
-          this.branchState.curRandomBranchChance = this.curRandomBranchChance;
-          const selection = selectNextBeatIndex(
-            seed,
-            this.graph,
-            this.config,
-            this.rng,
-            this.branchState,
-            this.forceBranch,
-            this.getActiveUserAnchorSelection(),
-          );
-          this.curRandomBranchChance = this.branchState.curRandomBranchChance;
-          chosenIndex = selection.jumped ? selection.index : seedIndex;
-          if (selection.jumped) {
+          let selection = ahead?.selection;
+          if (ahead) {
+            this.curRandomBranchChance = ahead.chanceAfter;
+          } else {
+            this.branchState.curRandomBranchChance = this.curRandomBranchChance;
+            selection = selectNextBeatIndex(
+              seed,
+              this.graph,
+              this.config,
+              this.rng,
+              this.branchState,
+              this.forceBranch,
+              this.getActiveUserAnchorSelection(),
+            );
+            this.curRandomBranchChance = this.branchState.curRandomBranchChance;
+          }
+          chosenIndex = selection?.jumped ? selection.index : seedIndex;
+          if (selection?.jumped) {
             selectedBranch = true;
             jumpFromIndex = seed.which;
           }
@@ -775,6 +826,7 @@ export class JukeboxEngine {
               reportedJumpEvent,
             );
       if (!scheduled) {
+        this.planned = [];
         const sequentialBeat = this.beats[sequentialIndex];
         if (!sequentialBeat) {
           return null;
@@ -790,6 +842,9 @@ export class JukeboxEngine {
         };
       }
     }
+    if (scheduleJump && currentIndex >= 0) {
+      this.planAhead(chosenIndex);
+    }
     return {
       boundaryAudioTime,
       chosenIndex,
@@ -799,6 +854,61 @@ export class JukeboxEngine {
       jumpFromIndex,
       sourceBoundaryTime,
     };
+  }
+
+  // Decides ahead of time what happens at the beats after `playingNext`, in
+  // the order they will come up, so a jump is known before it is due. It
+  // stops at the first jump, since what follows depends on where that lands,
+  // and only looks ahead in plain forward playback.
+  private planAhead(playingNext: number) {
+    if (
+      !this.graph ||
+      this.forceBranch ||
+      this.bringItHomeMode ||
+      this.freezeCurrentBeat ||
+      this.playVelocity !== 1
+    ) {
+      this.planned = [];
+      return;
+    }
+    if (this.planned.length > 0 && this.planned[0].seedIndex !== playingNext + 1) {
+      this.planned = [];
+    }
+    const last = this.planned[this.planned.length - 1];
+    if (last?.selection.jumped) {
+      return;
+    }
+    let seedIndex = last ? last.seedIndex + 1 : playingNext + 1;
+    let chance = last ? last.chanceAfter : this.curRandomBranchChance;
+    // The same test as isPastIntro, without marking the intro as played early.
+    const introEnd = this.introPlayed
+      ? 0
+      : (this.getSectionStartBeatIndices()[0] ?? 0);
+    const userAnchor = this.getActiveUserAnchorSelection();
+    while (
+      this.planned.length < JUMP_LOOKAHEAD_BEATS &&
+      seedIndex < this.beats.length
+    ) {
+      let selection = { index: seedIndex, jumped: false };
+      if (seedIndex >= introEnd) {
+        this.branchState.curRandomBranchChance = chance;
+        selection = selectNextBeatIndex(
+          this.beats[seedIndex],
+          this.graph,
+          this.config,
+          this.rng,
+          this.branchState,
+          false,
+          userAnchor,
+        );
+        chance = this.branchState.curRandomBranchChance;
+      }
+      this.planned.push({ seedIndex, selection, chanceAfter: chance });
+      if (selection.jumped) {
+        return;
+      }
+      seedIndex += 1;
+    }
   }
 
   private commitStop(advance: PendingAdvance) {
@@ -936,6 +1046,8 @@ export class JukeboxEngine {
       }
     }
     this.pendingAdvance = null;
+    // Whatever cleared the pending advance changed what comes next.
+    this.planned = [];
   }
 
   private wrapBeatIndex(index: number, beatsCount: number): number {
@@ -993,6 +1105,7 @@ export class JukeboxEngine {
       return;
     }
     if (this.listener) {
+      const upcoming = this.getUpcomingJump();
       this.listener({
         currentBeatIndex: this.currentBeatIndex,
         beatsPlayed: this.beatsPlayed,
@@ -1004,6 +1117,8 @@ export class JukeboxEngine {
         currentThreshold: this.graph.currentThreshold,
         lastBranchPoint: this.graph.lastBranchPoint,
         curRandomBranchChance: this.curRandomBranchChance,
+        nextJumpFromIndex: upcoming?.fromIndex ?? null,
+        nextJumpToIndex: upcoming?.toIndex ?? null,
       });
     }
   }

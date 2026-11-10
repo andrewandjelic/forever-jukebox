@@ -25,6 +25,7 @@ import {
   type LocalizedText,
   type SearchResultsState,
 } from "./store";
+import { requestAutoplay } from "./autoplay";
 import i18n from "./i18n";
 import { translateJobProgress } from "./job-progress";
 
@@ -104,7 +105,12 @@ export async function startYoutubeAnalysisFlow(
   title: string,
   artist: string
 ) {
+  requestAutoplay(context);
   deps.resetForNewTrack({ clearTuning: true });
+  // Analysis can take a minute or two; say which song is on its way.
+  useAppStore.setState({
+    pendingTrackTitle: artist ? `${title} — ${artist}` : title,
+  });
   const generation = getLoadGeneration();
   resetSearchUI(context);
   useAppStore.setState({ audioLoaded: false });
@@ -254,6 +260,7 @@ export async function tryLoadExistingTrackByName(
       duration: null,
       tuningParams: null,
     });
+    requestAutoplay(context);
     deps.resetForNewTrack({ clearTuning: true });
     const generation = getLoadGeneration();
     resetSearchUI(context);
