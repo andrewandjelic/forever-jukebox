@@ -61,6 +61,9 @@ function useTabEffects() {
     useAppStore
       .getState()
       .setPlayTabPulsing(useAppStore.getState().isRunning && activeTab !== "play");
+    // Off the Listen tab the visualizer has nothing to show, so it stops
+    // drawing; the music and the jumps carry on.
+    jukebox?.setVisible(activeTab === "play");
     if (activeTab === "play") {
       jukebox?.resizeActive();
     } else if (useAppStore.getState().shiftBranching) {

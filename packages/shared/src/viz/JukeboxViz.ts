@@ -796,9 +796,16 @@ class CanvasViz {
     this.drawOverlay();
   }
 
+  // The engine reports its state on every tick, several times around each
+  // beat. This only records what changed and asks for one redraw on the next
+  // frame; drawing here would repaint every arc once per tick, on top of the
+  // frame loop, and keep painting in a hidden tab.
   update(currentIndex: number, lastJumped: boolean, previousIndex: number | null) {
-    this.rippleDue = currentIndex !== this.currentIndex;
-    if (this.rippleDue) {
+    const beatChanged = currentIndex !== this.currentIndex;
+    const jumped = lastJumped && previousIndex !== null;
+    if (beatChanged) {
+      // Stays set until a frame draws the ripple.
+      this.rippleDue = true;
       this.beatAt = performance.now();
       if (this.burstPending !== null) {
         this.burst(this.burstPending);
@@ -812,14 +819,16 @@ class CanvasViz {
       };
     }
     this.currentIndex = currentIndex;
-    if (lastJumped && previousIndex !== null) {
+    if (jumped) {
       this.jumpLine = {
         from: previousIndex,
         to: currentIndex,
         at: performance.now(),
       };
     }
-    this.drawOverlay();
+    if (beatChanged || jumped) {
+      this.requestOverlayAnimation();
+    }
   }
 
   reset() {
