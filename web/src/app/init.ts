@@ -64,6 +64,7 @@ import {
 import { loadPlaylist } from "./playlist";
 import i18n from "./i18n";
 import { cancelAutoplay, consumeAutoplay } from "./autoplay";
+import { DEFAULT_MIN_WAIT_BEATS } from "./tuning";
 import {
   ensureVocalMap,
   resolveStoredVocalPreference,
@@ -94,7 +95,10 @@ export function initRuntime(): void {
   const highlightAnchorBranch = resolveStoredAnchorHighlight();
   const branchStatsEnabled = resolveStoredBranchStatsEnabled();
   // The listener's remembered choice is the baseline every song starts from.
-  engine.updateConfig({ respectVocals: resolveStoredVocalPreference() });
+  engine.updateConfig({
+    respectVocals: resolveStoredVocalPreference(),
+    minBeatsBetweenJumps: DEFAULT_MIN_WAIT_BEATS,
+  });
   const defaultConfig = engine.getConfig();
   // The store holds all app state (defaults live in store.ts); hydrate the
   // persisted bits here, pre-render.

@@ -291,7 +291,11 @@
     "audioIntensity": "Intensität",
     "playbackStyles": "Wiedergabestile",
     "remixToys": "Remix-Spielzeuge",
-    "respectVocalsFirstTime": "Beim ersten Mal dauert es etwa eine Minute, den Gesang eines Songs zu finden, während er läuft. Gilt für jeden Song."
+    "respectVocalsFirstTime": "Beim ersten Mal dauert es etwa eine Minute, den Gesang eines Songs zu finden, während er läuft. Gilt für jeden Song.",
+    "minWait": "Mindestzeit zwischen Sprüngen:",
+    "minWaitHint": "Nach einem Sprung läuft mindestens so viel, bevor der nächste kommt. So springt ein Song, der sich stark wiederholt, nicht in Schüben.",
+    "minWaitOff": "Kein Minimum",
+    "minWaitBeats": "{{count}} Schläge"
   },
   "vocals": {
     "working": "Der Gesang in diesem Song wird gesucht. Er läuft weiter; in etwa einer Minute bleiben gesungene Zeilen bei Sprüngen ganz.",

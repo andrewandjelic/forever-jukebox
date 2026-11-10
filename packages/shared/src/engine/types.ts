@@ -75,6 +75,11 @@ export interface JukeboxConfig {
   // Only jump where it keeps sung lines whole. Needs a vocal map; without
   // one it changes nothing.
   respectVocals?: boolean;
+  // After a jump, at least this many beats play before the next one. Where a
+  // song repeats itself closely, jump points sit on beat after beat and the
+  // jumps otherwise come in bursts. The loop-back jump near the end, a
+  // pinned anchor and a forced jump are never held back. 0 turns it off.
+  minBeatsBetweenJumps?: number;
 }
 
 export interface JukeboxGraphState {

@@ -121,6 +121,24 @@ describe("tuning params", () => {
     expect(context.engine.getConfig().respectVocals).toBe(false);
   });
 
+  it("carries the minimum wait between jumps where it differs from the default", () => {
+    const context = createContext();
+    context.defaultConfig.minBeatsBetweenJumps = 8;
+    context.engine.updateConfig({ minBeatsBetweenJumps: 8 });
+    syncTuningParamsState(context);
+    expect(useAppStore.getState().tuningParams).toBeNull();
+
+    context.engine.updateConfig({ minBeatsBetweenJumps: 0 });
+    syncTuningParamsState(context);
+    expect(useAppStore.getState().tuningParams).toBe("mw=0");
+
+    applyTuningParamsToEngine(context, new URLSearchParams("mw=16"));
+    expect(context.engine.getConfig().minBeatsBetweenJumps).toBe(16);
+    // Only the offered choices are accepted.
+    applyTuningParamsToEngine(context, new URLSearchParams("mw=5"));
+    expect(context.engine.getConfig().minBeatsBetweenJumps).toBe(8);
+  });
+
   it("applies minimum jump distance percentages from params", () => {
     const context = createContext();
     applyTuningParamsToEngine(context, new URLSearchParams("bl=30"));

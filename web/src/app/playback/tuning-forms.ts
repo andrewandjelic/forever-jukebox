@@ -265,6 +265,7 @@ export type TuningFormValues = {
   rampPct: number;
   justBackwards: boolean;
   minLongBranchPercent: number;
+  minBeatsBetweenJumps: number;
   removeSequentialBranches: boolean;
   highlightAnchorBranch: boolean;
   respectVocals: boolean;
@@ -303,6 +304,7 @@ export function getTuningFormValues(context: AppContext): TuningFormValues {
     minLongBranchPercent: config.justLongBranches
       ? (config.minLongBranchPercent ?? DEFAULT_MIN_LONG_BRANCH_PERCENT)
       : 0,
+    minBeatsBetweenJumps: config.minBeatsBetweenJumps ?? 0,
     removeSequentialBranches: config.removeSequentialBranches,
     highlightAnchorBranch: useAppStore.getState().highlightAnchorBranch,
     respectVocals: config.respectVocals ?? false,
@@ -330,6 +332,9 @@ export function changedTuningControls(
   }
   if (previous.minLongBranchPercent !== next.minLongBranchPercent) {
     controls.push("min_branch_length");
+  }
+  if (previous.minBeatsBetweenJumps !== next.minBeatsBetweenJumps) {
+    controls.push("min_wait");
   }
   if (previous.justBackwards !== next.justBackwards) {
     controls.push("just_backwards");
@@ -411,6 +416,7 @@ export function applyTuningChanges(
         : DEFAULT_MIN_LONG_BRANCH_PERCENT,
     removeSequentialBranches: form.removeSequentialBranches,
     respectVocals: form.respectVocals,
+    minBeatsBetweenJumps: form.minBeatsBetweenJumps,
   });
   if (previousForm.respectVocals !== form.respectVocals) {
     // Remembered for every song from here on, and the baseline the URL's

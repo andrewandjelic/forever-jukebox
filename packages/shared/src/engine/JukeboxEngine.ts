@@ -40,6 +40,7 @@ export const DEFAULT_JUKEBOX_CONFIG: JukeboxConfig = {
   minLongBranch: 0,
   minLongBranchPercent: DEFAULT_MIN_LONG_BRANCH_PERCENT,
   respectVocals: false,
+  minBeatsBetweenJumps: 0,
 };
 
 const TICK_INTERVAL_MS = 50;
@@ -134,6 +135,8 @@ export class JukeboxEngine {
   private pendingAdvance: PendingAdvance | null = null;
   // Decisions for the beats after the pending one, in play order.
   private planned: PlannedDecision[] = [];
+  // Beats that have started since the last jump, the landing beat included.
+  private beatsSinceJump = Number.MAX_SAFE_INTEGER;
   private readonly deletedEdgeKeys = new Set<string>();
   private userAnchorEdgeId: number | null = null;
   private readonly rng: () => number;
@@ -167,6 +170,7 @@ export class JukeboxEngine {
     this.curRandomBranchChance = this.config.minRandomBranchChance;
     this.branchState.curRandomBranchChance = this.curRandomBranchChance;
     this.branchState.lastDestBySource = null;
+    this.beatsSinceJump = Number.MAX_SAFE_INTEGER;
     this.lastJumped = false;
     this.lastJumpTime = null;
     this.lastJumpFromIndex = null;
@@ -613,6 +617,7 @@ export class JukeboxEngine {
     this.curRandomBranchChance = this.config.minRandomBranchChance;
     this.branchState.curRandomBranchChance = this.curRandomBranchChance;
     this.branchState.lastDestBySource = null;
+    this.beatsSinceJump = Number.MAX_SAFE_INTEGER;
     this.lastJumped = false;
     this.lastJumpTime = null;
     this.lastJumpFromIndex = null;
@@ -804,6 +809,8 @@ export class JukeboxEngine {
           let selection = ahead?.selection;
           if (ahead) {
             this.curRandomBranchChance = ahead.chanceAfter;
+          } else if (this.heldBack(seedIndex, this.beatsSinceJump)) {
+            selection = { index: seedIndex, jumped: false };
           } else {
             this.branchState.curRandomBranchChance = this.curRandomBranchChance;
             selection = selectNextBeatIndex(
@@ -874,7 +881,7 @@ export class JukeboxEngine {
       }
     }
     if (scheduleJump && currentIndex >= 0) {
-      this.planAhead(chosenIndex);
+      this.planAhead(chosenIndex, shouldJump);
     }
     return {
       boundaryAudioTime,
@@ -887,11 +894,26 @@ export class JukeboxEngine {
     };
   }
 
+  // Whether a random jump in place of `seedIndex` would come too soon after
+  // the last one: `beatsHeard` beats will have played since it by then.
+  private heldBack(seedIndex: number, beatsHeard: number): boolean {
+    const wait = this.config.minBeatsBetweenJumps ?? 0;
+    if (wait <= 0 || beatsHeard >= wait || this.forceBranch) {
+      return false;
+    }
+    // The loop-back jump and a pinned anchor keep the song from running out.
+    if (seedIndex === this.graph?.lastBranchPoint) {
+      return false;
+    }
+    return this.getActiveUserAnchorSelection()?.sourceIndex !== seedIndex;
+  }
+
   // Decides ahead of time what happens at the beats after `playingNext`, in
   // the order they will come up, so a jump is known before it is due. It
   // stops at the first jump, since what follows depends on where that lands,
-  // and only looks ahead in plain forward playback.
-  private planAhead(playingNext: number) {
+  // and only looks ahead in plain forward playback. `jumping` says whether
+  // `playingNext` is itself reached by a jump.
+  private planAhead(playingNext: number, jumping: boolean) {
     if (
       !this.graph ||
       this.forceBranch ||
@@ -916,12 +938,15 @@ export class JukeboxEngine {
       ? 0
       : (this.getSectionStartBeatIndices()[0] ?? 0);
     const userAnchor = this.getActiveUserAnchorSelection();
+    // Beats heard since the last jump once `playingNext` has played.
+    const heardAfterNext = jumping ? 1 : this.beatsSinceJump + 1;
     while (
       this.planned.length < JUMP_LOOKAHEAD_BEATS &&
       seedIndex < this.beats.length
     ) {
       let selection = { index: seedIndex, jumped: false };
-      if (seedIndex >= introEnd) {
+      const beatsHeard = heardAfterNext + (seedIndex - playingNext - 1);
+      if (seedIndex >= introEnd && !this.heldBack(seedIndex, beatsHeard)) {
         this.branchState.curRandomBranchChance = chance;
         selection = selectNextBeatIndex(
           this.beats[seedIndex],
@@ -972,6 +997,9 @@ export class JukeboxEngine {
       this.lastJumpWasBranch = false;
     }
 
+    this.beatsSinceJump = advance.shouldJump
+      ? 1
+      : Math.min(Number.MAX_SAFE_INTEGER, this.beatsSinceJump + 1);
     this.currentBeatIndex = advance.chosenIndex;
     const playbackRate = this.getPlaybackRate();
     this.nextAudioTime =

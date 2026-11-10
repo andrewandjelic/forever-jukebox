@@ -291,7 +291,11 @@
     "audioIntensity": "Intensidad",
     "playbackStyles": "Estilos de reproducción",
     "remixToys": "Herramientas de remix",
-    "respectVocalsFirstTime": "La primera vez, encontrar la voz de una canción tarda cerca de un minuto mientras suena. Se recuerda para todas las canciones."
+    "respectVocalsFirstTime": "La primera vez, encontrar la voz de una canción tarda cerca de un minuto mientras suena. Se recuerda para todas las canciones.",
+    "minWait": "Tiempo mínimo entre saltos:",
+    "minWaitHint": "Tras un salto suena al menos esto antes del siguiente. Evita que una canción muy repetitiva salte a ráfagas.",
+    "minWaitOff": "Sin mínimo",
+    "minWaitBeats": "{{count}} pulsos"
   },
   "vocals": {
     "working": "Buscando la voz en esta canción. Sigue sonando; en un minuto los saltos mantendrán enteras las frases cantadas.",

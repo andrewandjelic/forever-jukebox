@@ -22,6 +22,7 @@ const TUNING_PARAM_KEYS = [
   "bl",
   "sq",
   "rv",
+  "mw",
   "thresh",
   "bp",
   "d",
@@ -30,6 +31,11 @@ const TUNING_PARAM_KEYS = [
   "ab",
 ];
 const MIN_LONG_BRANCH_PERCENT_OPTIONS = new Set([5, 10, 20, 30]);
+// Choices for the least number of beats between one jump and the next.
+export const MIN_WAIT_BEATS_OPTIONS = [0, 4, 8, 16] as const;
+// What every song starts with here: two bars of four. Without a wait, a
+// song that repeats itself closely jumps in bursts.
+export const DEFAULT_MIN_WAIT_BEATS = 8;
 
 function parseAudioMode(raw: string | null) {
   if (
@@ -165,6 +171,10 @@ function parseTuningParams(
   if (params.get("sq") === "0") {
     config.removeSequentialBranches = true;
   }
+  const minWait = Number.parseInt(params.get("mw") ?? "", 10);
+  if ((MIN_WAIT_BEATS_OPTIONS as readonly number[]).includes(minWait)) {
+    config.minBeatsBetweenJumps = minWait;
+  }
   // Absent, the listener's own remembered choice (the default) stands.
   if (params.get("rv") === "1") {
     config.respectVocals = true;
@@ -272,6 +282,9 @@ function buildTuningParams(state: {
   }
   if ((config.respectVocals ?? false) !== (defaults.respectVocals ?? false)) {
     params.set("rv", config.respectVocals ? "1" : "0");
+  }
+  if ((config.minBeatsBetweenJumps ?? 0) !== (defaults.minBeatsBetweenJumps ?? 0)) {
+    params.set("mw", `${config.minBeatsBetweenJumps ?? 0}`);
   }
   if (config.currentThreshold !== 0) {
     params.set("thresh", `${Math.round(config.currentThreshold)}`);

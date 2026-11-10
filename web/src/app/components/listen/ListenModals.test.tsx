@@ -56,6 +56,7 @@ const TUNING_FORM: TuningFormValues = {
   respectVocals: false,
   hasVocalMap: false,
   vocalsAvailable: false,
+  minBeatsBetweenJumps: 0,
 };
 
 const EXTRAS_FORM: ExtrasFormValues = {
