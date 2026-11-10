@@ -6,6 +6,7 @@ import {
   Segment,
   TrackAnalysis,
 } from "./types";
+import { isVocalJumpAllowed, type VocalMap } from "./vocals";
 
 const TIMBRE_WEIGHT = 1;
 const PITCH_WEIGHT = 10;
@@ -85,6 +86,7 @@ function calculateNearestNeighborsForQuantum(
   maxThreshold: number,
   q1: QuantumBase,
   allEdges: Edge[],
+  vocals: VocalMap | null,
 ) {
   const edges: Edge[] = [];
   if (q1.overlappingSegments.length === 0) {
@@ -123,7 +125,10 @@ function calculateNearestNeighborsForQuantum(
     }
 
     const totalDistance = sum / q1.overlappingSegments.length + pdistance;
-    if (totalDistance < maxThreshold) {
+    if (
+      totalDistance < maxThreshold &&
+      (vocals === null || isVocalJumpAllowed(vocals, q1.which, q2.which))
+    ) {
       edges.push({
         id: -1,
         src: q1,
@@ -150,6 +155,7 @@ function precalculateNearestNeighbors(
   maxNeighbors: number,
   maxThreshold: number,
   allEdges: Edge[],
+  vocals: VocalMap | null,
 ) {
   if (quanta.length === 0) {
     return;
@@ -171,6 +177,7 @@ function precalculateNearestNeighbors(
       maxThreshold,
       q,
       allEdges,
+      vocals,
     );
   }
 }
@@ -1038,11 +1045,23 @@ export function buildJumpGraph(
 ): JukeboxGraphState {
   const quanta = analysis.beats;
   const allEdges: Edge[] = [];
+  // Under the vocal rule the nearest neighbors are the nearest that keep sung
+  // lines whole, so the cached lists only hold for the rule they were built
+  // with.
+  const vocals = config.respectVocals ? (analysis.vocals ?? null) : null;
+  const respectsVocals = vocals !== null;
+  if ((analysis.neighborsRespectVocals ?? false) !== respectsVocals) {
+    for (const q of quanta) {
+      q.allNeighbors = [];
+    }
+    analysis.neighborsRespectVocals = respectsVocals;
+  }
   precalculateNearestNeighbors(
     quanta,
     config.maxBranches,
     config.maxBranchThreshold,
     allEdges,
+    vocals,
   );
 
   const computedThreshold = computeDefaultThreshold(quanta, config);

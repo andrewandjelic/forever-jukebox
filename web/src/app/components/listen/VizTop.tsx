@@ -14,6 +14,7 @@ import {
 } from "../../vizStyle";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { KeepSungLinesToggle } from "./KeepSungLinesToggle";
 
 function getVisualizationLabel(index: number, t: TFunction) {
   return VISUALIZATION_LABELS[index] ??
@@ -173,6 +174,7 @@ export function VizTop() {
             Ride
           </button>
         )}
+        <KeepSungLinesToggle />
       </div>
     </>
   );

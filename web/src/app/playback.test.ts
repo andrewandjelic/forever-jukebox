@@ -190,6 +190,7 @@ function createContext(overrides?: Partial<AppContext>): TestAppContext {
       Object.assign(engineConfig, partial);
     }),
     rebuildGraph: vi.fn(),
+    hasVocalMap: vi.fn(() => false),
     loadAnalysis: vi.fn(),
     getGraphState: vi.fn(() => ({ currentThreshold: 45, computedThreshold: 30, allEdges: [], totalBeats: 0 })),
     getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
@@ -285,6 +286,9 @@ describe("changedTuningControls", () => {
     minLongBranchPercent: 0,
     removeSequentialBranches: false,
     highlightAnchorBranch: false,
+    respectVocals: false,
+    hasVocalMap: false,
+    vocalsAvailable: false,
   };
 
   it("reports nothing when the form is unchanged", () => {
@@ -439,6 +443,7 @@ describe("playback tuning", () => {
         })),
         updateConfig: vi.fn(),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
         getGraphState: vi.fn(() => ({ currentThreshold: 45, computedThreshold: 30, allEdges: [], totalBeats: 0 })),
         getVisualizationData: vi.fn(() => ({ beats: [1], edges: [1] })),
       } as unknown as AppContext["engine"],
@@ -876,6 +881,7 @@ describe("playback tuning", () => {
           edge.deleted = true;
         }),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
       } as unknown as AppContext["engine"],
     });
 
@@ -959,6 +965,7 @@ describe("playback tuning", () => {
         getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
         deleteEdge: vi.fn(),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
         setUserAnchorEdge: vi.fn(),
         getUserAnchorEdgeId: vi.fn(() => 3),
       } as unknown as AppContext["engine"],
@@ -1008,6 +1015,7 @@ describe("playback tuning", () => {
         getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
         deleteEdge: vi.fn(),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
         setUserAnchorEdge: vi.fn(),
         getUserAnchorEdgeId: vi.fn(() => null),
       } as unknown as AppContext["engine"],
@@ -1043,6 +1051,7 @@ describe("playback tuning", () => {
         getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
         deleteEdge: vi.fn(),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
       } as unknown as AppContext["engine"],
     });
     useAppStore.setState({ jukeboxAudioMode: "nightcore" });
@@ -1081,6 +1090,7 @@ describe("playback tuning", () => {
         getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
         deleteEdge: vi.fn(),
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
       } as unknown as AppContext["engine"],
     });
     const response: AnalysisComplete = {
@@ -1147,6 +1157,7 @@ describe("playback tuning", () => {
         getVisualizationData: vi.fn(() => ({ beats: [], edges: [] })),
         deleteEdge,
         rebuildGraph: vi.fn(),
+        hasVocalMap: vi.fn(() => false),
       } as unknown as AppContext["engine"],
     });
 

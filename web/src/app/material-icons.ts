@@ -19,6 +19,7 @@ export const MATERIAL_SYMBOL_ICON_NAMES = [
   "help",
   "hourglass_top",
   "info",
+  "lyrics",
   "open_in_new",
   "pause",
   "play_arrow",

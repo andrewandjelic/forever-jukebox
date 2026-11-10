@@ -25,6 +25,7 @@ import {
   QuantumBase,
   TrackAnalysis,
 } from "./types";
+import { parseVocalMap } from "./vocals";
 
 export const DEFAULT_JUKEBOX_CONFIG: JukeboxConfig = {
   maxBranches: 4,
@@ -38,6 +39,7 @@ export const DEFAULT_JUKEBOX_CONFIG: JukeboxConfig = {
   randomBranchChanceDelta: 0.02,
   minLongBranch: 0,
   minLongBranchPercent: DEFAULT_MIN_LONG_BRANCH_PERCENT,
+  respectVocals: false,
 };
 
 const TICK_INTERVAL_MS = 50;
@@ -256,7 +258,36 @@ export class JukeboxEngine {
       lastBranchPoint: this.graph.lastBranchPoint,
       anchorEdgeId,
       userAnchorEdgeId,
+      // 1 per beat with singing in it, while jumps are keeping sung lines
+      // whole: the dots show what the rule is working from.
+      sung: this.config.respectVocals
+        ? (this.analysis.vocals?.sung ?? null)
+        : null,
     };
+  }
+
+  // Whether this track's analysis says where the singing is.
+  hasVocalMap(): boolean {
+    return (this.analysis?.vocals ?? null) !== null;
+  }
+
+  // Gives the loaded track a vocal map built after its analysis arrived (the
+  // analysis's `vocals` object, see vocals.ts). When jumps are keeping sung
+  // lines whole the graph is rebuilt to use it. False when the map does not
+  // fit this track's beats.
+  setVocalMap(raw: unknown): boolean {
+    if (!this.analysis) {
+      return false;
+    }
+    const map = parseVocalMap(raw, this.analysis.beats.length);
+    if (!map) {
+      return false;
+    }
+    this.analysis.vocals = map;
+    if (this.config.respectVocals) {
+      this.rebuildGraph();
+    }
+    return true;
   }
 
   play() {

@@ -12,6 +12,7 @@ export function hasNonDefaultTuningConfig(
     config.justBackwards !== defaults.justBackwards ||
     config.justLongBranches !== defaults.justLongBranches ||
     config.removeSequentialBranches !== defaults.removeSequentialBranches ||
+    (config.respectVocals ?? false) !== (defaults.respectVocals ?? false) ||
     config.minRandomBranchChance !== defaults.minRandomBranchChance ||
     config.maxRandomBranchChance !== defaults.maxRandomBranchChance ||
     config.randomBranchChanceDelta !== defaults.randomBranchChanceDelta

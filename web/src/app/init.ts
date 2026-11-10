@@ -64,6 +64,12 @@ import {
 import { loadPlaylist } from "./playlist";
 import i18n from "./i18n";
 import { cancelAutoplay, consumeAutoplay } from "./autoplay";
+import {
+  ensureVocalMap,
+  resolveStoredVocalPreference,
+  setVocalMapGraphListener,
+} from "./vocalMapFlow";
+import { refreshJumpGraphViews } from "./playback/tuning-forms";
 
 type PlaybackDeps = Parameters<typeof pollAnalysis>[1];
 
@@ -87,6 +93,8 @@ export function initRuntime(): void {
   const engine = new JukeboxEngine(player, { randomMode: "random" });
   const highlightAnchorBranch = resolveStoredAnchorHighlight();
   const branchStatsEnabled = resolveStoredBranchStatsEnabled();
+  // The listener's remembered choice is the baseline every song starts from.
+  engine.updateConfig({ respectVocals: resolveStoredVocalPreference() });
   const defaultConfig = engine.getConfig();
   // The store holds all app state (defaults live in store.ts); hydrate the
   // persisted bits here, pre-render.
@@ -137,6 +145,25 @@ export function initRuntime(): void {
         togglePlayback(context);
       }
     }, 0);
+  });
+  // A song with no vocal map gets one in the background when the listener
+  // keeps sung lines whole: shortly after it loads, so playback starts
+  // first, and again once an Instrumental or Swing render is out of the way.
+  setVocalMapGraphListener(refreshJumpGraphViews);
+  const mapIfWanted = () => {
+    if (engine.getConfig().respectVocals) {
+      ensureVocalMap(context);
+    }
+  };
+  useAppStore.subscribe((state, previous) => {
+    const ready = state.audioLoaded && state.analysisLoaded;
+    const becameReady = ready && !(previous.audioLoaded && previous.analysisLoaded);
+    const renderDone = ready && previous.audioModePreparing && !state.audioModePreparing;
+    if (becameReady) {
+      window.setTimeout(mapIfWanted, 1500);
+    } else if (renderDone) {
+      window.setTimeout(mapIfWanted, 0);
+    }
   });
   // Navigation lives in the store now; the flows still take it as a dep (so
   // they stay unit-testable), resolved at call time via these thin wrappers.

@@ -41,6 +41,7 @@ import {
   type PlaylistTrack,
 } from "../playlist";
 import { useAppStore, type LocalizedText } from "../store";
+import { cancelVocalMap, syncVocalState } from "../vocalMapFlow";
 import {
   bumpLoadGeneration,
   getLoadGeneration,
@@ -172,6 +173,7 @@ export function resetForNewTrack(
   cowbellOverlay.disable();
   cowbellOverlay.setSectionStartBeatIndices([]);
   cancelInstrumentalRender();
+  cancelVocalMap();
   useAppStore.setState({
     audioModeRenderToken: useAppStore.getState().audioModeRenderToken + (1),
   });
@@ -213,6 +215,10 @@ export function resetForNewTrack(
     clearTuningParamsFromUrl(true);
   }
   engine.updateConfig({ ...defaultConfig });
+  useAppStore.setState({
+    keepSungLines: defaultConfig.respectVocals ?? false,
+    trackHasVocalMap: false,
+  });
   syncVolumeUI(context);
   useAppStore.setState({
     analysisStatusText: () => i18n.t("status.noTrack"),
@@ -240,6 +246,7 @@ export function resetForNewTrack(
     lastBranchPoint: -1,
     anchorEdgeId: null,
     userAnchorEdgeId: null,
+    sung: null,
   };
   jukebox?.setData(emptyVizData);
   jukebox?.reset();
@@ -296,6 +303,7 @@ export function applyAnalysisResult(
   }
   applyTuningParamsFromUrl(context);
   engine.loadAnalysis(response.result);
+  syncVocalState(context);
   cowbellOverlay.setSectionStartBeatIndices(engine.getSectionStartBeatIndices());
   applyDeletedEdgesFromUrl(context);
   applyAnchorBranchFromUrl(context);

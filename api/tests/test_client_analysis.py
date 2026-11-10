@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import tempfile
@@ -167,12 +168,80 @@ class ClientAnalysisTest(unittest.TestCase):
             self.assertIn(expected, log)
         self.assertIn("job-1", (self.storage / "logs" / "errors.log").read_text(encoding="utf-8"))
 
+    def _complete_job(self, job_id: str) -> None:
+        self._queue_job(job_id)
+        self._claim(job_id)
+        self.client.post(f"/api/analysis/{job_id}/client/result", content=json.dumps(ANALYSIS))
+
+    def test_a_vocal_map_is_added_to_a_finished_analysis(self) -> None:
+        self._complete_job("job-1")
+        vocals = {
+            "version": 1,
+            "state": "4",
+            "sung": "1",
+            "print": base64.b64encode(bytes(72)).decode("ascii"),
+        }
+
+        response = self.client.put("/api/analysis/job-1/vocals", content=json.dumps(vocals))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"stored": True})
+        stored = read_analysis_json(resolve_analysis_path(self.storage, "job-1"))
+        self.assertEqual(stored, {**ANALYSIS, "vocals": vocals})
+
+    def test_the_first_vocal_map_is_kept(self) -> None:
+        self._complete_job("job-1")
+        first = {"version": 1, "state": "0", "sung": "0", "print": base64.b64encode(bytes(72)).decode("ascii")}
+        second = {**first, "state": "4", "sung": "1"}
+        self.client.put("/api/analysis/job-1/vocals", content=json.dumps(first))
+
+        response = self.client.put("/api/analysis/job-1/vocals", content=json.dumps(second))
+
+        self.assertEqual(response.json(), {"stored": False})
+        stored = read_analysis_json(resolve_analysis_path(self.storage, "job-1"))
+        self.assertEqual(stored["vocals"], first)
+
+    def test_a_vocal_map_must_fit_the_track(self) -> None:
+        self._complete_job("job-1")
+        good = {"version": 1, "state": "0", "sung": "0", "print": base64.b64encode(bytes(72)).decode("ascii")}
+        wrong = [
+            {**good, "version": 2},
+            {**good, "state": "00"},  # two beats' worth for a one-beat track
+            {**good, "state": "7"},
+            {**good, "sung": "2"},
+            {**good, "print": "not base64!"},
+            {**good, "print": base64.b64encode(bytes(3)).decode("ascii")},  # not two halves
+            {"version": 1},
+            [],
+        ]
+
+        for vocals in wrong:
+            response = self.client.put("/api/analysis/job-1/vocals", content=json.dumps(vocals))
+            self.assertEqual(response.status_code, 422, vocals)
+        self.assertEqual(
+            self.client.put("/api/analysis/job-1/vocals", content="{not json").status_code, 422
+        )
+        self.assertNotIn("vocals", read_analysis_json(resolve_analysis_path(self.storage, "job-1")))
+
+    def test_a_vocal_map_waits_for_the_analysis(self) -> None:
+        self._queue_job("job-1")
+        vocals = {"version": 1, "state": "0", "sung": "0", "print": base64.b64encode(bytes(72)).decode("ascii")}
+
+        response = self.client.put("/api/analysis/job-1/vocals", content=json.dumps(vocals))
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            self.client.put("/api/analysis/nope/vocals", content=json.dumps(vocals)).status_code, 404
+        )
+
     def test_disabled_without_the_flag(self) -> None:
         self._queue_job("job-1")
         with patch.dict(os.environ, {"ALLOW_CLIENT_ANALYSIS": ""}):
             response = self.client.post("/api/analysis/job-1/client/claim")
+            vocals = self.client.put("/api/analysis/job-1/vocals", content="{}")
 
         self.assertEqual(response.status_code, 403)
+        self.assertEqual(vocals.status_code, 403)
 
 
 if __name__ == "__main__":

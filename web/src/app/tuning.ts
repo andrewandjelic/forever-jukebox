@@ -1,6 +1,7 @@
 import type { AppContext } from "./context";
 import { isInstrumentalModeAvailable } from "@forever-jukebox/shared/audio/instrumentalRenderer";
 import { useAppStore } from "./store";
+import { syncVocalState } from "./vocalMapFlow";
 import {
   DEFAULT_MIN_LONG_BRANCH_PERCENT,
   parsePinnedThreshold,
@@ -20,6 +21,7 @@ const TUNING_PARAM_KEYS = [
   "lg",
   "bl",
   "sq",
+  "rv",
   "thresh",
   "bp",
   "d",
@@ -163,6 +165,12 @@ function parseTuningParams(
   if (params.get("sq") === "0") {
     config.removeSequentialBranches = true;
   }
+  // Absent, the listener's own remembered choice (the default) stands.
+  if (params.get("rv") === "1") {
+    config.respectVocals = true;
+  } else if (params.get("rv") === "0") {
+    config.respectVocals = false;
+  }
   if (params.has("thresh")) {
     config.currentThreshold = parsePinnedThreshold(params.get("thresh")) ?? 0;
   }
@@ -261,6 +269,9 @@ function buildTuningParams(state: {
   }
   if (config.removeSequentialBranches) {
     params.set("sq", "0");
+  }
+  if ((config.respectVocals ?? false) !== (defaults.respectVocals ?? false)) {
+    params.set("rv", config.respectVocals ? "1" : "0");
   }
   if (config.currentThreshold !== 0) {
     params.set("thresh", `${Math.round(config.currentThreshold)}`);
@@ -372,6 +383,7 @@ export function resetAudioModeToOff(player: AppContext["player"]) {
 }
 
 export function syncTuningParamsState(context: AppContext): string | null {
+  syncVocalState(context);
   const params = getTuningParamsFromEngine(context);
   const result = serializeParams(params);
   useAppStore.setState({ tuningParams: result.length > 0 ? result : null });

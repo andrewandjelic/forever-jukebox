@@ -6,3 +6,4 @@ export * from "./random";
 export * from "./resetDefaults";
 export * from "./selection";
 export * from "./types";
+export * from "./vocals";

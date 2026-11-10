@@ -1,4 +1,5 @@
 import { QuantumBase, Segment, TrackAnalysis, TrackMeta } from "./types";
+import { parseVocalMap } from "./vocals";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -140,6 +141,7 @@ export function parseAnalysis(input: unknown): TrackAnalysis {
     tatums,
     segments,
     track: parseTrackMeta(data.track),
+    vocals: parseVocalMap(root.vocals ?? data.vocals, beats.length),
   };
 }
 

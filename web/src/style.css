@@ -4936,6 +4936,96 @@ body[data-style="fuzz"]:not(.theme-light) .viz-layer {
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
+/* "Keep sung lines whole" on the visualizer's top bar: the toggle, a small
+   "i", and the explanation they share. */
+.viz-vocals {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.viz-vocals-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: help;
+}
+
+.viz-vocals-info .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.viz-vocals-info:hover,
+.viz-vocals-info:focus-visible,
+.viz-vocals-info[aria-expanded="true"] {
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.viz-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(280px, 70vw);
+  padding: 10px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: 10px;
+  background: var(--surface-control);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: default;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    visibility 0s linear 0.15s;
+}
+
+.viz-tip strong {
+  font-size: 13px;
+}
+
+.viz-tip-detail {
+  color: var(--muted);
+}
+
+/* The toggle explains itself only to a pointer that rests on it; the "i"
+   answers at once, to a pointer, the keyboard or a tap. */
+.viz-vocals > .viz-ride-button:hover ~ .viz-tip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.8s;
+}
+
+.viz-vocals-info:hover ~ .viz-tip,
+.viz-vocals-info:focus-visible ~ .viz-tip,
+.viz-tip.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.viz-ride-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---- Lite effects ----
    For machines where the full look drops frames: chosen under Settings >
    Visual effects, or switched on automatically when the page cannot keep up.
